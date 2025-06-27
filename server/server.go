@@ -126,7 +126,22 @@ func (ts *TodoServer) registerTools() {
 
 // Tool handler stubs - minimal implementation for now
 func (ts *TodoServer) handleTodoCreate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_create not implemented"), nil
+	// Validate required parameters
+	task, err := request.RequireString("task")
+	if err != nil {
+		return mcp.NewToolResultError("Missing required parameter: task"), nil
+	}
+	
+	// Get optional parameters with defaults
+	priority := request.GetString("priority", "high")
+	
+	// Validate priority value
+	if priority != "high" && priority != "medium" && priority != "low" {
+		priority = "high" // Use default for invalid values
+	}
+	
+	// For now, just return success with the validated parameters
+	return mcp.NewToolResultText("Todo created: " + task + " (priority: " + priority + ")"), nil
 }
 
 func (ts *TodoServer) handleTodoRead(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
