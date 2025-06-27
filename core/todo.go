@@ -196,3 +196,100 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	
 	return nil
 }
+
+// ReadTodo reads and parses a todo file by ID
+func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
+	// Construct file path
+	filePath := filepath.Join(tm.basePath, id + ".md")
+	
+	// Read file content
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("todo not found: %s", id)
+		}
+		return nil, fmt.Errorf("failed to read todo file: %w", err)
+	}
+	
+	// Parse the file
+	todo, err := tm.parseTodoFile(string(content))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse todo file: %w", err)
+	}
+	
+	return todo, nil
+}
+
+// parseTodoFile parses markdown content with YAML frontmatter into a Todo
+func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
+	// Split content by frontmatter delimiters
+	parts := strings.Split(content, "---\n")
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("invalid markdown format: missing frontmatter delimiters")
+	}
+	
+	// Parse YAML frontmatter
+	yamlContent := parts[1]
+	
+	// Define a struct for parsing with string timestamps
+	var frontmatter struct {
+		TodoID    string   `yaml:"todo_id"`
+		Started   string   `yaml:"started"`
+		Completed string   `yaml:"completed"`
+		Status    string   `yaml:"status"`
+		Priority  string   `yaml:"priority"`
+		Type      string   `yaml:"type"`
+		ParentID  string   `yaml:"parent_id"`
+		Tags      []string `yaml:"tags"`
+	}
+	
+	err := yaml.Unmarshal([]byte(yamlContent), &frontmatter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse YAML frontmatter: %w", err)
+	}
+	
+	// Create todo struct
+	todo := &Todo{
+		ID:       frontmatter.TodoID,
+		Status:   frontmatter.Status,
+		Priority: frontmatter.Priority,
+		Type:     frontmatter.Type,
+		ParentID: frontmatter.ParentID,
+		Tags:     frontmatter.Tags,
+	}
+	
+	// Parse timestamps
+	if frontmatter.Started != "" {
+		startTime, err := time.Parse("2006-01-02 15:04:05", frontmatter.Started)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse started timestamp: %w", err)
+		}
+		todo.Started = startTime
+	}
+	
+	if frontmatter.Completed != "" {
+		completedTime, err := time.Parse("2006-01-02 15:04:05", frontmatter.Completed)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse completed timestamp: %w", err)
+		}
+		todo.Completed = completedTime
+	}
+	
+	// Extract task from markdown content
+	markdownContent := parts[2]
+	todo.Task = extractTask(markdownContent)
+	
+	return todo, nil
+}
+
+// extractTask extracts the task description from the markdown content
+func extractTask(content string) string {
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "# Task: ") {
+			return strings.TrimPrefix(line, "# Task: ")
+		}
+	}
+	// Return empty string if no task heading found
+	return ""
+}
