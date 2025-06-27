@@ -77,8 +77,11 @@ func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error
 
 // generateBaseID creates a kebab-case ID from the task description
 func generateBaseID(task string) string {
+	// Remove null bytes and other invalid characters first
+	cleaned := strings.ReplaceAll(task, "\x00", "")
+	
 	// Convert to lowercase
-	lower := strings.ToLower(task)
+	lower := strings.ToLower(cleaned)
 	
 	// Replace spaces and special characters with hyphens
 	replacer := strings.NewReplacer(
