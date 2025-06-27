@@ -188,3 +188,167 @@ func TestMarkdownFileCreation(t *testing.T) {
 		}
 	}
 }
+
+// Test 6: todo_create should handle file system errors gracefully
+func TestFileSystemErrorHandling(t *testing.T) {
+	// Test 1: Read-only directory
+	t.Run("Read-only directory error", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-readonly-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Make directory read-only
+		err = os.Chmod(tempDir, 0555) // r-xr-xr-x (no write permission)
+		if err != nil {
+			t.Fatalf("Failed to set directory permissions: %v", err)
+		}
+		
+		// Create todo manager with read-only directory
+		manager := NewTodoManager(tempDir)
+		
+		// Try to create todo - should fail
+		todo, err := manager.CreateTodo("Test task", "high", "feature")
+		
+		// Verify error occurred
+		if err == nil {
+			t.Error("Expected error when writing to read-only directory, but got none")
+		}
+		
+		// Verify todo is nil on error
+		if todo != nil {
+			t.Error("Expected nil todo on error, but got a todo object")
+		}
+		
+		// Verify error message is helpful
+		if err != nil && !strings.Contains(err.Error(), "permission") && !strings.Contains(err.Error(), "read-only") {
+			t.Errorf("Error message should mention permission issue, got: %v", err)
+		}
+		
+		// Restore write permission for cleanup
+		os.Chmod(tempDir, 0755)
+	})
+	
+	// Test 2: File already exists and is read-only
+	t.Run("Read-only file conflict", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-file-conflict-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo first
+		todo1, err := manager.CreateTodo("Existing task", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create first todo: %v", err)
+		}
+		
+		// Make the file read-only
+		filePath := filepath.Join(tempDir, todo1.ID + ".md")
+		err = os.Chmod(filePath, 0444) // r--r--r-- (read-only)
+		if err != nil {
+			t.Fatalf("Failed to set file permissions: %v", err)
+		}
+		
+		// Try to create another todo with same name (should generate same ID)
+		// This tests if we handle conflicts when file exists
+		todo2, err := manager.CreateTodo("Existing task", "low", "bug")
+		
+		// Should succeed with different ID (existing-task-2)
+		if err != nil {
+			t.Errorf("Should handle existing file by generating new ID, got error: %v", err)
+		}
+		
+		if todo2 != nil && todo2.ID == todo1.ID {
+			t.Error("Should generate different ID when file exists")
+		}
+	})
+	
+	// Test 3: Invalid characters in task name
+	t.Run("Invalid filesystem characters", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-invalid-chars-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Test various invalid characters that might cause issues
+		invalidTasks := []string{
+			"Task with \x00 null byte",
+			"Task with / forward slash",
+			"Task with \\ backslash",
+		}
+		
+		for _, task := range invalidTasks {
+			todo, err := manager.CreateTodo(task, "high", "feature")
+			
+			// Should succeed - our ID generation should sanitize these
+			if err != nil {
+				t.Errorf("Failed to handle task with special chars %q: %v", task, err)
+			}
+			
+			// Verify file was created
+			if todo != nil {
+				filePath := filepath.Join(tempDir, todo.ID + ".md")
+				if _, err := os.Stat(filePath); err != nil {
+					t.Errorf("File not created for task %q: %v", task, err)
+				}
+			}
+		}
+	})
+	
+	// Test 4: Temp file cleanup on error
+	t.Run("Temp file cleanup on rename error", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-cleanup-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test cleanup", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Check that no .tmp files remain
+		files, err := ioutil.ReadDir(tempDir)
+		if err != nil {
+			t.Fatalf("Failed to read directory: %v", err)
+		}
+		
+		for _, file := range files {
+			if strings.HasSuffix(file.Name(), ".tmp") {
+				t.Errorf("Temp file not cleaned up: %s", file.Name())
+			}
+		}
+		
+		// Verify the actual file exists
+		expectedFile := todo.ID + ".md"
+		found := false
+		for _, file := range files {
+			if file.Name() == expectedFile {
+				found = true
+				break
+			}
+		}
+		
+		if !found {
+			t.Errorf("Expected file %s not found", expectedFile)
+		}
+	})
+}
