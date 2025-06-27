@@ -5,6 +5,10 @@ import (
 	"strings"
 	"time"
 	"sync"
+	"os"
+	"path/filepath"
+	"io/ioutil"
+	"gopkg.in/yaml.v3"
 )
 
 // Todo represents a todo item
@@ -62,6 +66,12 @@ func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error
 		Type:     todoType,
 	}
 	
+	// Write todo to file
+	err := tm.writeTodo(todo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write todo: %w", err)
+	}
+	
 	return todo, nil
 }
 
@@ -113,4 +123,73 @@ func generateBaseID(task string) string {
 	}
 	
 	return kebab
+}
+
+// writeTodo writes a todo to disk in markdown format with YAML frontmatter
+func (tm *TodoManager) writeTodo(todo *Todo) error {
+	// Ensure directory exists
+	err := os.MkdirAll(tm.basePath, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+	
+	// Generate file path
+	filePath := filepath.Join(tm.basePath, todo.ID + ".md")
+	
+	// Format timestamp
+	timestamp := todo.Started.Format("2006-01-02 15:04:05")
+	
+	// Create YAML frontmatter
+	frontmatter := map[string]interface{}{
+		"todo_id":   todo.ID,
+		"started":   timestamp,
+		"completed": "",
+		"status":    todo.Status,
+		"priority":  todo.Priority,
+		"type":      todo.Type,
+	}
+	
+	yamlData, err := yaml.Marshal(frontmatter)
+	if err != nil {
+		return fmt.Errorf("failed to marshal YAML: %w", err)
+	}
+	
+	// Build markdown content
+	content := fmt.Sprintf(`---
+%s---
+
+# Task: %s
+
+## Findings & Research
+
+## Test Strategy
+
+## Test List
+
+## Test Cases
+
+## Maintainability Analysis
+
+## Test Results Log
+
+## Checklist
+
+## Working Scratchpad
+`, string(yamlData), todo.Task)
+	
+	// Write to temp file first (atomic write)
+	tempFile := filePath + ".tmp"
+	err = ioutil.WriteFile(tempFile, []byte(content), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write temp file: %w", err)
+	}
+	
+	// Rename temp file to final location
+	err = os.Rename(tempFile, filePath)
+	if err != nil {
+		os.Remove(tempFile) // Clean up temp file
+		return fmt.Errorf("failed to rename file: %w", err)
+	}
+	
+	return nil
 }
