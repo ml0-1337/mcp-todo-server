@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	"gopkg.in/yaml.v3"
+	"time"
 )
 
 // Test 4: todo_create should generate unique IDs for new todos
@@ -349,6 +350,254 @@ func TestFileSystemErrorHandling(t *testing.T) {
 		
 		if !found {
 			t.Errorf("Expected file %s not found", expectedFile)
+		}
+	})
+}
+
+// Test 7: todo_read should parse existing markdown files correctly
+func TestReadTodo(t *testing.T) {
+	// Test 1: Basic file reading
+	t.Run("Read basic todo file", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-read-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo first to have something to read
+		task := "Implement authentication"
+		priority := "high"
+		todoType := "feature"
+		
+		createdTodo, err := manager.CreateTodo(task, priority, todoType)
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Now read it back
+		readTodo, err := manager.ReadTodo(createdTodo.ID)
+		if err != nil {
+			t.Fatalf("Failed to read todo: %v", err)
+		}
+		
+		// Verify all fields match
+		if readTodo.ID != createdTodo.ID {
+			t.Errorf("ID mismatch. Expected %s, got %s", createdTodo.ID, readTodo.ID)
+		}
+		
+		if readTodo.Task != task {
+			t.Errorf("Task mismatch. Expected %s, got %s", task, readTodo.Task)
+		}
+		
+		if readTodo.Priority != priority {
+			t.Errorf("Priority mismatch. Expected %s, got %s", priority, readTodo.Priority)
+		}
+		
+		if readTodo.Type != todoType {
+			t.Errorf("Type mismatch. Expected %s, got %s", todoType, readTodo.Type)
+		}
+		
+		if readTodo.Status != "in_progress" {
+			t.Errorf("Status mismatch. Expected 'in_progress', got %s", readTodo.Status)
+		}
+		
+		// Check timestamp is parsed correctly (should be close to creation time)
+		timeDiff := readTodo.Started.Sub(createdTodo.Started).Abs()
+		if timeDiff > time.Second {
+			t.Errorf("Started time mismatch. Difference: %v", timeDiff)
+		}
+	})
+	
+	// Test 2: Handle optional fields
+	t.Run("Read todo with optional fields", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-optional-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create a file with optional fields
+		todoContent := `---
+todo_id: test-optional-fields
+started: 2025-01-27 14:30:00
+completed: 2025-01-27 15:45:00
+status: completed
+priority: medium
+type: bug
+parent_id: parent-task-123
+tags: [bug-fix, urgent, backend]
+---
+
+# Task: Fix database connection leak
+
+## Findings & Research
+
+Database connections not being closed properly.
+
+## Test Strategy
+
+Unit tests for connection pool.
+`
+		
+		// Write test file
+		filePath := filepath.Join(tempDir, "test-optional-fields.md")
+		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
+		if err != nil {
+			t.Fatalf("Failed to write test file: %v", err)
+		}
+		
+		// Create manager and read
+		manager := NewTodoManager(tempDir)
+		todo, err := manager.ReadTodo("test-optional-fields")
+		if err != nil {
+			t.Fatalf("Failed to read todo: %v", err)
+		}
+		
+		// Verify optional fields
+		if todo.ParentID != "parent-task-123" {
+			t.Errorf("ParentID not parsed. Expected 'parent-task-123', got %s", todo.ParentID)
+		}
+		
+		if len(todo.Tags) != 3 {
+			t.Errorf("Tags not parsed correctly. Expected 3 tags, got %d", len(todo.Tags))
+		}
+		
+		if todo.Status != "completed" {
+			t.Errorf("Status incorrect. Expected 'completed', got %s", todo.Status)
+		}
+		
+		// Check completed timestamp
+		if todo.Completed.IsZero() {
+			t.Error("Completed timestamp should be parsed")
+		}
+		
+		// Verify task extraction from markdown
+		if todo.Task != "Fix database connection leak" {
+			t.Errorf("Task not extracted correctly. Got: %s", todo.Task)
+		}
+	})
+	
+	// Test 3: Handle missing file
+	t.Run("Error on non-existent file", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-missing-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create manager
+		manager := NewTodoManager(tempDir)
+		
+		// Try to read non-existent todo
+		todo, err := manager.ReadTodo("does-not-exist")
+		
+		// Should return error
+		if err == nil {
+			t.Error("Expected error for non-existent file, got nil")
+		}
+		
+		// Todo should be nil
+		if todo != nil {
+			t.Error("Expected nil todo for non-existent file")
+		}
+		
+		// Error should mention file not found
+		if err != nil && !strings.Contains(err.Error(), "not found") && !strings.Contains(err.Error(), "no such file") {
+			t.Errorf("Error should mention file not found, got: %v", err)
+		}
+	})
+	
+	// Test 4: Handle invalid YAML
+	t.Run("Error on invalid YAML", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-invalid-yaml-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create a file with invalid YAML
+		todoContent := `---
+todo_id: invalid-yaml
+started: not-a-valid-timestamp
+status: [this should not be an array]
+priority high  # missing colon
+---
+
+# Task: Test invalid YAML
+`
+		
+		// Write test file
+		filePath := filepath.Join(tempDir, "invalid-yaml.md")
+		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
+		if err != nil {
+			t.Fatalf("Failed to write test file: %v", err)
+		}
+		
+		// Create manager and try to read
+		manager := NewTodoManager(tempDir)
+		todo, err := manager.ReadTodo("invalid-yaml")
+		
+		// Should return error
+		if err == nil {
+			t.Error("Expected error for invalid YAML, got nil")
+		}
+		
+		// Todo should be nil
+		if todo != nil {
+			t.Error("Expected nil todo for invalid YAML")
+		}
+	})
+	
+	// Test 5: Handle missing task heading
+	t.Run("Handle missing task heading", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-no-task-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create a file without # Task: heading
+		todoContent := `---
+todo_id: no-task-heading
+started: 2025-01-27 14:30:00
+completed:
+status: in_progress
+priority: low
+type: research
+---
+
+## Findings & Research
+
+This file has no task heading.
+`
+		
+		// Write test file
+		filePath := filepath.Join(tempDir, "no-task-heading.md")
+		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
+		if err != nil {
+			t.Fatalf("Failed to write test file: %v", err)
+		}
+		
+		// Create manager and read
+		manager := NewTodoManager(tempDir)
+		todo, err := manager.ReadTodo("no-task-heading")
+		
+		// Should succeed but task should be empty or have default
+		if err != nil {
+			t.Fatalf("Should handle missing task heading gracefully: %v", err)
+		}
+		
+		// Task should be empty or indicate missing
+		if todo.Task != "" && !strings.Contains(todo.Task, "Untitled") {
+			t.Errorf("Task should be empty or indicate missing, got: %s", todo.Task)
 		}
 	})
 }
