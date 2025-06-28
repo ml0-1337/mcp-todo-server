@@ -41,9 +41,23 @@ With HTTP transport, you can:
 ./mcp-todo-server
 ```
 
-### Configuration Files
+### Configuration
 
-#### For HTTP Transport (.mcp-http.json)
+#### Using Claude Code CLI (Recommended)
+
+For HTTP transport:
+```bash
+claude mcp add --transport http todo http://localhost:8080/mcp
+```
+
+For STDIO transport:
+```bash
+claude mcp add todo /path/to/mcp-todo-server --args "-transport" "stdio"
+```
+
+#### Manual Configuration Files
+
+For HTTP Transport (.mcp.json):
 ```json
 {
   "mcpServers": {
@@ -55,7 +69,7 @@ With HTTP transport, you can:
 }
 ```
 
-#### For STDIO Transport (.mcp.json)
+For STDIO Transport (.mcp.json):
 ```json
 {
   "mcpServers": {

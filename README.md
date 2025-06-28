@@ -88,24 +88,19 @@ go build -o mcp-todo-server
 
 #### HTTP Mode (Recommended)
 ```bash
-# Start server on default port 8080
+# 1. Start server on default port 8080
 ./mcp-todo-server -transport http
 
-# Configure Claude Code with .mcp-http.json:
-{
-  "mcpServers": {
-    "todo": {
-      "type": "http",
-      "url": "http://localhost:8080/mcp"
-    }
-  }
-}
+# 2. Add to Claude Code
+claude mcp add --transport http todo http://localhost:8080/mcp
 ```
 
 #### STDIO Mode (Legacy)
 ```bash
-# Use existing .mcp.json configuration
-./mcp-todo-server -transport stdio
+# 1. Configure with absolute path
+claude mcp add todo /Users/macbook/Programming/go_projects/mcp-todo-server/mcp-todo-server --args "-transport" "stdio"
+
+# 2. Server will start automatically when Claude Code connects
 ```
 
 ### Running Tests
