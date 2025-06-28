@@ -1137,3 +1137,315 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		}
 	})
 }
+
+// Test 15: Search should handle special characters safely
+func TestSearchHandlesSpecialCharacters(t *testing.T) {
+	// Test 1: Regex patterns should not execute as regular expressions
+	t.Run("Regex patterns should not execute as regex", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-regex-safety-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos
+		manager := NewTodoManager(tempDir)
+		
+		// Todo with "authentication" in title
+		todo1, err := manager.CreateTodo("Implement authentication system", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		// Todo with "auth" (would match /.*auth.*/)
+		_, err = manager.CreateTodo("Setup auth middleware", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		// Todo without auth-related terms
+		_, err = manager.CreateTodo("Database optimization", "low", "performance")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Test various regex patterns that should NOT execute as regex
+		regexPatterns := []string{
+			"/.*authentication.*/",
+			"/auth.*/",
+			"/[a-z]+/",
+			"/.+test.+/",
+			"/^start/",
+			"/end$/",
+		}
+		
+		for _, pattern := range regexPatterns {
+			results, err := searchEngine.SearchTodos(pattern, nil, 10)
+			if err != nil {
+				t.Fatalf("Search failed for pattern %s: %v", pattern, err)
+			}
+			
+			// Should not match any todos (regex not executed)
+			if len(results) > 0 {
+				t.Errorf("Pattern %s should not match any todos when treated as literal, but got %d results", pattern, len(results))
+				for _, r := range results {
+					t.Logf("  Unexpected match: %s (score: %f)", r.ID, r.Score)
+				}
+			}
+		}
+		
+		// Verify normal search still works
+		results, err := searchEngine.SearchTodos("authentication", nil, 10)
+		if err != nil {
+			t.Fatalf("Normal search failed: %v", err)
+		}
+		if len(results) != 1 || results[0].ID != todo1.ID {
+			t.Errorf("Normal search for 'authentication' should return 1 result, got %d", len(results))
+		}
+	})
+	
+	// Test 2: Query operators and wildcards should be handled safely
+	t.Run("Query operators and wildcards handled safely", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-operators-safety-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos
+		manager := NewTodoManager(tempDir)
+		
+		todo1, err := manager.CreateTodo("User management and admin panel", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		todo2, err := manager.CreateTodo("Database user permissions", "medium", "security")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		_, err = manager.CreateTodo("API documentation", "low", "docs")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Test operator patterns
+		operatorQueries := []struct {
+			query    string
+			desc     string
+		}{
+			{"user && admin", "AND operator"},
+			{"user || admin", "OR operator"},
+			{"user AND admin", "AND keyword"},
+			{"user OR admin", "OR keyword"},
+			{"+user +admin", "Required terms"},
+			{"-user admin", "Excluded terms"},
+			{"user*", "Wildcard suffix"},
+			{"*user", "Wildcard prefix"},
+			{"us?r", "Single char wildcard"},
+			{"user~", "Fuzzy search"},
+			{"user^2", "Boost operator"},
+			{"!user", "NOT operator"},
+		}
+		
+		for _, test := range operatorQueries {
+			results, err := searchEngine.SearchTodos(test.query, nil, 10)
+			if err != nil {
+				t.Fatalf("Search failed for %s (%s): %v", test.query, test.desc, err)
+			}
+			
+			// Should find results based on "user" term, ignoring operators
+			foundUser := false
+			for _, r := range results {
+				if r.ID == todo1.ID || r.ID == todo2.ID {
+					foundUser = true
+				}
+			}
+			
+			if !foundUser && strings.Contains(test.query, "user") && !strings.HasPrefix(test.query, "-") && !strings.HasPrefix(test.query, "!") {
+				t.Errorf("Query '%s' (%s) should find todos containing 'user'", test.query, test.desc)
+			}
+		}
+	})
+	
+	// Test 3: Grouping and special punctuation characters
+	t.Run("Grouping and punctuation characters handled safely", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-grouping-safety-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos
+		manager := NewTodoManager(tempDir)
+		
+		_, err = manager.CreateTodo("Test framework [unit tests]", "high", "testing")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		_, err = manager.CreateTodo("Function test() implementation", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		_, err = manager.CreateTodo("API endpoint {GET /test}", "low", "api")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Test grouping/punctuation patterns
+		groupingQueries := []struct {
+			query    string
+			desc     string
+		}{
+			{"test[123]", "Square brackets"},
+			{"test()", "Parentheses"},
+			{"test{api}", "Curly braces"},
+			{"test<tag>", "Angle brackets"},
+			{"test@email", "At symbol"},
+			{"test#hash", "Hash symbol"},
+			{"test$var", "Dollar sign"},
+			{"test%percent", "Percent sign"},
+			{"test&more", "Ampersand"},
+			{"test!important", "Exclamation"},
+			{"test?query", "Question mark"},
+			{"test;semicolon", "Semicolon"},
+			{"test:colon", "Colon"},
+			{"test'apostrophe", "Apostrophe"},
+			{"test`backtick", "Backtick"},
+			{"test\\escape", "Backslash"},
+			{"test|pipe", "Pipe"},
+		}
+		
+		for _, test := range groupingQueries {
+			results, err := searchEngine.SearchTodos(test.query, nil, 10)
+			if err != nil {
+				t.Fatalf("Search failed for %s (%s): %v", test.query, test.desc, err)
+			}
+			
+			// Should find todos with "test" regardless of special characters
+			if len(results) == 0 {
+				t.Errorf("Query '%s' (%s) should find todos containing 'test'", test.query, test.desc)
+			}
+		}
+	})
+	
+	// Test 4: Mixed valid terms with special characters
+	t.Run("Mixed valid terms with special characters", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-mixed-chars-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos
+		manager := NewTodoManager(tempDir)
+		
+		todo1, err := manager.CreateTodo("Security audit for authentication", "high", "security")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		_, err = manager.CreateTodo("Code review checklist", "medium", "process")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Test mixed queries
+		mixedQueries := []struct {
+			query          string
+			shouldFindTodo string
+			desc          string
+		}{
+			{"security !@#$%^&*()", todo1.ID, "Valid term with special chars at end"},
+			{"!@#$%^&*() security", todo1.ID, "Special chars at start"},
+			{"sec!@#urity", todo1.ID, "Special chars in middle"},
+			{"../../../security", todo1.ID, "Path traversal attempt"},
+			{"security\x00null", todo1.ID, "Null byte injection"},
+			{"security\ninjection", todo1.ID, "Newline injection"},
+			{"<script>security</script>", todo1.ID, "HTML tags"},
+			{"${security}", todo1.ID, "Template injection syntax"},
+			{"{{security}}", todo1.ID, "Template brackets"},
+			{"security'); DROP TABLE--", todo1.ID, "SQL injection attempt"},
+		}
+		
+		for _, test := range mixedQueries {
+			results, err := searchEngine.SearchTodos(test.query, nil, 10)
+			if err != nil {
+				t.Fatalf("Search failed for %s (%s): %v", test.query, test.desc, err)
+			}
+			
+			// Should find the expected todo
+			found := false
+			for _, r := range results {
+				if r.ID == test.shouldFindTodo {
+					found = true
+					break
+				}
+			}
+			
+			if !found {
+				t.Errorf("Query '%s' (%s) should find todo %s", test.query, test.desc, test.shouldFindTodo)
+			}
+		}
+		
+		// Test empty query after all special chars
+		emptyQueries := []string{
+			"!@#$%^&*()",
+			"<<<>>>",
+			"///\\\\\\",
+			"---+++===",
+			"```````",
+		}
+		
+		for _, query := range emptyQueries {
+			results, err := searchEngine.SearchTodos(query, nil, 10)
+			if err != nil {
+				t.Fatalf("Search failed for all-special-chars query %s: %v", query, err)
+			}
+			
+			// Should return no results (no valid search terms)
+			if len(results) > 0 {
+				t.Errorf("Query with only special chars '%s' should return no results, got %d", query, len(results))
+			}
+		}
+	})
+}
