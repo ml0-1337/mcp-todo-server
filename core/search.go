@@ -227,13 +227,14 @@ func (se *SearchEngine) GetIndexedCount() (uint64, error) {
 
 // SearchTodos searches for todos matching the query
 func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, limit int) ([]SearchResult, error) {
-	// Build query - use match phrase for exact matching
-	q := bleve.NewMatchPhraseQuery(queryStr)
+	// Build query - use query string for flexible matching
+	q := bleve.NewQueryStringQuery(queryStr)
 	
 	// Create search request
 	searchRequest := bleve.NewSearchRequest(q)
 	searchRequest.Size = limit
 	searchRequest.Fields = []string{"task", "id"}
+	searchRequest.Highlight = bleve.NewHighlight() // Enable snippets
 	
 	// Execute search
 	searchResults, err := se.index.Search(searchRequest)
@@ -252,6 +253,16 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 		// Get task from stored fields
 		if task, ok := hit.Fields["task"].(string); ok {
 			result.Task = task
+		}
+		
+		// Get snippet from highlights
+		if len(hit.Fragments) > 0 {
+			for _, fragments := range hit.Fragments {
+				if len(fragments) > 0 {
+					result.Snippet = fragments[0]
+					break
+				}
+			}
 		}
 		
 		results = append(results, result)
