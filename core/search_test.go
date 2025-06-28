@@ -528,3 +528,323 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		}
 	})
 }
+
+// Test 13: todo_search should support filtering by status and date
+func TestSearchFiltering(t *testing.T) {
+	// Test 1: Filter by status
+	t.Run("Filter search results by status", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-filter-status-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with different statuses
+		manager := NewTodoManager(tempDir)
+		
+		todo1, err := manager.CreateTodo("Implement authentication feature", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		// Keep todo1 as in_progress
+		
+		todo2, err := manager.CreateTodo("Fix login bug feature", "medium", "bug")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		// Update todo2 to completed
+		err = manager.UpdateTodo(todo2.ID, "", "", "", map[string]string{
+			"status": "completed",
+			"completed": time.Now().Format("2006-01-02 15:04:05"),
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 2 status: %v", err)
+		}
+		
+		todo3, err := manager.CreateTodo("Research new feature framework", "low", "research")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		// Update todo3 to blocked
+		err = manager.UpdateTodo(todo3.ID, "", "", "", map[string]string{
+			"status": "blocked",
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 3 status: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for "feature" with status filter "in_progress"
+		filters := map[string]string{
+			"status": "in_progress",
+		}
+		results, err := searchEngine.SearchTodos("feature", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with status filter: %v", err)
+		}
+		
+		// Should only return todo1
+		if len(results) != 1 {
+			t.Errorf("Expected 1 result for status=in_progress, got %d", len(results))
+		}
+		
+		if len(results) > 0 && results[0].ID != todo1.ID {
+			t.Errorf("Expected todo ID %s, got %s", todo1.ID, results[0].ID)
+		}
+		
+		// Search for "feature" with status filter "completed"
+		filters = map[string]string{
+			"status": "completed",
+		}
+		results, err = searchEngine.SearchTodos("feature", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with status filter: %v", err)
+		}
+		
+		// Should only return todo2
+		if len(results) != 1 {
+			t.Errorf("Expected 1 result for status=completed, got %d", len(results))
+		}
+		
+		if len(results) > 0 && results[0].ID != todo2.ID {
+			t.Errorf("Expected todo ID %s, got %s", todo2.ID, results[0].ID)
+		}
+	})
+	
+	// Test 2: Filter by date range
+	t.Run("Filter search results by date range", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-filter-date-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with different dates
+		manager := NewTodoManager(tempDir)
+		
+		// Create todo from 5 days ago
+		todo1, err := manager.CreateTodo("Old task about search", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		// Manually update the started date to 5 days ago
+		fiveDaysAgo := time.Now().AddDate(0, 0, -5).Format("2006-01-02 15:04:05")
+		err = manager.UpdateTodo(todo1.ID, "", "", "", map[string]string{
+			"started": fiveDaysAgo,
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 1 date: %v", err)
+		}
+		
+		// Create todo from today
+		_, err = manager.CreateTodo("Today task about search", "medium", "bug")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		// Create todo from 30 days ago
+		todo3, err := manager.CreateTodo("Very old task about search", "low", "research")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		thirtyDaysAgo := time.Now().AddDate(0, 0, -30).Format("2006-01-02 15:04:05")
+		err = manager.UpdateTodo(todo3.ID, "", "", "", map[string]string{
+			"started": thirtyDaysAgo,
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 3 date: %v", err)
+		}
+		
+		// Create search engine AFTER all todos are created and updated
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for "search" with date filter - last 7 days
+		sevenDaysAgo := time.Now().AddDate(0, 0, -7)
+		filters := map[string]string{
+			"date_from": sevenDaysAgo.Format("2006-01-02"),
+		}
+		results, err := searchEngine.SearchTodos("search", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with date filter: %v", err)
+		}
+		
+		// Should return todo1 and todo2
+		if len(results) != 2 {
+			t.Errorf("Expected 2 results for last 7 days, got %d", len(results))
+		}
+		
+		// Search for "search" with specific date range
+		filters = map[string]string{
+			"date_from": time.Now().AddDate(0, 0, -20).Format("2006-01-02"),
+			"date_to":   time.Now().AddDate(0, 0, -4).Format("2006-01-02"),
+		}
+		results, err = searchEngine.SearchTodos("search", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with date range filter: %v", err)
+		}
+		
+		// Should only return todo1
+		if len(results) != 1 {
+			t.Errorf("Expected 1 result for date range, got %d", len(results))
+		}
+		
+		if len(results) > 0 && results[0].ID != todo1.ID {
+			t.Errorf("Expected todo ID %s, got %s", todo1.ID, results[0].ID)
+		}
+	})
+	
+	// Test 3: Combine text search with multiple filters
+	t.Run("Combine text search with status and date filters", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-filter-combined-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with various combinations
+		manager := NewTodoManager(tempDir)
+		
+		// Todo 1: in_progress, recent, matches search
+		todo1, err := manager.CreateTodo("Implement user authentication", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		// Todo 2: completed, recent, matches search
+		todo2, err := manager.CreateTodo("Fix authentication bug", "medium", "bug")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		err = manager.UpdateTodo(todo2.ID, "", "", "", map[string]string{
+			"status": "completed",
+			"completed": time.Now().Format("2006-01-02 15:04:05"),
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 2: %v", err)
+		}
+		
+		// Todo 3: in_progress, old, matches search
+		todo3, err := manager.CreateTodo("Research authentication methods", "low", "research")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		tenDaysAgo := time.Now().AddDate(0, 0, -10).Format("2006-01-02 15:04:05")
+		err = manager.UpdateTodo(todo3.ID, "", "", "", map[string]string{
+			"started": tenDaysAgo,
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 3 date: %v", err)
+		}
+		
+		// Todo 4: in_progress, recent, doesn't match search
+		_, err = manager.CreateTodo("Implement caching system", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 4: %v", err)
+		}
+		
+		// Create search engine AFTER all todos are created and updated
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for "authentication" with status=in_progress and last 7 days
+		filters := map[string]string{
+			"status": "in_progress",
+			"date_from": time.Now().AddDate(0, 0, -7).Format("2006-01-02"),
+		}
+		results, err := searchEngine.SearchTodos("authentication", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with combined filters: %v", err)
+		}
+		
+		// Should only return todo1 (matches all criteria)
+		if len(results) != 1 {
+			t.Errorf("Expected 1 result for combined filters, got %d", len(results))
+		}
+		
+		if len(results) > 0 && results[0].ID != todo1.ID {
+			t.Errorf("Expected todo ID %s, got %s", todo1.ID, results[0].ID)
+		}
+	})
+	
+	// Test 4: Filter with empty search query
+	t.Run("Apply filters without search query", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-filter-empty-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos
+		manager := NewTodoManager(tempDir)
+		
+		// Create multiple todos with different statuses
+		_, err = manager.CreateTodo("First task", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		todo2, err := manager.CreateTodo("Second task", "medium", "bug")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		err = manager.UpdateTodo(todo2.ID, "", "", "", map[string]string{
+			"status": "completed",
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 2: %v", err)
+		}
+		
+		todo3, err := manager.CreateTodo("Third task", "low", "research")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		err = manager.UpdateTodo(todo3.ID, "", "", "", map[string]string{
+			"status": "completed",
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search with empty query but status filter
+		filters := map[string]string{
+			"status": "completed",
+		}
+		results, err := searchEngine.SearchTodos("", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with empty query: %v", err)
+		}
+		
+		// Should return only completed todos (2)
+		if len(results) != 2 {
+			t.Errorf("Expected 2 completed todos, got %d", len(results))
+		}
+	})
+}

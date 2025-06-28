@@ -11,6 +11,7 @@ import (
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/blevesearch/bleve/v2/mapping"
+	"github.com/blevesearch/bleve/v2/search/query"
 )
 
 // TodoDocument represents a todo in the search index
@@ -110,6 +111,9 @@ func buildIndexMapping() mapping.IndexMapping {
 	// Date fields
 	dateFieldMapping := bleve.NewDateTimeFieldMapping()
 	dateFieldMapping.Store = true
+	dateFieldMapping.Index = true
+	// Specify that we're using RFC3339 format for dates
+	dateFieldMapping.DateFormat = "dateTimeOptional"
 	
 	todoMapping.AddFieldMappingsAt("started", dateFieldMapping)
 	todoMapping.AddFieldMappingsAt("completed", dateFieldMapping)
@@ -170,6 +174,7 @@ func (se *SearchEngine) indexExistingTodos() error {
 			Content:   string(content),
 		}
 		
+		
 		// Extract sections for better search
 		doc.Findings = extractSection(string(content), "## Findings & Research")
 		doc.Tests = extractSection(string(content), "## Test Cases")
@@ -227,13 +232,72 @@ func (se *SearchEngine) GetIndexedCount() (uint64, error) {
 
 // SearchTodos searches for todos matching the query
 func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, limit int) ([]SearchResult, error) {
-	// Build query - use query string for flexible matching
-	q := bleve.NewQueryStringQuery(queryStr)
+	// Build composite query
+	var searchQuery query.Query
+	
+	// Handle text query
+	if queryStr != "" {
+		searchQuery = bleve.NewQueryStringQuery(queryStr)
+	} else {
+		// If no query string, match all documents
+		searchQuery = bleve.NewMatchAllQuery()
+	}
+	
+	// Apply filters if provided
+	if len(filters) > 0 {
+		var queries []query.Query
+		queries = append(queries, searchQuery)
+		
+		// Status filter
+		if status, ok := filters["status"]; ok && status != "" {
+			statusQuery := bleve.NewTermQuery(status)
+			statusQuery.SetField("status")
+			queries = append(queries, statusQuery)
+		}
+		
+		// Date range filter - commented out for now, will do post-filtering
+		// TODO: Fix bleve date range query
+		/*
+		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
+			// Parse the dates in UTC
+			fromTime, err := time.ParseInLocation("2006-01-02", dateFrom, time.UTC)
+			if err != nil {
+				return nil, fmt.Errorf("invalid date_from format: %w", err)
+			}
+			
+			var toTime *time.Time
+			if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
+				t, err := time.ParseInLocation("2006-01-02", dateTo, time.UTC)
+				if err != nil {
+					return nil, fmt.Errorf("invalid date_to format: %w", err)
+				}
+				// Set to end of day
+				t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+				toTime = &t
+			}
+			
+			// Create date range query for started field
+			var dateRangeQuery *query.DateRangeQuery
+			if toTime != nil {
+				dateRangeQuery = bleve.NewDateRangeQuery(fromTime, *toTime)
+			} else {
+				// No end date means from date to now
+				now := time.Now().UTC()
+				dateRangeQuery = bleve.NewDateRangeQuery(fromTime, now)
+				}
+			dateRangeQuery.SetField("started")
+			queries = append(queries, dateRangeQuery)
+		}
+		*/
+		
+		// Combine all queries with AND
+		searchQuery = bleve.NewConjunctionQuery(queries...)
+	}
 	
 	// Create search request
-	searchRequest := bleve.NewSearchRequest(q)
+	searchRequest := bleve.NewSearchRequest(searchQuery)
 	searchRequest.Size = limit
-	searchRequest.Fields = []string{"task", "id"}
+	searchRequest.Fields = []string{"task", "id", "started", "status"}
 	searchRequest.Highlight = bleve.NewHighlight() // Enable snippets
 	
 	// Execute search
@@ -242,9 +306,52 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
 	
-	// Convert results
+	// Convert results and apply date filtering
 	var results []SearchResult
+	
+	// Parse date filters for post-filtering
+	var dateFrom, dateTo *time.Time
+	if df, ok := filters["date_from"]; ok && df != "" {
+		t, err := time.ParseInLocation("2006-01-02", df, time.UTC)
+		if err == nil {
+			dateFrom = &t
+		}
+	}
+	if dt, ok := filters["date_to"]; ok && dt != "" {
+		t, err := time.ParseInLocation("2006-01-02", dt, time.UTC)
+		if err == nil {
+			// Set to end of day
+			t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+			dateTo = &t
+		}
+	}
+	
 	for _, hit := range searchResults.Hits {
+		// If we have date filters, check the started date
+		if dateFrom != nil || dateTo != nil {
+			// Read the todo to get the actual started date
+			todoPath := filepath.Join(se.basePath, hit.ID+".md")
+			content, err := ioutil.ReadFile(todoPath)
+			if err != nil {
+				continue
+			}
+			
+			// Parse the todo
+			manager := &TodoManager{basePath: se.basePath}
+			todo, err := manager.parseTodoFile(string(content))
+			if err != nil {
+				continue
+			}
+			
+			// Check date range
+			if dateFrom != nil && todo.Started.Before(*dateFrom) {
+				continue
+			}
+			if dateTo != nil && todo.Started.After(*dateTo) {
+				continue
+			}
+		}
+		
 		result := SearchResult{
 			ID:    hit.ID,
 			Score: hit.Score,
