@@ -848,3 +848,298 @@ func TestSearchFiltering(t *testing.T) {
 		}
 	})
 }
+
+// Test 14: Search should return results ranked by relevance
+func TestSearchResultsRankedByRelevance(t *testing.T) {
+	// Test 1: Task field matches should rank significantly higher than other fields
+	t.Run("Task field matches rank significantly higher than content matches", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-relevance-ranking-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with "authentication" in different fields
+		manager := NewTodoManager(tempDir)
+		
+		// Todo 1: Multiple "authentication" occurrences in findings
+		todo1, err := manager.CreateTodo("Security research task", "high", "research")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		err = manager.UpdateTodo(todo1.ID, "findings", "append", "\n\nNeed to implement authentication for the API endpoints. Authentication is critical for security. We should use OAuth authentication or JWT authentication.", nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo 1: %v", err)
+		}
+		
+		// Todo 2: "authentication" in task title
+		todo2, err := manager.CreateTodo("Implement authentication system", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		// Todo 3: "authentication" in test cases only
+		todo3, err := manager.CreateTodo("API endpoint development", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		err = manager.UpdateTodo(todo3.ID, "tests", "append", "\n\nTest authentication middleware functionality.", nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for "authentication"
+		results, err := searchEngine.SearchTodos("authentication", nil, 10)
+		if err != nil {
+			t.Fatalf("Failed to search: %v", err)
+		}
+		
+		// Should get all 3 results
+		if len(results) != 3 {
+			t.Errorf("Expected 3 results, got %d", len(results))
+		}
+		
+		// Todo 2 (task match) should rank first
+		if len(results) > 0 && results[0].ID != todo2.ID {
+			t.Errorf("Expected todo with task match (%s) to rank first, got %s", todo2.ID, results[0].ID)
+		}
+		
+		// Scores should be in descending order
+		for i := 1; i < len(results); i++ {
+			if results[i].Score > results[i-1].Score {
+				t.Errorf("Results not properly ordered by score: result[%d].Score (%f) > result[%d].Score (%f)", 
+					i, results[i].Score, i-1, results[i-1].Score)
+			}
+		}
+		
+		// Task match should have significantly higher score (at least 50% higher)
+		if len(results) >= 2 {
+			scoreDiff := (results[0].Score - results[1].Score) / results[1].Score
+			if scoreDiff < 0.5 {
+				t.Errorf("Task match score (%f) should be at least 50%% higher than content match score (%f), but only %f%% higher",
+					results[0].Score, results[1].Score, scoreDiff*100)
+			}
+		}
+		
+		// Debug: Print out the actual scores and IDs to understand current behavior
+		t.Logf("Search results for 'authentication':")
+		for i, result := range results {
+			t.Logf("  [%d] ID: %s, Task: %s, Score: %f", i, result.ID, result.Task, result.Score)
+		}
+	})
+	
+	// Test 2: Multiple occurrences should increase relevance
+	t.Run("Multiple term occurrences increase relevance score", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-multi-occurrence-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with varying occurrences of "testing"
+		manager := NewTodoManager(tempDir)
+		
+		// Todo 1: Single occurrence
+		todo1, err := manager.CreateTodo("Basic testing setup", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		// Todo 2: Multiple occurrences
+		todo2, err := manager.CreateTodo("Testing framework for testing", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		err = manager.UpdateTodo(todo2.ID, "findings", "append", "\n\nTesting is critical for quality. Need comprehensive testing strategy.", nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo 2: %v", err)
+		}
+		
+		// Todo 3: Single occurrence in less important field
+		todo3, err := manager.CreateTodo("Documentation task", "low", "documentation")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		err = manager.UpdateTodo(todo3.ID, "scratchpad", "append", "\n\nRemember to mention testing procedures.", nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for "testing"
+		results, err := searchEngine.SearchTodos("testing", nil, 10)
+		if err != nil {
+			t.Fatalf("Failed to search: %v", err)
+		}
+		
+		// Should get all 3 results
+		if len(results) != 3 {
+			t.Errorf("Expected 3 results, got %d", len(results))
+		}
+		
+		// Todo 2 (multiple occurrences) should rank first
+		if len(results) > 0 && results[0].ID != todo2.ID {
+			t.Errorf("Expected todo with multiple occurrences (%s) to rank first, got %s", todo2.ID, results[0].ID)
+		}
+		
+		// Todo 1 (single occurrence in task) should rank second
+		if len(results) > 1 && results[1].ID != todo1.ID {
+			t.Errorf("Expected todo with single task occurrence (%s) to rank second, got %s", todo1.ID, results[1].ID)
+		}
+	})
+	
+	// Test 3: Exact phrase matches should rank higher
+	t.Run("Exact phrase matches rank higher than partial matches", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-exact-phrase-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with exact vs partial phrase matches
+		manager := NewTodoManager(tempDir)
+		
+		// Todo 1: Partial match - words separated
+		_, err = manager.CreateTodo("User system with authentication", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		
+		// Todo 2: Exact phrase match
+		todo2, err := manager.CreateTodo("Implement user authentication feature", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		
+		// Todo 3: Words in different order
+		_, err = manager.CreateTodo("Authentication for user management", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for exact phrase "user authentication"
+		results, err := searchEngine.SearchTodos("\"user authentication\"", nil, 10)
+		if err != nil {
+			t.Fatalf("Failed to search: %v", err)
+		}
+		
+		// Todo 2 with exact phrase should rank first
+		if len(results) > 0 && results[0].ID != todo2.ID {
+			t.Errorf("Expected todo with exact phrase match (%s) to rank first, got %s", todo2.ID, results[0].ID)
+		}
+		
+		// Verify scores are properly ordered
+		for i := 1; i < len(results); i++ {
+			if results[i].Score > results[i-1].Score {
+				t.Errorf("Results not ordered by relevance: result[%d].Score (%f) > result[%d].Score (%f)", 
+					i, results[i].Score, i-1, results[i-1].Score)
+			}
+		}
+	})
+	
+	// Test 4: Relevance ranking with filters
+	t.Run("Relevance ranking works with status filters", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-relevance-filter-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todos with different statuses and relevance
+		manager := NewTodoManager(tempDir)
+		
+		// Todo 1: High relevance, wrong status
+		todo1, err := manager.CreateTodo("Database optimization task", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 1: %v", err)
+		}
+		err = manager.UpdateTodo(todo1.ID, "", "", "", map[string]string{
+			"status": "completed",
+		})
+		if err != nil {
+			t.Fatalf("Failed to update todo 1 status: %v", err)
+		}
+		
+		// Todo 2: Medium relevance, correct status
+		todo2, err := manager.CreateTodo("Work on database", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 2: %v", err)
+		}
+		err = manager.UpdateTodo(todo2.ID, "findings", "append", "\n\nOptimization needed for database queries.", nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo 2: %v", err)
+		}
+		
+		// Todo 3: Low relevance, correct status
+		todo3, err := manager.CreateTodo("API development", "low", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo 3: %v", err)
+		}
+		err = manager.UpdateTodo(todo3.ID, "scratchpad", "append", "\n\nConsider database optimization later.", nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo 3: %v", err)
+		}
+		
+		// Create search engine
+		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		if err != nil {
+			t.Fatalf("Failed to create search engine: %v", err)
+		}
+		defer searchEngine.Close()
+		
+		// Search for "database optimization" with status filter
+		filters := map[string]string{
+			"status": "in_progress",
+		}
+		results, err := searchEngine.SearchTodos("database optimization", filters, 10)
+		if err != nil {
+			t.Fatalf("Failed to search with filter: %v", err)
+		}
+		
+		// Should only get in_progress todos
+		if len(results) != 2 {
+			t.Errorf("Expected 2 in_progress results, got %d", len(results))
+		}
+		
+		// Todo 2 should rank first (better match despite not having it in title)
+		if len(results) > 0 && results[0].ID != todo2.ID {
+			t.Errorf("Expected todo 2 (%s) to rank first based on relevance, got %s", todo2.ID, results[0].ID)
+		}
+		
+		// Verify filtered results are still ordered by relevance
+		for i := 1; i < len(results); i++ {
+			if results[i].Score > results[i-1].Score {
+				t.Errorf("Filtered results not ordered by relevance: result[%d].Score (%f) > result[%d].Score (%f)", 
+					i, results[i].Score, i-1, results[i-1].Score)
+			}
+		}
+	})
+}
