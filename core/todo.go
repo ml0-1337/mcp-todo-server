@@ -289,9 +289,9 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 		Tags:     frontmatter.Tags,
 	}
 	
-	// Parse timestamps
+	// Parse timestamps with multiple format support
 	if frontmatter.Started != "" {
-		startTime, err := time.Parse("2006-01-02 15:04:05", frontmatter.Started)
+		startTime, err := parseTimestamp(frontmatter.Started)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse started timestamp: %w", err)
 		}
@@ -299,7 +299,7 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 	}
 	
 	if frontmatter.Completed != "" {
-		completedTime, err := time.Parse("2006-01-02 15:04:05", frontmatter.Completed)
+		completedTime, err := parseTimestamp(frontmatter.Completed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse completed timestamp: %w", err)
 		}
@@ -311,6 +311,28 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 	todo.Task = extractTask(markdownContent)
 	
 	return todo, nil
+}
+
+// parseTimestamp attempts to parse a timestamp string using multiple formats
+func parseTimestamp(timestamp string) (time.Time, error) {
+	// Try multiple formats in order of preference
+	formats := []string{
+		"2006-01-02 15:04:05",   // Standard format used by the system
+		time.RFC3339,            // RFC3339 format (2006-01-02T15:04:05Z07:00)
+		time.RFC3339Nano,        // RFC3339 with nanoseconds
+	}
+	
+	var lastErr error
+	for _, format := range formats {
+		if t, err := time.Parse(format, timestamp); err == nil {
+			return t, nil
+		} else {
+			lastErr = err
+		}
+	}
+	
+	// Return the last error if all formats fail
+	return time.Time{}, lastErr
 }
 
 // extractTask extracts the task description from the markdown content

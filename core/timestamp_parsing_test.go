@@ -98,20 +98,22 @@ This todo uses RFC3339 timestamp format like the problematic test-archive-demo.m
 	manager := NewTodoManager(tempDir)
 	todo, err := manager.ReadTodo("test-rfc3339-timestamp")
 	
-	// This test should FAIL with current implementation
-	// Expected error: "failed to parse started timestamp: parsing time \"2025-01-29T02:55:00Z\" as \"2006-01-02 15:04:05\": cannot parse \"T02:55:00Z\" as \" \""
-	if err == nil {
-		t.Fatal("Expected parsing to fail with current implementation, but it succeeded")
+	// This test should now PASS with the fix
+	if err != nil {
+		t.Fatalf("Failed to parse todo with RFC3339 timestamp format: %v", err)
 	}
 
-	// Verify the error message contains expected parsing failure
-	expectedError := "failed to parse started timestamp"
-	if !contains(err.Error(), expectedError) {
-		t.Errorf("Expected error containing '%s', got: %v", expectedError, err)
+	// Verify timestamps were parsed correctly
+	expectedStart, _ := time.Parse(time.RFC3339, "2025-01-29T02:55:00Z")
+	expectedComplete, _ := time.Parse(time.RFC3339, "2025-01-29T02:58:00Z")
+
+	if !todo.Started.Equal(expectedStart) {
+		t.Errorf("Started time mismatch. Expected: %v, Got: %v", expectedStart, todo.Started)
 	}
 
-	// After implementation, this should succeed
-	_ = todo // Will be used after fix
+	if !todo.Completed.Equal(expectedComplete) {
+		t.Errorf("Completed time mismatch. Expected: %v, Got: %v", expectedComplete, todo.Completed)
+	}
 }
 
 // Test 3: Parse todo with RFC3339Nano timestamp format - Should parse successfully
@@ -150,19 +152,22 @@ This todo uses RFC3339Nano timestamp format with nanosecond precision.
 	manager := NewTodoManager(tempDir)
 	todo, err := manager.ReadTodo("test-rfc3339nano-timestamp")
 	
-	// This test should FAIL with current implementation
-	if err == nil {
-		t.Fatal("Expected parsing to fail with current implementation, but it succeeded")
+	// This test should now PASS with the fix
+	if err != nil {
+		t.Fatalf("Failed to parse todo with RFC3339Nano timestamp format: %v", err)
 	}
 
-	// Verify the error message contains expected parsing failure
-	expectedError := "failed to parse started timestamp"
-	if !contains(err.Error(), expectedError) {
-		t.Errorf("Expected error containing '%s', got: %v", expectedError, err)
+	// Verify timestamps were parsed correctly
+	expectedStart, _ := time.Parse(time.RFC3339Nano, "2025-06-28T10:30:00.123456789Z")
+	expectedComplete, _ := time.Parse(time.RFC3339Nano, "2025-06-28T11:45:00.987654321Z")
+
+	if !todo.Started.Equal(expectedStart) {
+		t.Errorf("Started time mismatch. Expected: %v, Got: %v", expectedStart, todo.Started)
 	}
 
-	// After implementation, this should succeed
-	_ = todo // Will be used after fix
+	if !todo.Completed.Equal(expectedComplete) {
+		t.Errorf("Completed time mismatch. Expected: %v, Got: %v", expectedComplete, todo.Completed)
+	}
 }
 
 // Test 4: Parse todo with invalid timestamp format - Should return appropriate error
