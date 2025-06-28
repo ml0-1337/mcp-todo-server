@@ -92,3 +92,22 @@ func TestIsDirectory_WithDirectory(t *testing.T) {
 		t.Errorf("IsDirectory(%s) = false; want true", tempDir)
 	}
 }
+
+// Test 6: IsDirectory returns false for file
+func TestIsDirectory_WithFile(t *testing.T) {
+	// Create a temporary file
+	tempFile, err := ioutil.TempFile("", "test-file-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	tempFile.Close()
+	
+	// Test IsDirectory
+	isDir := IsDirectory(tempFile.Name())
+	
+	// Assert it's not a directory
+	if isDir {
+		t.Errorf("IsDirectory(%s) = true; want false", tempFile.Name())
+	}
+}
