@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -35,5 +36,24 @@ func TestGetEnv_WithoutEnvironmentVariable(t *testing.T) {
 	// Assert result equals fallback
 	if result != fallback {
 		t.Errorf("GetEnv(%s, %s) = %s; want %s", testKey, fallback, result, fallback)
+	}
+}
+
+// Test 3: FileExists returns true for existing file
+func TestFileExists_WithExistingFile(t *testing.T) {
+	// Create a temporary file
+	tempFile, err := ioutil.TempFile("", "test-file-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tempFile.Name())
+	tempFile.Close()
+	
+	// Test FileExists
+	exists := FileExists(tempFile.Name())
+	
+	// Assert file exists
+	if !exists {
+		t.Errorf("FileExists(%s) = false; want true", tempFile.Name())
 	}
 }
