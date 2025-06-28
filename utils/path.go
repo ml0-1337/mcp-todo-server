@@ -92,3 +92,88 @@ func ResolveTodoPath() (string, error) {
 	log.Printf("Using todo directory: %s", todoPath)
 	return todoPath, nil
 }
+
+// ResolveTemplatePath finds the template directory based on configured mode
+func ResolveTemplatePath() (string, error) {
+	// 1. Check for explicit override
+	if customPath := GetEnv("CLAUDE_TEMPLATE_PATH", ""); customPath != "" {
+		log.Printf("Using custom template path: %s", customPath)
+		return customPath, nil
+	}
+	
+	// 2. Get mode and debug flag
+	mode := GetEnv("CLAUDE_TEMPLATE_MODE", "auto")
+	debug := GetEnv("CLAUDE_DEBUG", "false") == "true"
+	
+	// 3. Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Printf("Warning: Could not get working directory: %v", err)
+		cwd = "."
+	}
+	
+	// 4. Find project root for project-relative paths
+	projectRoot, _ := FindProjectRoot(cwd)
+	if projectRoot == "" {
+		projectRoot = cwd
+	}
+	
+	// 5. Build candidate paths based on mode
+	var candidates []string
+	homeDir, _ := os.UserHomeDir()
+	
+	switch mode {
+	case "auto":
+		candidates = []string{
+			filepath.Join(projectRoot, ".claude", "templates"),
+			filepath.Join(projectRoot, "templates"),
+			filepath.Join(homeDir, ".claude", "templates"),
+		}
+	case "project":
+		candidates = []string{
+			filepath.Join(projectRoot, ".claude", "templates"),
+		}
+	case "user":
+		candidates = []string{
+			filepath.Join(homeDir, ".claude", "templates"),
+		}
+	case "hybrid":
+		// Special handling needed - return both paths
+		projectPath := filepath.Join(projectRoot, ".claude", "templates")
+		userPath := filepath.Join(homeDir, ".claude", "templates")
+		
+		// For hybrid mode, we'd need to modify the template manager
+		// to handle multiple directories
+		log.Printf("Hybrid mode: checking project (%s) and user (%s)", projectPath, userPath)
+		
+		// For now, use project if exists, otherwise user
+		if IsDirectory(projectPath) {
+			return projectPath, nil
+		}
+		return userPath, nil
+	default:
+		log.Printf("Unknown CLAUDE_TEMPLATE_MODE: %s, using 'auto'", mode)
+		mode = "auto"
+		return ResolveTemplatePath() // Recursive call with auto mode
+	}
+	
+	// 6. Find first existing directory
+	for _, path := range candidates {
+		if debug {
+			log.Printf("[DEBUG] Checking template path: %s", path)
+		}
+		if IsDirectory(path) {
+			log.Printf("Using template directory: %s", path)
+			return path, nil
+		}
+	}
+	
+	// 7. No directory found - show helpful error
+	log.Printf("Warning: No template directory found. Searched:")
+	for _, path := range candidates {
+		log.Printf("  - %s", path)
+	}
+	
+	// Return first candidate as default (will be created if needed)
+	return candidates[0], nil
+}

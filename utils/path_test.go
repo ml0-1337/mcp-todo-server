@@ -410,3 +410,51 @@ func TestResolveTodoPath_NoProjectRoot(t *testing.T) {
 		t.Errorf("ResolveTodoPath() = %s; want %s", todoPath, expectedPath)
 	}
 }
+
+// Test 16: ResolveTemplatePath auto mode finds project templates
+func TestResolveTemplatePath_AutoModeProjectTemplates(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Create temp project directory
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create .git directory to mark project root
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.Mkdir(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .git directory: %v", err)
+	}
+	
+	// Create project templates directory
+	templatesDir := filepath.Join(tempDir, ".claude", "templates")
+	err = os.MkdirAll(templatesDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create templates directory: %v", err)
+	}
+	
+	// Change to project directory
+	oldWd, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(oldWd)
+	
+	// Resolve template path (auto mode is default)
+	templatePath, err := ResolveTemplatePath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTemplatePath() error = %v; want nil", err)
+	}
+	
+	resolvedTemplatePath, _ := filepath.EvalSymlinks(templatePath)
+	resolvedExpectedPath, _ := filepath.EvalSymlinks(templatesDir)
+	
+	if resolvedTemplatePath != resolvedExpectedPath {
+		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, templatesDir)
+	}
+}
