@@ -19,13 +19,13 @@ type TodoHandlers struct {
 }
 
 // NewTodoHandlers creates new todo handlers with dependencies
-func NewTodoHandlers(basePath string) (*TodoHandlers, error) {
+func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 	// Create todo manager
-	manager := core.NewTodoManager(basePath)
+	manager := core.NewTodoManager(todoPath)
 	
 	// Create search engine
-	indexPath := filepath.Join(basePath, "..", "index", "todos.bleve")
-	search, err := core.NewSearchEngine(indexPath, basePath)
+	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
+	search, err := core.NewSearchEngine(indexPath, todoPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search engine: %w", err)
 	}
@@ -34,8 +34,7 @@ func NewTodoHandlers(basePath string) (*TodoHandlers, error) {
 	stats := core.NewStatsEngine(manager)
 	
 	// Create template manager
-	templatesPath := filepath.Join(basePath, "..", "templates")
-	templates := core.NewTemplateManager(templatesPath)
+	templates := core.NewTemplateManager(templatePath)
 	
 	return &TodoHandlers{
 		manager:   manager,

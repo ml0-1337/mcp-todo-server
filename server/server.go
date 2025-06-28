@@ -3,11 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
+	"github.com/user/mcp-todo-server/utils"
 )
 
 // TodoServer represents the MCP server for todo management
@@ -30,21 +29,19 @@ func WithTransport(transport string) ServerOption {
 
 // NewTodoServer creates a new MCP todo server with all tools registered
 func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
-	// Get base path from environment or use default
-	basePath := os.Getenv("CLAUDE_BASE_PATH")
-	if basePath == "" {
-		// Use default path
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		basePath = filepath.Join(homeDir, ".claude", "todos")
-	} else {
-		basePath = filepath.Join(basePath, "todos")
+	// Resolve paths dynamically
+	todoPath, err := utils.ResolveTodoPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve todo path: %w", err)
 	}
 	
-	// Create handlers
-	todoHandlers, err := handlers.NewTodoHandlers(basePath)
+	templatePath, err := utils.ResolveTemplatePath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve template path: %w", err)
+	}
+	
+	// Create handlers with resolved paths
+	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handlers: %w", err)
 	}
