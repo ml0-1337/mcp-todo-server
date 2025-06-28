@@ -237,7 +237,32 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 	
 	// Handle text query
 	if queryStr != "" {
-		searchQuery = bleve.NewQueryStringQuery(queryStr)
+		// Check if it's a phrase query (quoted)
+		if strings.HasPrefix(queryStr, "\"") && strings.HasSuffix(queryStr, "\"") {
+			// Keep phrase queries as-is for exact matching
+			searchQuery = bleve.NewQueryStringQuery(queryStr)
+		} else {
+			// For non-phrase queries, use field-specific queries with boosting
+			// Create separate queries for each field with different boost values
+			taskQuery := bleve.NewMatchQuery(queryStr)
+			taskQuery.SetField("task")
+			taskQuery.SetBoost(3.0) // Highest priority for task/title matches
+			
+			findingsQuery := bleve.NewMatchQuery(queryStr)
+			findingsQuery.SetField("findings")
+			findingsQuery.SetBoost(1.5) // Medium priority for findings
+			
+			testsQuery := bleve.NewMatchQuery(queryStr)
+			testsQuery.SetField("tests")
+			testsQuery.SetBoost(1.0) // Lower priority for test cases
+			
+			contentQuery := bleve.NewMatchQuery(queryStr)
+			contentQuery.SetField("content")
+			contentQuery.SetBoost(0.5) // Lowest priority for full content
+			
+			// Use DisjunctionQuery for "best match" behavior
+			searchQuery = bleve.NewDisjunctionQuery(taskQuery, findingsQuery, testsQuery, contentQuery)
+		}
 	} else {
 		// If no query string, match all documents
 		searchQuery = bleve.NewMatchAllQuery()

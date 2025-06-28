@@ -929,12 +929,6 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 					results[0].Score, results[1].Score, scoreDiff*100)
 			}
 		}
-		
-		// Debug: Print out the actual scores and IDs to understand current behavior
-		t.Logf("Search results for 'authentication':")
-		for i, result := range results {
-			t.Logf("  [%d] ID: %s, Task: %s, Score: %f", i, result.ID, result.Task, result.Score)
-		}
 	})
 	
 	// Test 2: Multiple occurrences should increase relevance
