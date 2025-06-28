@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	"fmt"
+	"sync"
 )
 
 // Test 16: todo_archive should move files to correct quarterly folder
@@ -195,4 +196,104 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	if archivedTodo.Type != originalTodo.Type {
 		t.Error("Type should remain unchanged after archive")
 	}
+}
+
+// Test 18: Archive operation should be atomic (no data loss)
+func TestArchiveOperationIsAtomic(t *testing.T) {
+	// Create temp directory for test
+	tempDir, err := ioutil.TempDir("", "archive-atomic-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create todo manager
+	manager := NewTodoManager(tempDir)
+
+	// Test scenario 2: Concurrent archive attempts
+	t.Run("Concurrent archive attempts", func(t *testing.T) {
+		// Create a test todo
+		todo, err := manager.CreateTodo("Test concurrent archive", "medium", "bug")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+
+		// Try to archive concurrently
+		var wg sync.WaitGroup
+		errors := make([]error, 5)
+		successCount := 0
+		var successMutex sync.Mutex
+
+		for i := 0; i < 5; i++ {
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				errors[index] = manager.ArchiveTodo(todo.ID, "")
+				if errors[index] == nil {
+					successMutex.Lock()
+					successCount++
+					successMutex.Unlock()
+				}
+			}(i)
+		}
+
+		wg.Wait()
+
+		// Exactly one should succeed
+		if successCount != 1 {
+			t.Errorf("Expected exactly 1 successful archive, got %d", successCount)
+		}
+
+		// Verify todo was archived exactly once
+		quarter := GetQuarter(time.Now())
+		archivePath := filepath.Join(filepath.Dir(tempDir), "archive", quarter, todo.ID+".md")
+		if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+			t.Error("Todo should be archived")
+		}
+
+		// Original should not exist
+		originalPath := filepath.Join(tempDir, todo.ID+".md")
+		if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
+			t.Error("Original todo should not exist after successful archive")
+		}
+	})
+
+	// Test scenario 3: Verify atomicity with write failure
+	t.Run("Verify atomicity on write failure", func(t *testing.T) {
+		// Create a test todo
+		todo, err := manager.CreateTodo("Test write failure", "low", "refactor")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+
+		// Create archive directory but make it read-only
+		quarter := GetQuarter(time.Now())
+		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", quarter)
+		os.MkdirAll(archiveDir, 0755)
+		
+		// Make archive directory read-only to prevent writes
+		os.Chmod(archiveDir, 0555)
+		defer os.Chmod(archiveDir, 0755) // Restore for cleanup
+
+		// Try to archive - should fail on write
+		err = manager.ArchiveTodo(todo.ID, "")
+		if err == nil {
+			t.Error("Archive should fail when write fails")
+		}
+
+		// Original should still exist and be unchanged
+		originalPath := filepath.Join(tempDir, todo.ID+".md")
+		if _, err := os.Stat(originalPath); os.IsNotExist(err) {
+			t.Error("Original todo should still exist after failed archive")
+		}
+
+		// Verify todo can still be read and is unchanged
+		readTodo, err := manager.ReadTodo(todo.ID)
+		if err != nil {
+			t.Errorf("Should be able to read todo after failed archive: %v", err)
+		}
+		if readTodo != nil && readTodo.Status != "in_progress" {
+			t.Error("Todo status should remain unchanged after failed archive")
+		}
+	})
 }

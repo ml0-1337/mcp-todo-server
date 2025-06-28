@@ -49,21 +49,8 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 		return fmt.Errorf("failed to parse YAML frontmatter: %w", err)
 	}
 
-	// Update completed timestamp
+	// First, determine archive quarter and create directory
 	completedTime := time.Now()
-	frontmatter["completed"] = completedTime.Format("2006-01-02 15:04:05")
-	frontmatter["status"] = "completed"
-
-	// Marshal back to YAML
-	yamlData, err := yaml.Marshal(frontmatter)
-	if err != nil {
-		return fmt.Errorf("failed to marshal YAML: %w", err)
-	}
-
-	// Reconstruct content with updated frontmatter
-	updatedContent := "---\n" + string(yamlData) + "---\n" + parts[2]
-
-	// Determine archive quarter
 	quarter := quarterOverride
 	if quarter == "" {
 		quarter = GetQuarter(completedTime)
@@ -75,6 +62,19 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create archive directory: %w", err)
 	}
+
+	// Now update the frontmatter
+	frontmatter["completed"] = completedTime.Format("2006-01-02 15:04:05")
+	frontmatter["status"] = "completed"
+
+	// Marshal back to YAML
+	yamlData, err := yaml.Marshal(frontmatter)
+	if err != nil {
+		return fmt.Errorf("failed to marshal YAML: %w", err)
+	}
+
+	// Reconstruct content with updated frontmatter
+	updatedContent := "---\n" + string(yamlData) + "---\n" + parts[2]
 
 	// Write updated content to temp file in archive directory
 	tempPath := filepath.Join(archiveDir, id+".md.tmp")
@@ -95,8 +95,9 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	err = os.Remove(sourcePath)
 	if err != nil {
 		// Archive succeeded but couldn't remove original
-		// This is not ideal but data is safe
-		return fmt.Errorf("archived successfully but failed to remove original: %w", err)
+		// Try to clean up the archive to maintain consistency
+		os.Remove(finalPath)
+		return fmt.Errorf("failed to remove original file: %w", err)
 	}
 
 	return nil
