@@ -458,3 +458,178 @@ func TestResolveTemplatePath_AutoModeProjectTemplates(t *testing.T) {
 		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, templatesDir)
 	}
 }
+
+// Test 17: ResolveTemplatePath auto mode falls back to user templates
+func TestResolveTemplatePath_AutoModeFallbackToUser(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Create temp project directory
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create temp home directory
+	tempHome, err := ioutil.TempDir("", "home-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp home directory: %v", err)
+	}
+	defer os.RemoveAll(tempHome)
+	
+	// Set HOME environment variable
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", oldHome)
+	
+	// Create user templates directory (but not project templates)
+	userTemplatesDir := filepath.Join(tempHome, ".claude", "templates")
+	err = os.MkdirAll(userTemplatesDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create user templates directory: %v", err)
+	}
+	
+	// Create .git directory to mark project root
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.Mkdir(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .git directory: %v", err)
+	}
+	
+	// Change to project directory
+	oldWd, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(oldWd)
+	
+	// Resolve template path (should fallback to user)
+	templatePath, err := ResolveTemplatePath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTemplatePath() error = %v; want nil", err)
+	}
+	
+	if templatePath != userTemplatesDir {
+		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, userTemplatesDir)
+	}
+}
+
+// Test 18: ResolveTemplatePath project mode only checks project
+func TestResolveTemplatePath_ProjectMode(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Set mode to project
+	os.Setenv("CLAUDE_TEMPLATE_MODE", "project")
+	defer os.Unsetenv("CLAUDE_TEMPLATE_MODE")
+	
+	// Create temp project directory
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create .git directory to mark project root
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.Mkdir(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .git directory: %v", err)
+	}
+	
+	// Create project templates directory
+	templatesDir := filepath.Join(tempDir, ".claude", "templates")
+	err = os.MkdirAll(templatesDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create templates directory: %v", err)
+	}
+	
+	// Change to project directory
+	oldWd, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(oldWd)
+	
+	// Resolve template path
+	templatePath, err := ResolveTemplatePath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTemplatePath() error = %v; want nil", err)
+	}
+	
+	resolvedTemplatePath, _ := filepath.EvalSymlinks(templatePath)
+	resolvedExpectedPath, _ := filepath.EvalSymlinks(templatesDir)
+	
+	if resolvedTemplatePath != resolvedExpectedPath {
+		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, templatesDir)
+	}
+}
+
+// Test 19: ResolveTemplatePath user mode only checks home
+func TestResolveTemplatePath_UserMode(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Set mode to user
+	os.Setenv("CLAUDE_TEMPLATE_MODE", "user")
+	defer os.Unsetenv("CLAUDE_TEMPLATE_MODE")
+	
+	// Create temp home directory
+	tempHome, err := ioutil.TempDir("", "home-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp home directory: %v", err)
+	}
+	defer os.RemoveAll(tempHome)
+	
+	// Set HOME environment variable
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", oldHome)
+	
+	// Create user templates directory
+	userTemplatesDir := filepath.Join(tempHome, ".claude", "templates")
+	err = os.MkdirAll(userTemplatesDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create user templates directory: %v", err)
+	}
+	
+	// Resolve template path
+	templatePath, err := ResolveTemplatePath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTemplatePath() error = %v; want nil", err)
+	}
+	
+	if templatePath != userTemplatesDir {
+		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, userTemplatesDir)
+	}
+}
+
+// Test 20: ResolveTemplatePath respects CLAUDE_TEMPLATE_PATH override
+func TestResolveTemplatePath_EnvironmentOverride(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Set custom template path
+	customPath := "/tmp/custom-templates"
+	os.Setenv("CLAUDE_TEMPLATE_PATH", customPath)
+	defer os.Unsetenv("CLAUDE_TEMPLATE_PATH")
+	
+	// Resolve template path
+	templatePath, err := ResolveTemplatePath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTemplatePath() error = %v; want nil", err)
+	}
+	
+	if templatePath != customPath {
+		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, customPath)
+	}
+}
