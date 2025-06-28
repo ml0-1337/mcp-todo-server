@@ -2,6 +2,7 @@ package utils
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -244,5 +245,53 @@ func TestFindProjectRoot_FilesystemRoot(t *testing.T) {
 	// Assert error is returned
 	if err == nil {
 		t.Errorf("FindProjectRoot(/) error = nil; want error")
+	}
+}
+
+// Test 12: ResolveTodoPath uses project root .claude/todos
+func TestResolveTodoPath_WithProjectRoot(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Create temp project directory
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create .git directory to mark project root
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.Mkdir(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .git directory: %v", err)
+	}
+	
+	// Change to project directory
+	oldWd, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(oldWd)
+	
+	// Resolve todo path
+	todoPath, err := ResolveTodoPath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTodoPath() error = %v; want nil", err)
+	}
+	
+	// Resolve symlinks for comparison (macOS /var vs /private/var)
+	resolvedTodoPath, _ := filepath.EvalSymlinks(todoPath)
+	expectedPath := filepath.Join(tempDir, ".claude", "todos")
+	resolvedExpectedPath, _ := filepath.EvalSymlinks(expectedPath)
+	
+	if resolvedTodoPath != resolvedExpectedPath {
+		t.Errorf("ResolveTodoPath() = %s; want %s", todoPath, expectedPath)
+	}
+	
+	// Verify directory was created
+	if !IsDirectory(todoPath) {
+		t.Errorf("ResolveTodoPath() did not create directory at %s", todoPath)
 	}
 }
