@@ -102,3 +102,31 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 
 	return nil
 }
+
+// BulkResult represents the result of a bulk operation on a single item
+type BulkResult struct {
+	ID      string
+	Success bool
+	Error   error
+}
+
+// BulkArchiveTodos archives multiple todos and returns per-item results
+func (tm *TodoManager) BulkArchiveTodos(ids []string) []BulkResult {
+	results := make([]BulkResult, len(ids))
+
+	// Process each todo independently
+	for i, id := range ids {
+		results[i].ID = id
+		
+		// Attempt to archive
+		err := tm.ArchiveTodo(id, "")
+		if err != nil {
+			results[i].Success = false
+			results[i].Error = err
+		} else {
+			results[i].Success = true
+		}
+	}
+
+	return results
+}
