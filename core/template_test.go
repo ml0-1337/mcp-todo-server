@@ -310,3 +310,258 @@ func findSubstring(s, substr string) int {
 	}
 	return -1
 }
+
+// Test 21: Template substitution should replace variables correctly
+func TestTemplateVariableSubstitution(t *testing.T) {
+	// Create temp directory structure
+	tempDir, err := ioutil.TempDir("", "template-sub-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create templates directory
+	templatesDir := filepath.Join(tempDir, "templates")
+	err = os.MkdirAll(templatesDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create templates directory: %v", err)
+	}
+
+	// Create a simple template with variables
+	simpleTemplate := `---
+template_name: simple
+description: Simple template for testing
+variables:
+  - task
+  - priority
+  - deadline
+---
+
+# Task: {{.Task}}
+
+Priority: {{.Priority}}
+Deadline: {{.Deadline}}
+
+## Description
+
+Working on {{.Task}} with {{.Priority}} priority.`
+
+	// Write the simple template
+	simpleTemplatePath := filepath.Join(templatesDir, "simple.md")
+	err = ioutil.WriteFile(simpleTemplatePath, []byte(simpleTemplate), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write simple template: %v", err)
+	}
+
+	// Create a template with conditional sections
+	conditionalTemplate := `---
+template_name: conditional
+description: Template with conditional sections
+variables:
+  - task
+  - type
+  - severity
+---
+
+# Task: {{.Task}}
+
+Type: {{.Type}}
+
+{{if eq .Type "bug"}}
+## Bug Details
+
+Severity: {{.Severity}}
+
+### Steps to Reproduce
+1. 
+2. 
+3. 
+{{else if eq .Type "feature"}}
+## Feature Details
+
+### User Story
+As a user, I want to...
+
+### Acceptance Criteria
+- [ ] 
+- [ ] 
+{{else}}
+## Task Details
+
+General task of type: {{.Type}}
+{{end}}`
+
+	// Write the conditional template
+	conditionalTemplatePath := filepath.Join(templatesDir, "conditional.md")
+	err = ioutil.WriteFile(conditionalTemplatePath, []byte(conditionalTemplate), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write conditional template: %v", err)
+	}
+
+	// Test cases
+	t.Run("Substitute basic variables", func(t *testing.T) {
+		tm := NewTemplateManager(templatesDir)
+
+		// Load template
+		template, err := tm.LoadTemplate("simple")
+		if err != nil {
+			t.Fatalf("Failed to load template: %v", err)
+		}
+
+		// Define variables
+		vars := map[string]interface{}{
+			"Task":     "Implement user authentication",
+			"Priority": "high",
+			"Deadline": "2025-01-31",
+		}
+
+		// Execute template
+		result, err := tm.ExecuteTemplate(template, vars)
+		if err != nil {
+			t.Fatalf("Failed to execute template: %v", err)
+		}
+
+		// Verify substitutions
+		if !containsPlaceholder(result, "# Task: Implement user authentication") {
+			t.Error("Task substitution failed")
+		}
+		if !containsPlaceholder(result, "Priority: high") {
+			t.Error("Priority substitution failed")
+		}
+		if !containsPlaceholder(result, "Deadline: 2025-01-31") {
+			t.Error("Deadline substitution failed")
+		}
+		if !containsPlaceholder(result, "Working on Implement user authentication with high priority") {
+			t.Error("Complex substitution failed")
+		}
+
+		// Ensure no placeholders remain
+		if containsPlaceholder(result, "{{.") {
+			t.Error("Result should not contain any remaining placeholders")
+		}
+	})
+
+	t.Run("Handle conditional sections for bug type", func(t *testing.T) {
+		tm := NewTemplateManager(templatesDir)
+
+		template, err := tm.LoadTemplate("conditional")
+		if err != nil {
+			t.Fatalf("Failed to load template: %v", err)
+		}
+
+		// Execute with bug type
+		vars := map[string]interface{}{
+			"Task":     "Fix login timeout issue",
+			"Type":     "bug",
+			"Severity": "high",
+		}
+
+		result, err := tm.ExecuteTemplate(template, vars)
+		if err != nil {
+			t.Fatalf("Failed to execute template: %v", err)
+		}
+
+		// Should include bug section
+		if !containsPlaceholder(result, "## Bug Details") {
+			t.Error("Bug section should be included")
+		}
+		if !containsPlaceholder(result, "Severity: high") {
+			t.Error("Severity should be shown for bugs")
+		}
+		if !containsPlaceholder(result, "### Steps to Reproduce") {
+			t.Error("Steps to Reproduce should be included")
+		}
+
+		// Should NOT include feature section
+		if containsPlaceholder(result, "## Feature Details") {
+			t.Error("Feature section should not be included for bugs")
+		}
+		if containsPlaceholder(result, "### User Story") {
+			t.Error("User Story should not be included for bugs")
+		}
+	})
+
+	t.Run("Handle conditional sections for feature type", func(t *testing.T) {
+		tm := NewTemplateManager(templatesDir)
+
+		template, err := tm.LoadTemplate("conditional")
+		if err != nil {
+			t.Fatalf("Failed to load template: %v", err)
+		}
+
+		// Execute with feature type
+		vars := map[string]interface{}{
+			"Task": "Add dark mode support",
+			"Type": "feature",
+		}
+
+		result, err := tm.ExecuteTemplate(template, vars)
+		if err != nil {
+			t.Fatalf("Failed to execute template: %v", err)
+		}
+
+		// Should include feature section
+		if !containsPlaceholder(result, "## Feature Details") {
+			t.Error("Feature section should be included")
+		}
+		if !containsPlaceholder(result, "### User Story") {
+			t.Error("User Story should be included")
+		}
+		if !containsPlaceholder(result, "### Acceptance Criteria") {
+			t.Error("Acceptance Criteria should be included")
+		}
+
+		// Should NOT include bug section
+		if containsPlaceholder(result, "## Bug Details") {
+			t.Error("Bug section should not be included for features")
+		}
+	})
+
+	t.Run("Handle missing variables with error", func(t *testing.T) {
+		tm := NewTemplateManager(templatesDir)
+
+		template, err := tm.LoadTemplate("simple")
+		if err != nil {
+			t.Fatalf("Failed to load template: %v", err)
+		}
+
+		// Missing required variables
+		vars := map[string]interface{}{
+			"Task": "Incomplete task",
+			// Missing Priority and Deadline
+		}
+
+		result, err := tm.ExecuteTemplate(template, vars)
+		// Should succeed with Go's template behavior (empty values)
+		if err != nil {
+			t.Fatalf("Template execution should handle missing vars: %v", err)
+		}
+
+		// Missing values should be empty (Go templates use <no value>)
+		if !containsPlaceholder(result, "Priority: <no value>") {
+			t.Error("Missing Priority should show <no value>")
+		}
+		if !containsPlaceholder(result, "Deadline: <no value>") {
+			t.Error("Missing Deadline should show <no value>")
+		}
+	})
+
+	t.Run("Handle template execution errors", func(t *testing.T) {
+		// Create template with invalid syntax
+		invalidTemplate := &Template{
+			Name:      "invalid",
+			Content:   "{{.Task}} {{if .Invalid}} {{else}} {{end {{end}}", // Invalid syntax
+			Variables: []string{"task"},
+		}
+
+		tm := NewTemplateManager(templatesDir)
+		vars := map[string]interface{}{
+			"Task": "Test",
+		}
+
+		_, err := tm.ExecuteTemplate(invalidTemplate, vars)
+		if err == nil {
+			t.Error("Should return error for invalid template syntax")
+		}
+	})
+}

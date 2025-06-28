@@ -1,11 +1,13 @@
 package core
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"gopkg.in/yaml.v3"
 )
 
@@ -89,4 +91,22 @@ func (tm *TemplateManager) ListTemplates() ([]string, error) {
 	}
 	
 	return templates, nil
+}
+
+// ExecuteTemplate processes a template with the given variables
+func (tm *TemplateManager) ExecuteTemplate(tmpl *Template, vars map[string]interface{}) (string, error) {
+	// Parse the template content
+	t, err := template.New(tmpl.Name).Parse(tmpl.Content)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse template: %w", err)
+	}
+	
+	// Execute the template with variables
+	var buf bytes.Buffer
+	err = t.Execute(&buf, vars)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute template: %w", err)
+	}
+	
+	return buf.String(), nil
 }
