@@ -15,15 +15,16 @@ This MCP server maintains full compatibility with the existing `.claude/todos/` 
 
 ## Current Status
 
-**Development Phase**: Phase 2 - Todo CRUD Operations  
-**Tests Complete**: 4 of 23  
+**Development Phase**: Phase 3 - Archive Operations  
+**Tests Complete**: 7 of 23  
 **Following**: Test-Driven Development (TDD) with RGRC cycle
 
 ### Completed Tests
-- ✅ Test 1: MCP server initialization
-- ✅ Test 2: JSON-RPC handling (library-handled)
-- ✅ Test 3: Parameter validation
-- ✅ Test 4: Unique ID generation
+- ✅ Test 1-4: Server initialization, validation, ID generation
+- ✅ Test 5: Markdown file creation with YAML frontmatter
+- ✅ Test 6: Filesystem error handling
+- ✅ Test 7: ReadTodo functionality
+- ✅ Archive: Daily archive structure (YYYY/MM/DD)
 
 ## Project Structure
 
@@ -132,6 +133,22 @@ type: feature
 ## Working Scratchpad
 [Notes and temporary content]
 ```
+
+### Archive Structure
+
+Todos are archived in a daily directory structure based on their started date:
+```
+.claude/archive/
+└── 2025/
+    ├── 01/
+    │   ├── 27/    # 20-50 todos per day
+    │   ├── 28/
+    │   └── 29/
+    └── 02/
+        └── 01/
+```
+
+This structure optimizes for high-volume usage (20-50 todos/day) while maintaining good filesystem performance.
 
 ## Development Approach
 
