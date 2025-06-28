@@ -41,11 +41,12 @@ See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for details.
 ```
 mcp-todo-server/
 ├── .claude/
-│   └── todos/
-│       └── implement-mcp-todo-server.md  # Implementation todo with test progress
+│   └── todos/                            # Active todo tasks
 ├── docs/
-│   ├── PRD.md                    # Product Requirements Document
-│   └── go_mcp_server_research.md # MCP protocol research
+│   ├── overview/
+│   │   └── PRD.md                # Product Requirements Document
+│   └── analysis/
+│       └── go_mcp_server_research.md # MCP protocol research
 ├── server/
 │   ├── server.go                 # MCP server implementation
 │   ├── server_test.go            # Server initialization tests
@@ -192,6 +193,8 @@ Each test cycle is tracked in `.claude/todos/implement-mcp-todo-server.md`.
 
 ## Configuration
 
+### MCP Server Configuration
+
 Will be configured in Claude Code's `settings.json`:
 
 ```json
@@ -208,22 +211,37 @@ Will be configured in Claude Code's `settings.json`:
 }
 ```
 
+### Template Configuration
+
+The server looks for templates in the following locations:
+1. Path specified by `CLAUDE_TEMPLATE_PATH` environment variable
+2. Default: `.claude/templates/` relative to the todos directory
+
+Example:
+```json
+{
+  "env": {
+    "CLAUDE_TEMPLATE_PATH": "/custom/path/to/templates"
+  }
+}
+```
+
 ## Contributing
 
 This project follows TDD principles. To contribute:
 
-1. Check `.claude/todos/implement-mcp-todo-server.md` for next test
-2. Write the failing test
-3. Implement minimal solution
+1. Check active todos in `.claude/todos/` for current tasks
+2. Write the failing test (Red phase)
+3. Implement minimal solution (Green phase)
 4. Refactor if needed
-5. Update test progress
+5. Update test progress in todo file
 6. Commit with descriptive message
 
 ## Documentation
 
-- **[Product Requirements Document](docs/PRD.md)** - Full specification
-- **[Implementation Todo](.claude/todos/implement-mcp-todo-server.md)** - Test progress and details
-- **[MCP Research](docs/go_mcp_server_research.md)** - Protocol documentation
+- **[Product Requirements Document](docs/overview/PRD.md)** - Full specification
+- **[Implementation Todo](.claude/archive/2025/06/28/implement-mcp-todo-server.md)** - Original implementation (archived)
+- **[MCP Research](docs/analysis/go_mcp_server_research.md)** - Protocol documentation
 
 ## License
 
