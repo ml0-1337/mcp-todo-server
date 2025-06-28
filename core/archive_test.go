@@ -297,3 +297,103 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 	})
 }
+
+// Test 19: Bulk operations should handle errors per-item
+func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
+	// Create temp directory for test
+	tempDir, err := ioutil.TempDir("", "bulk-archive-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create todo manager
+	manager := NewTodoManager(tempDir)
+
+	// Create test todos
+	todo1, _ := manager.CreateTodo("Todo 1 - Valid", "high", "feature")
+	todo2, _ := manager.CreateTodo("Todo 2 - Valid", "medium", "bug")
+	todo3, _ := manager.CreateTodo("Todo 3 - Will be deleted", "low", "refactor")
+	todo4, _ := manager.CreateTodo("Todo 4 - Valid", "high", "feature")
+
+	// Delete todo3's file to simulate missing todo
+	os.Remove(filepath.Join(tempDir, todo3.ID+".md"))
+
+	// Create list of IDs including a non-existent one
+	todoIDs := []string{
+		todo1.ID,
+		todo2.ID,
+		todo3.ID,           // Missing file
+		"non-existent-id",  // Never existed
+		todo4.ID,
+	}
+
+	// Perform bulk archive
+	results := manager.BulkArchiveTodos(todoIDs)
+
+	// Verify results
+	if len(results) != len(todoIDs) {
+		t.Errorf("Expected %d results, got %d", len(todoIDs), len(results))
+	}
+
+	// Check individual results
+	expectedSuccess := map[string]bool{
+		todo1.ID:          true,
+		todo2.ID:          true,
+		todo3.ID:          false,
+		"non-existent-id": false,
+		todo4.ID:          true,
+	}
+
+	successCount := 0
+	failureCount := 0
+
+	for i, result := range results {
+		if result.ID != todoIDs[i] {
+			t.Errorf("Result %d has wrong ID: expected %s, got %s", i, todoIDs[i], result.ID)
+		}
+
+		if expectedSuccess[result.ID] {
+			if !result.Success {
+				t.Errorf("Todo %s should have succeeded, but got error: %v", result.ID, result.Error)
+			} else {
+				successCount++
+			}
+		} else {
+			if result.Success {
+				t.Errorf("Todo %s should have failed, but succeeded", result.ID)
+			} else {
+				failureCount++
+				if result.Error == nil {
+					t.Errorf("Failed result for %s should have error", result.ID)
+				}
+			}
+		}
+	}
+
+	if successCount != 3 {
+		t.Errorf("Expected 3 successful archives, got %d", successCount)
+	}
+	if failureCount != 2 {
+		t.Errorf("Expected 2 failed archives, got %d", failureCount)
+	}
+
+	// Verify successful todos are actually archived
+	quarter := GetQuarter(time.Now())
+	archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", quarter)
+
+	for id, shouldSucceed := range expectedSuccess {
+		if shouldSucceed && id != "non-existent-id" {
+			archivePath := filepath.Join(archiveDir, id+".md")
+			if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+				t.Errorf("Successfully archived todo %s not found in archive", id)
+			}
+		}
+	}
+
+	// Verify failed todos remain in original location (if they existed)
+	originalPath := filepath.Join(tempDir, todo3.ID+".md")
+	if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
+		t.Error("Failed todo3 should not exist in original location (was already deleted)")
+	}
+}
