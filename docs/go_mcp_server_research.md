@@ -7,10 +7,11 @@ Model Context Protocol (MCP) is a standard protocol that enables Large Language 
 ## Official Go SDK Status
 
 The official `modelcontextprotocol/go-sdk` is:
-- **Status**: Unreleased and currently unstable
+- **Status**: Unreleased and currently unstable (as of January 2025)
 - **Planned Stable Release**: August 2025
 - **Repository**: https://github.com/modelcontextprotocol/go-sdk
 - **License**: MIT (copyright "Go SDK Authors")
+- **Warning**: Should not be used in production projects yet
 
 ### Official SDK Features
 
@@ -18,17 +19,183 @@ The official SDK provides:
 1. **Primary API Package (`mcp`)**: Core APIs for MCP clients and servers
 2. **JSON Schema Package (`jsonschema`)**: JSON Schema implementation for tool input/output
 3. **Consistent API Design**: Following Go conventions like net/http and net/rpc
+4. **Type-Safe Tool Creation**: Generic functions for strong typing
+5. **Multiple Transport Options**: Stdio, in-memory, logging wrapper
 
-### Example with Official SDK (Unstable)
+### Official SDK Architecture
+
+#### Server Structure
 ```go
-server := mcp.NewServer("greeter", "v1.0.0", nil)
-server.AddTools(
-    mcp.NewServerTool("greet", "say hi", SayHi, 
-        mcp.Input(
-            mcp.Property("name", mcp.Description("the name of the person to greet"))
-        )
-    )
+type Server struct {
+    name string
+    version string
+    opts ServerOptions
+    mu sync.Mutex
+    prompts *featureSet[*ServerPrompt]
+    tools *featureSet[*ServerTool]
+    resources *featureSet[*ServerResource]
+    resourceTemplates *featureSet[*ServerResourceTemplate]
+    sessions []*ServerSession
+    sendingMethodHandler_ MethodHandler[*ServerSession]
+    receivingMethodHandler_ MethodHandler[*ServerSession]
+}
+```
+
+#### Tool Registration Pattern
+```go
+type ServerTool struct {
+    Tool *Tool
+    Handler ToolHandler
+    rawHandler rawToolHandler
+    inputResolved, outputResolved *jsonschema.Resolved
+}
+
+type ToolHandler func(context.Context, *ServerSession, *CallToolParamsFor[map[string]any]) (*CallToolResult, error)
+type ToolHandlerFor[In, Out any] func(context.Context, *ServerSession, *CallToolParamsFor[In]) (*CallToolResultFor[Out], error)
+```
+
+### Complete Example with Official SDK (Unstable)
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+// Define typed parameters for the tool
+type HiParams struct {
+    Name string `json:"name"`
+}
+
+// Tool handler with typed parameters
+func SayHi(ctx context.Context, cc *mcp.ServerSession, params *mcp.CallToolParamsFor[HiParams]) (*mcp.CallToolResultFor[any], error) {
+    return &mcp.CallToolResultFor[any]{
+        Content: []mcp.Content{&mcp.TextContent{Text: "Hi " + params.Arguments.Name}},
+    }, nil
+}
+
+func main() {
+    // Create a server with name and version
+    server := mcp.NewServer("greeter", "v1.0.0", nil)
+    
+    // Add tools to the server
+    server.AddTools(
+        mcp.NewServerTool("greet", "say hi", SayHi, 
+            mcp.Input(
+                mcp.Property("name", 
+                    mcp.Description("the name of the person to greet"),
+                    mcp.Required(true),
+                ),
+            ),
+        ),
+    )
+    
+    // Create stdio transport
+    transport := mcp.NewStdioTransport()
+    
+    // Run the server
+    if err := server.Run(context.Background(), transport); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+### Key API Methods
+
+#### Server Creation and Configuration
+```go
+// Create new server
+func NewServer(name, version string, opts *ServerOptions) *Server
+
+// Add features
+func (s *Server) AddTools(tools ...*ServerTool)
+func (s *Server) AddPrompts(prompts ...*ServerPrompt)
+func (s *Server) AddResources(resources ...*ServerResource)
+func (s *Server) AddResourceTemplates(templates ...*ServerResourceTemplate)
+
+// Connection management
+func (s *Server) Connect(ctx context.Context, t Transport) (*ServerSession, error)
+func (s *Server) Run(ctx context.Context, t Transport) error
+```
+
+#### Transport Options
+```go
+// Transport interface
+type Transport interface {
+    Connect(ctx context.Context) (Connection, error)
+}
+
+// Available transports
+func NewStdioTransport() *StdioTransport                          // stdin/stdout
+func NewInMemoryTransports() (*InMemoryTransport, *InMemoryTransport) // for testing
+func NewLoggingTransport(delegate Transport, w io.Writer) *LoggingTransport // for debugging
+```
+
+### Schema Definition Patterns
+
+The official SDK provides a fluent API for defining tool input schemas:
+
+```go
+// Basic property definition
+mcp.Property("fieldName", 
+    mcp.Description("Field description"),
+    mcp.Required(true),
+    mcp.Type("string"),
+)
+
+// Enum values
+mcp.Property("status",
+    mcp.Enum("pending", "in_progress", "completed"),
+    mcp.Description("Task status"),
+)
+
+// Nested objects
+mcp.Property("metadata",
+    mcp.Type("object"),
+    mcp.Properties(
+        mcp.Property("priority", mcp.Type("string")),
+        mcp.Property("tags", mcp.Type("array")),
+    ),
+)
+```
+
+### Migration Considerations
+
+#### Key Differences from Community SDKs
+
+1. **Type Safety**: Official SDK uses generics for stronger type checking
+2. **API Design**: More idiomatic Go patterns following stdlib conventions
+3. **Middleware Support**: Built-in support for request/response middleware
+4. **Error Handling**: Standardized error types and handling patterns
+5. **Feature Management**: Generic `featureSet` for managing tools/resources/prompts
+
+#### Migration Strategy
+
+Since the official SDK is unstable until August 2025, the recommended approach is:
+
+1. **Current Implementation**: Use mark3labs/mcp-go for production
+2. **Design for Migration**: Structure code to minimize future changes
+3. **Abstraction Layer**: Consider creating an interface layer to ease migration
+
+Example abstraction:
+```go
+// Define interface matching both SDKs
+type MCPServer interface {
+    AddTool(name, description string, handler ToolHandler) error
+    Run(ctx context.Context) error
+}
+
+// Wrapper for current SDK
+type Mark3LabsServer struct {
+    server *server.MCPServer
+}
+
+// Wrapper for future official SDK
+type OfficialServer struct {
+    server *mcp.Server
+}
 ```
 
 ## Community Go MCP Libraries
@@ -433,3 +600,188 @@ This command will create an executable file (e.g., `mcp-server-example`). You ca
 ```
 
 The server is now running and waiting for an MCP client (like a compatible IDE or desktop application) to connect to it via its standard I/O streams. When a client connects and asks to use the "hello_world" tool, your server will execute the `helloHandler` function and return the greeting.
+
+## Implementation Recommendations for MCP Todo Server
+
+Given the current state of the official SDK and our project requirements, here are the recommended approaches:
+
+### 1. Use mark3labs/mcp-go for Production (Recommended)
+
+Since the official SDK is unstable until August 2025, we should use the mature mark3labs/mcp-go library:
+
+**Advantages:**
+- Production-ready and well-tested
+- Active community support
+- Simpler API with less boilerplate
+- Already proven in production environments
+
+**Implementation Pattern for Todo Tools:**
+```go
+// Example todo_create handler
+func todoCreateHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+    // Extract parameters
+    task, err := request.RequireString("task")
+    if err != nil {
+        return mcp.NewToolResultError("task parameter is required"), nil
+    }
+    
+    priority := request.GetStringOrDefault("priority", "high")
+    todoType := request.GetStringOrDefault("type", "feature")
+    
+    // Use existing TodoManager
+    todo, err := todoManager.CreateTodo(task, priority, todoType)
+    if err != nil {
+        return mcp.NewToolResultError(fmt.Sprintf("Failed to create todo: %v", err)), nil
+    }
+    
+    // Return result
+    result := map[string]interface{}{
+        "id": todo.ID,
+        "path": todo.FilePath,
+        "message": fmt.Sprintf("Created todo '%s'", todo.ID),
+    }
+    
+    return mcp.NewToolResultContent(mcp.NewTextContent(
+        fmt.Sprintf("Todo created successfully: %s", todo.ID),
+    )), nil
+}
+```
+
+### 2. Design for Future Migration
+
+Structure the code to minimize changes when migrating to the official SDK:
+
+```go
+// handlers/mcp_adapter.go
+package handlers
+
+// MCPHandler abstracts the handler interface
+type MCPHandler interface {
+    Register(server interface{}) error
+}
+
+// TodoHandlers contains all todo-related handlers
+type TodoHandlers struct {
+    manager *core.TodoManager
+    search  *core.SearchEngine
+}
+
+// RegisterMark3Labs registers handlers with mark3labs SDK
+func (h *TodoHandlers) RegisterMark3Labs(s *server.MCPServer) error {
+    // Register todo_create
+    s.AddTool(
+        mcp.NewTool("todo_create",
+            mcp.WithDescription("Create a new todo with full metadata"),
+            mcp.WithString("task", mcp.Required(), mcp.Description("Task description")),
+            mcp.WithString("priority", mcp.Description("Task priority")),
+            mcp.WithString("type", mcp.Description("Todo type")),
+        ),
+        h.todoCreateHandler,
+    )
+    
+    // Register other tools...
+    return nil
+}
+
+// RegisterOfficial registers handlers with official SDK (future)
+func (h *TodoHandlers) RegisterOfficial(s *mcp.Server) error {
+    // Future implementation for official SDK
+    return nil
+}
+```
+
+### 3. Tool Implementation Guidelines
+
+For the MCP Todo Server, follow these patterns:
+
+#### Tool Naming Convention
+- Use snake_case for tool names: `todo_create`, `todo_read`, `todo_update`
+- Keep names descriptive but under 63 characters
+- Group related functionality: `todo_*`, `template_*`
+
+#### Parameter Validation
+```go
+// Consistent parameter extraction pattern
+func extractTodoParams(request mcp.CallToolRequest) (*TodoParams, error) {
+    params := &TodoParams{}
+    
+    // Required parameters
+    task, err := request.RequireString("task")
+    if err != nil {
+        return nil, fmt.Errorf("missing required parameter 'task'")
+    }
+    params.Task = task
+    
+    // Optional parameters with defaults
+    params.Priority = request.GetStringOrDefault("priority", "high")
+    params.Type = request.GetStringOrDefault("type", "feature")
+    
+    // Validate enums
+    if !isValidPriority(params.Priority) {
+        return nil, fmt.Errorf("invalid priority: %s", params.Priority)
+    }
+    
+    return params, nil
+}
+```
+
+#### Error Handling Pattern
+```go
+// Consistent error responses
+func handleTodoError(err error) *mcp.CallToolResult {
+    switch {
+    case errors.Is(err, core.ErrTodoNotFound):
+        return mcp.NewToolResultError("Todo not found")
+    case errors.Is(err, core.ErrInvalidID):
+        return mcp.NewToolResultError("Invalid todo ID format")
+    default:
+        return mcp.NewToolResultError(fmt.Sprintf("Operation failed: %v", err))
+    }
+}
+```
+
+### 4. Configuration for Claude Code
+
+Add to Claude Code's settings.json:
+```json
+{
+  "mcpServers": {
+    "mcp-todo-server": {
+      "command": "/path/to/mcp-todo-server",
+      "args": [],
+      "env": {
+        "CLAUDE_BASE_PATH": "${CLAUDE_BASE_PATH}"
+      }
+    }
+  }
+}
+```
+
+### 5. Testing Strategy
+
+Create integration tests that work with both SDKs:
+```go
+// Test with in-memory transport
+func TestTodoTools(t *testing.T) {
+    // Create test server
+    s := server.NewMCPServer("test-server", "1.0.0")
+    
+    // Register handlers
+    handlers := NewTodoHandlers(testManager, testSearch)
+    handlers.RegisterMark3Labs(s)
+    
+    // Create in-memory transport for testing
+    client, server := mcp.NewInMemoryTransports()
+    
+    // Test tool calls
+    // ...
+}
+```
+
+### Summary
+
+1. **Immediate Action**: Implement using mark3labs/mcp-go
+2. **Future-Proof**: Create abstraction layer for easy migration
+3. **Maintain Compatibility**: Follow MCP specification strictly
+4. **Test Thoroughly**: Ensure all tools work with Claude Code
+5. **Document Migration Path**: Keep notes on differences for future SDK switch

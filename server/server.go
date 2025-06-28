@@ -1,18 +1,41 @@
 package server
 
 import (
-	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/user/mcp-todo-server/handlers"
 )
 
 // TodoServer represents the MCP server for todo management
 type TodoServer struct {
 	mcpServer *server.MCPServer
+	handlers  *handlers.TodoHandlers
 }
 
 // NewTodoServer creates a new MCP todo server with all tools registered
-func NewTodoServer() *TodoServer {
+func NewTodoServer() (*TodoServer, error) {
+	// Get base path from environment or use default
+	basePath := os.Getenv("CLAUDE_BASE_PATH")
+	if basePath == "" {
+		// Use default path
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get home directory: %w", err)
+		}
+		basePath = filepath.Join(homeDir, ".claude", "todos")
+	} else {
+		basePath = filepath.Join(basePath, "todos")
+	}
+	
+	// Create handlers
+	todoHandlers, err := handlers.NewTodoHandlers(basePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handlers: %w", err)
+	}
+	
 	// Create MCP server instance
 	s := server.NewMCPServer(
 		"MCP Todo Server",
@@ -23,12 +46,13 @@ func NewTodoServer() *TodoServer {
 	// Create todo server wrapper
 	ts := &TodoServer{
 		mcpServer: s,
+		handlers:  todoHandlers,
 	}
 	
 	// Register all tools
 	ts.registerTools()
 	
-	return ts
+	return ts, nil
 }
 
 // ListTools returns all registered tools
@@ -55,125 +79,200 @@ func (ts *TodoServer) registerTools() {
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_create",
 			mcp.WithDescription("Create a new todo with full metadata"),
+			mcp.WithString("task", 
+				mcp.Required(),
+				mcp.Description("Task description")),
+			mcp.WithString("priority",
+				mcp.Description("Task priority (high, medium, low)"),
+				mcp.DefaultString("high")),
+			mcp.WithString("type",
+				mcp.Description("Todo type (feature, bug, refactor, research, multi-phase)"),
+				mcp.DefaultString("feature")),
+			mcp.WithString("template",
+				mcp.Description("Optional template name")),
+			mcp.WithString("parent_id",
+				mcp.Description("Parent todo for multi-phase projects")),
 		),
-		ts.handleTodoCreate,
+		ts.handlers.HandleTodoCreate,
 	)
 	
 	// Register todo_read
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_read",
-			mcp.WithDescription("Read todo(s)"),
+			mcp.WithDescription("Read single todo or list all todos"),
+			mcp.WithString("id",
+				mcp.Description("Specific todo ID")),
+			mcp.WithObject("filter",
+				mcp.Description("Filter options"),
+				mcp.Properties(map[string]any{
+					"status": map[string]any{
+						"type":        "string",
+						"description": "Status filter (in_progress, completed, blocked, all)",
+					},
+					"priority": map[string]any{
+						"type":        "string",
+						"description": "Priority filter (high, medium, low, all)",
+					},
+					"days": map[string]any{
+						"type":        "number",
+						"description": "Todos from last N days",
+					},
+				})),
+			mcp.WithString("format",
+				mcp.Description("Output format (full, summary, list)"),
+				mcp.DefaultString("summary")),
 		),
-		ts.handleTodoRead,
+		ts.handlers.HandleTodoRead,
 	)
 	
 	// Register todo_update
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_update",
-			mcp.WithDescription("Update a todo"),
+			mcp.WithDescription("Update todo content or metadata"),
+			mcp.WithString("id",
+				mcp.Required(),
+				mcp.Description("Todo ID to update")),
+			mcp.WithString("section",
+				mcp.Description("Section to update (status, findings, tests, checklist, scratchpad)")),
+			mcp.WithString("operation",
+				mcp.Description("Update operation (append, replace, prepend)"),
+				mcp.DefaultString("append")),
+			mcp.WithString("content",
+				mcp.Description("Content to add/update")),
+			mcp.WithObject("metadata",
+				mcp.Description("Metadata to update"),
+				mcp.Properties(map[string]any{
+					"status": map[string]any{
+						"type":        "string",
+						"description": "Todo status",
+					},
+					"priority": map[string]any{
+						"type":        "string",
+						"description": "Todo priority",
+					},
+					"current_test": map[string]any{
+						"type":        "string",
+						"description": "Current test being worked on",
+					},
+				})),
 		),
-		ts.handleTodoUpdate,
+		ts.handlers.HandleTodoUpdate,
 	)
 	
 	// Register todo_search
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_search",
-			mcp.WithDescription("Search todos"),
+			mcp.WithDescription("Full-text search across all todos"),
+			mcp.WithString("query",
+				mcp.Required(),
+				mcp.Description("Search terms")),
+			mcp.WithArray("scope",
+				mcp.Description("Search scope (task, findings, tests, all)"),
+				mcp.Items(map[string]any{"type": "string"})),
+			mcp.WithObject("filters",
+				mcp.Description("Search filters"),
+				mcp.Properties(map[string]any{
+					"status": map[string]any{
+						"type":        "string",
+						"description": "Status filter",
+					},
+					"date_from": map[string]any{
+						"type":        "string",
+						"description": "Date in YYYY-MM-DD format",
+					},
+					"date_to": map[string]any{
+						"type":        "string",
+						"description": "Date in YYYY-MM-DD format",
+					},
+				})),
+			mcp.WithNumber("limit",
+				mcp.Description("Maximum results"),
+				mcp.DefaultNumber(20),
+				mcp.Max(100)),
 		),
-		ts.handleTodoSearch,
+		ts.handlers.HandleTodoSearch,
 	)
 	
 	// Register todo_archive
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_archive",
-			mcp.WithDescription("Archive a todo"),
+			mcp.WithDescription("Archive completed todo to quarterly folder"),
+			mcp.WithString("id",
+				mcp.Required(),
+				mcp.Description("Todo ID to archive")),
+			mcp.WithString("quarter",
+				mcp.Description("Override quarter (YYYY-QN)")),
 		),
-		ts.handleTodoArchive,
+		ts.handlers.HandleTodoArchive,
 	)
 	
 	// Register todo_template
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_template",
-			mcp.WithDescription("Create from template"),
+			mcp.WithDescription("Create todo from template or list templates"),
+			mcp.WithString("template",
+				mcp.Description("Template name (leave empty to list)")),
+			mcp.WithString("task",
+				mcp.Description("Task description")),
+			mcp.WithString("priority",
+				mcp.Description("Task priority"),
+				mcp.DefaultString("high")),
+			mcp.WithString("type",
+				mcp.Description("Todo type"),
+				mcp.DefaultString("feature")),
 		),
-		ts.handleTodoTemplate,
+		ts.handlers.HandleTodoTemplate,
 	)
 	
 	// Register todo_link
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_link",
 			mcp.WithDescription("Link related todos"),
+			mcp.WithString("parent_id",
+				mcp.Required(),
+				mcp.Description("Parent todo ID")),
+			mcp.WithString("child_id",
+				mcp.Required(),
+				mcp.Description("Child todo ID")),
+			mcp.WithString("link_type",
+				mcp.Description("Type of link (parent-child, blocks, relates-to)"),
+				mcp.DefaultString("parent-child")),
 		),
-		ts.handleTodoLink,
+		ts.handlers.HandleTodoLink,
 	)
 	
 	// Register todo_stats
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_stats",
-			mcp.WithDescription("Get todo statistics"),
+			mcp.WithDescription("Get todo statistics and analytics"),
+			mcp.WithString("period",
+				mcp.Description("Time period for stats (all, week, month, quarter)"),
+				mcp.DefaultString("all")),
 		),
-		ts.handleTodoStats,
+		ts.handlers.HandleTodoStats,
 	)
 	
 	// Register todo_clean
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_clean",
-			mcp.WithDescription("Clean up todos"),
+			mcp.WithDescription("Clean up and manage todos"),
+			mcp.WithString("operation",
+				mcp.Description("Cleanup operation (archive_old, find_duplicates)"),
+				mcp.DefaultString("archive_old")),
+			mcp.WithNumber("days",
+				mcp.Description("Days threshold for archive_old"),
+				mcp.DefaultNumber(90)),
 		),
-		ts.handleTodoClean,
+		ts.handlers.HandleTodoClean,
 	)
 }
 
-// Tool handler stubs - minimal implementation for now
-func (ts *TodoServer) handleTodoCreate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Validate required parameters
-	task, err := request.RequireString("task")
-	if err != nil {
-		return mcp.NewToolResultError("Missing required parameter: task"), nil
+// Close cleans up server resources
+func (ts *TodoServer) Close() error {
+	if ts.handlers != nil {
+		return ts.handlers.Close()
 	}
-	
-	// Get optional parameters with defaults
-	priority := request.GetString("priority", "high")
-	
-	// Validate priority value
-	if priority != "high" && priority != "medium" && priority != "low" {
-		priority = "high" // Use default for invalid values
-	}
-	
-	// For now, just return success with the validated parameters
-	return mcp.NewToolResultText("Todo created: " + task + " (priority: " + priority + ")"), nil
-}
-
-func (ts *TodoServer) handleTodoRead(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_read not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoUpdate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_update not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoSearch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_search not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoArchive(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_archive not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoTemplate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_template not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoLink(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_link not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoStats(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_stats not implemented"), nil
-}
-
-func (ts *TodoServer) handleTodoClean(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return mcp.NewToolResultText("todo_clean not implemented"), nil
+	return nil
 }
 
 // Start starts the MCP server

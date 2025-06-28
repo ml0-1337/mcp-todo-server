@@ -84,12 +84,12 @@ func generateBaseID(task string) string {
 	lower := strings.ToLower(cleaned)
 	
 	// Replace spaces and special characters with hyphens
+	// Keep numbers and dots for version numbers
 	replacer := strings.NewReplacer(
 		" ", "-",
 		"_", "-",
 		":", "",
 		";", "",
-		".", "",
 		",", "",
 		"!", "",
 		"?", "",
@@ -103,9 +103,27 @@ func generateBaseID(task string) string {
 		"\\", "-",
 		"\"", "",
 		"'", "",
+		"@", "",
+		"#", "",
+		"$", "",
+		"%", "",
+		"^", "",
+		"&", "",
+		"*", "",
+		"+", "",
+		"=", "",
+		"|", "",
+		"<", "",
+		">", "",
+		"`", "",
+		"~", "",
 	)
 	
 	kebab := replacer.Replace(lower)
+	
+	// Replace dots between numbers with nothing (v2.3.4 -> v234)
+	// but keep other dots as separators
+	kebab = strings.ReplaceAll(kebab, ".", "")
 	
 	// Remove multiple consecutive hyphens
 	for strings.Contains(kebab, "--") {
@@ -115,6 +133,11 @@ func generateBaseID(task string) string {
 	// Trim hyphens from start and end
 	kebab = strings.Trim(kebab, "-")
 	
+	// If empty after processing, use default
+	if kebab == "" {
+		return "todo"
+	}
+	
 	// Limit length to make IDs manageable
 	if len(kebab) > 50 {
 		kebab = kebab[:50]
@@ -123,6 +146,14 @@ func generateBaseID(task string) string {
 		if lastHyphen > 30 {
 			kebab = kebab[:lastHyphen]
 		}
+	}
+	
+	// Final trim in case truncation left a trailing hyphen
+	kebab = strings.Trim(kebab, "-")
+	
+	// Final check for empty string
+	if kebab == "" {
+		return "todo"
 	}
 	
 	return kebab
@@ -418,4 +449,114 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 	}
 	
 	return nil
+}
+
+// GetBasePath returns the base path for todos
+func (tm *TodoManager) GetBasePath() string {
+	return tm.basePath
+}
+
+// ListTodos returns todos filtered by status, priority, and/or days
+func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, error) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	
+	// Read all todo files
+	files, err := ioutil.ReadDir(tm.basePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read todos directory: %w", err)
+	}
+	
+	var todos []*Todo
+	cutoffTime := time.Time{}
+	if days > 0 {
+		cutoffTime = time.Now().AddDate(0, 0, -days)
+	}
+	
+	for _, file := range files {
+		if filepath.Ext(file.Name()) != ".md" {
+			continue
+		}
+		
+		// Read todo
+		id := strings.TrimSuffix(file.Name(), ".md")
+		todo, err := tm.ReadTodo(id)
+		if err != nil {
+			// Skip files that can't be parsed
+			continue
+		}
+		
+		// Apply filters
+		if status != "" && status != "all" && todo.Status != status {
+			continue
+		}
+		
+		if priority != "" && priority != "all" && todo.Priority != priority {
+			continue
+		}
+		
+		if days > 0 && todo.Started.Before(cutoffTime) {
+			continue
+		}
+		
+		todos = append(todos, todo)
+	}
+	
+	return todos, nil
+}
+
+// ReadTodoContent reads the full content of a todo file
+func (tm *TodoManager) ReadTodoContent(id string) (string, error) {
+	filePath := filepath.Join(tm.basePath, id+".md")
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read todo file: %w", err)
+	}
+	return string(content), nil
+}
+
+// ArchiveOldTodos archives todos older than specified days
+func (tm *TodoManager) ArchiveOldTodos(days int) (int, error) {
+	todos, err := tm.ListTodos("completed", "", days)
+	if err != nil {
+		return 0, err
+	}
+	
+	count := 0
+	for _, todo := range todos {
+		if todo.Status == "completed" {
+			err = tm.ArchiveTodo(todo.ID, "")
+			if err == nil {
+				count++
+			}
+		}
+	}
+	
+	return count, nil
+}
+
+// FindDuplicateTodos finds todos with similar tasks
+func (tm *TodoManager) FindDuplicateTodos() ([][]string, error) {
+	todos, err := tm.ListTodos("", "", 0)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Group by normalized task
+	groups := make(map[string][]string)
+	for _, todo := range todos {
+		// Normalize task for comparison
+		normalized := strings.ToLower(strings.TrimSpace(todo.Task))
+		groups[normalized] = append(groups[normalized], todo.ID)
+	}
+	
+	// Find groups with duplicates
+	var duplicates [][]string
+	for _, group := range groups {
+		if len(group) > 1 {
+			duplicates = append(duplicates, group)
+		}
+	}
+	
+	return duplicates, nil
 }

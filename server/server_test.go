@@ -7,12 +7,18 @@ import (
 // Test 1: MCP server should start and register tools successfully
 func TestServerInitialization(t *testing.T) {
 	// Create a new MCP todo server
-	server := NewTodoServer()
+	server, err := NewTodoServer()
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 	
 	// Verify server is not nil
 	if server == nil {
 		t.Fatal("Expected server to be created, got nil")
 	}
+	
+	// Clean up
+	defer server.Close()
 	
 	// Get the list of registered tools
 	tools := server.ListTools()

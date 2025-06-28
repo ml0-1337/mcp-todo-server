@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 	"gopkg.in/yaml.v3"
 )
 
@@ -94,6 +95,42 @@ func (tm *TemplateManager) ListTemplates() ([]string, error) {
 }
 
 // ExecuteTemplate processes a template with the given variables
+// CreateFromTemplate creates a new todo from a template
+func (tm *TemplateManager) CreateFromTemplate(templateName, task, priority, todoType string) (*Todo, error) {
+	// Load template
+	tmpl, err := tm.LoadTemplate(templateName)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Prepare variables
+	vars := map[string]interface{}{
+		"task":     task,
+		"priority": priority,
+		"type":     todoType,
+	}
+	
+	// Execute template
+	_, err = tm.ExecuteTemplate(tmpl, vars)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Create todo with template content
+	todo := &Todo{
+		ID:       generateBaseID(task),
+		Task:     task,
+		Started:  time.Now(),
+		Status:   "in_progress",
+		Priority: priority,
+		Type:     todoType,
+	}
+	
+	// Note: In a real implementation, we'd write the todo with the template content
+	// For now, just return the todo object
+	return todo, nil
+}
+
 func (tm *TemplateManager) ExecuteTemplate(tmpl *Template, vars map[string]interface{}) (string, error) {
 	// Parse the template content
 	t, err := template.New(tmpl.Name).Parse(tmpl.Content)

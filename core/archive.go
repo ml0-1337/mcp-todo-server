@@ -33,15 +33,15 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 		return fmt.Errorf("failed to check for children: %w", err)
 	}
 	
-	// Check for active (non-archived) children
-	activeChildren := 0
+	// Check for incomplete children
+	incompleteChildren := 0
 	for _, child := range children {
-		if child.Status != "completed" || !isArchived(tm.basePath, child.ID) {
-			activeChildren++
+		if child.Status != "completed" {
+			incompleteChildren++
 		}
 	}
 	
-	if activeChildren > 0 {
+	if incompleteChildren > 0 {
 		return fmt.Errorf("cannot archive todo %s: has active children", id)
 	}
 

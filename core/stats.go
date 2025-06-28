@@ -179,8 +179,8 @@ func (se *StatsEngine) CalculateTestCoverage(todoID string) (float64, error) {
 	return math.Round(coverage*10) / 10, nil
 }
 
-// GenerateStats generates comprehensive statistics
-func (se *StatsEngine) GenerateStats() (*TodoStats, error) {
+// GenerateTodoStats generates comprehensive statistics
+func (se *StatsEngine) GenerateTodoStats() (*TodoStats, error) {
 	todos, err := se.getAllTodos()
 	if err != nil {
 		return nil, err

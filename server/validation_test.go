@@ -10,7 +10,11 @@ import (
 // Test 3: Server should validate tool parameters against JSON schema
 func TestParameterValidation(t *testing.T) {
 	// Create server
-	server := NewTodoServer()
+	server, err := NewTodoServer()
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+	defer server.Close()
 	
 	// Test todo_create with missing required "task" parameter
 	t.Run("Missing required task parameter", func(t *testing.T) {
@@ -25,7 +29,7 @@ func TestParameterValidation(t *testing.T) {
 		}
 		
 		// Call the handler
-		result, err := server.handleTodoCreate(context.Background(), request)
+		result, err := server.handlers.HandleTodoCreate(context.Background(), request)
 		
 		// Should return an error result, not a Go error
 		if err != nil {
@@ -73,7 +77,7 @@ func TestParameterValidation(t *testing.T) {
 			},
 		}
 		
-		result, err := server.handleTodoCreate(context.Background(), request)
+		result, err := server.handlers.HandleTodoCreate(context.Background(), request)
 		
 		if err != nil {
 			t.Fatalf("Expected nil error, got: %v", err)

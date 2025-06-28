@@ -109,7 +109,7 @@ func TestTodoStatsCalculation(t *testing.T) {
 	})
 
 	t.Run("Generate overall statistics", func(t *testing.T) {
-		todoStats, err := stats.GenerateStats()
+		todoStats, err := stats.GenerateTodoStats()
 		if err != nil {
 			t.Fatalf("Failed to generate overall stats: %v", err)
 		}
@@ -167,7 +167,7 @@ func TestTodoStatsCalculation(t *testing.T) {
 			t.Error("Empty collection should return zero average time")
 		}
 
-		todoStats, err := emptyStats.GenerateStats()
+		todoStats, err := emptyStats.GenerateTodoStats()
 		if err != nil {
 			t.Fatalf("Should handle empty collection gracefully: %v", err)
 		}

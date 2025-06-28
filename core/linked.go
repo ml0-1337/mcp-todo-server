@@ -8,6 +8,44 @@ import (
 	"strings"
 )
 
+// TodoLinker handles linking related todos
+type TodoLinker struct {
+	manager *TodoManager
+}
+
+// NewTodoLinker creates a new todo linker
+func NewTodoLinker(manager *TodoManager) *TodoLinker {
+	return &TodoLinker{
+		manager: manager,
+	}
+}
+
+// LinkTodos creates a link between two todos
+func (tl *TodoLinker) LinkTodos(parentID, childID, linkType string) error {
+	// Validate both todos exist
+	_, err := tl.manager.ReadTodo(parentID)
+	if err != nil {
+		return fmt.Errorf("parent todo not found: %w", err)
+	}
+	
+	_, err = tl.manager.ReadTodo(childID)
+	if err != nil {
+		return fmt.Errorf("child todo not found: %w", err)
+	}
+	
+	// For parent-child link, update the child's parent_id
+	if linkType == "parent-child" {
+		metadata := map[string]string{
+			"parent_id": parentID,
+		}
+		return tl.manager.UpdateTodo(childID, "", "", "", metadata)
+	}
+	
+	// For other link types, could store in a separate links file or in metadata
+	// For now, only support parent-child
+	return fmt.Errorf("unsupported link type: %s", linkType)
+}
+
 // CreateTodoWithParent creates a new todo with a parent reference
 func (tm *TodoManager) CreateTodoWithParent(task, priority, todoType, parentID string) (*Todo, error) {
 	// Validate parent exists
