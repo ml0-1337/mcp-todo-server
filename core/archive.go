@@ -20,6 +20,24 @@ func GetQuarter(t time.Time) string {
 func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
+	
+	// Check if todo has active children
+	children, err := tm.GetChildren(id)
+	if err != nil {
+		return fmt.Errorf("failed to check for children: %w", err)
+	}
+	
+	// Check for active (non-archived) children
+	activeChildren := 0
+	for _, child := range children {
+		if child.Status != "completed" || !isArchived(tm.basePath, child.ID) {
+			activeChildren++
+		}
+	}
+	
+	if activeChildren > 0 {
+		return fmt.Errorf("cannot archive todo %s: has active children", id)
+	}
 
 	// Construct source file path
 	sourcePath := filepath.Join(tm.basePath, id+".md")
@@ -129,4 +147,43 @@ func (tm *TodoManager) BulkArchiveTodos(ids []string) []BulkResult {
 	}
 
 	return results
+}
+
+// isArchived checks if a todo is already archived
+func isArchived(basePath, id string) bool {
+	// Check if file exists in main todo directory
+	mainPath := filepath.Join(basePath, id+".md")
+	if _, err := os.Stat(mainPath); err == nil {
+		// File exists in main directory, not archived
+		return false
+	}
+	// If not in main directory, assume it's archived
+	return true
+}
+
+// ArchiveTodoWithCascade archives a todo and optionally its children
+func (tm *TodoManager) ArchiveTodoWithCascade(id string, quarterOverride string, cascade bool) error {
+	if !cascade {
+		// Just regular archive
+		return tm.ArchiveTodo(id, quarterOverride)
+	}
+	
+	// Get all children first
+	children, err := tm.GetChildren(id)
+	if err != nil {
+		return fmt.Errorf("failed to get children: %w", err)
+	}
+	
+	// Archive all completed children first
+	for _, child := range children {
+		if child.Status == "completed" && !isArchived(tm.basePath, child.ID) {
+			err := tm.ArchiveTodo(child.ID, quarterOverride)
+			if err != nil {
+				return fmt.Errorf("failed to archive child %s: %w", child.ID, err)
+			}
+		}
+	}
+	
+	// Now archive the parent
+	return tm.ArchiveTodo(id, quarterOverride)
 }
