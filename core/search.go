@@ -242,21 +242,32 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 			// Keep phrase queries as-is for exact matching
 			searchQuery = bleve.NewQueryStringQuery(queryStr)
 		} else {
+			// Sanitize query to handle special characters safely
+			sanitized := sanitizeSearchQuery(queryStr)
+			
+			// If sanitization removed all content, return empty results
+			if sanitized == "" {
+				return []SearchResult{}, nil
+			}
+			
+			// Debug: log sanitized query
+			// fmt.Printf("DEBUG SearchTodos - Original: %q, Sanitized: %q\n", queryStr, sanitized)
+			
 			// For non-phrase queries, use field-specific queries with boosting
 			// Create separate queries for each field with different boost values
-			taskQuery := bleve.NewMatchQuery(queryStr)
+			taskQuery := bleve.NewMatchQuery(sanitized)
 			taskQuery.SetField("task")
 			taskQuery.SetBoost(3.0) // Highest priority for task/title matches
 			
-			findingsQuery := bleve.NewMatchQuery(queryStr)
+			findingsQuery := bleve.NewMatchQuery(sanitized)
 			findingsQuery.SetField("findings")
 			findingsQuery.SetBoost(1.5) // Medium priority for findings
 			
-			testsQuery := bleve.NewMatchQuery(queryStr)
+			testsQuery := bleve.NewMatchQuery(sanitized)
 			testsQuery.SetField("tests")
 			testsQuery.SetBoost(1.0) // Lower priority for test cases
 			
-			contentQuery := bleve.NewMatchQuery(queryStr)
+			contentQuery := bleve.NewMatchQuery(sanitized)
 			contentQuery.SetField("content")
 			contentQuery.SetBoost(0.5) // Lowest priority for full content
 			
@@ -422,4 +433,55 @@ func (se *SearchEngine) IndexTodo(todo *Todo, content string) error {
 // DeleteTodo removes a todo from the index
 func (se *SearchEngine) DeleteTodo(id string) error {
 	return se.index.Delete(id)
+}
+
+// sanitizeSearchQuery cleans up the search query to handle special characters safely
+// This prevents regex injection attacks and ensures queries don't break the search engine
+func sanitizeSearchQuery(query string) string {
+	// First, handle potential regex patterns - remove forward slashes that would indicate regex
+	if strings.HasPrefix(query, "/") && strings.HasSuffix(query, "/") {
+		// Don't execute as regex - treat as literal by removing slashes
+		query = query[1 : len(query)-1]
+	}
+	
+	// Remove null bytes and other control characters
+	query = strings.ReplaceAll(query, "\x00", " ")  // Replace null with space instead of removing
+	query = strings.ReplaceAll(query, "\n", " ")
+	query = strings.ReplaceAll(query, "\r", " ")
+	query = strings.ReplaceAll(query, "\t", " ")
+	
+	// Replace special characters that break queries with spaces
+	// Keep alphanumeric, spaces, and some safe punctuation
+	var result []rune
+	for _, r := range query {
+		switch {
+		case r >= 'a' && r <= 'z':
+			result = append(result, r)
+		case r >= 'A' && r <= 'Z':
+			result = append(result, r)
+		case r >= '0' && r <= '9':
+			result = append(result, r)
+		case r == ' ':
+			result = append(result, r)
+		case r == '-' || r == '_':
+			// Keep hyphens and underscores as they're common in identifiers
+			result = append(result, r)
+		default:
+			// Replace other special characters with space
+			result = append(result, ' ')
+		}
+	}
+	
+	// Convert back to string and clean up extra spaces
+	cleaned := string(result)
+	
+	// Replace multiple consecutive spaces with single space
+	for strings.Contains(cleaned, "  ") {
+		cleaned = strings.ReplaceAll(cleaned, "  ", " ")
+	}
+	
+	// Trim leading and trailing spaces
+	cleaned = strings.TrimSpace(cleaned)
+	
+	return cleaned
 }
