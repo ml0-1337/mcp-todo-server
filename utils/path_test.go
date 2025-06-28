@@ -3,6 +3,7 @@ package utils
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -109,5 +110,40 @@ func TestIsDirectory_WithFile(t *testing.T) {
 	// Assert it's not a directory
 	if isDir {
 		t.Errorf("IsDirectory(%s) = true; want false", tempFile.Name())
+	}
+}
+
+// Test 7: FindProjectRoot finds .claude directory
+func TestFindProjectRoot_WithClaudeDirectory(t *testing.T) {
+	// Create temp directory structure
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create .claude directory
+	claudeDir := filepath.Join(tempDir, ".claude")
+	err = os.Mkdir(claudeDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .claude directory: %v", err)
+	}
+	
+	// Create a subdirectory to start search from
+	subDir := filepath.Join(tempDir, "src", "pkg")
+	err = os.MkdirAll(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	// Find project root from subdirectory
+	root, err := FindProjectRoot(subDir)
+	
+	// Assert no error and correct root found
+	if err != nil {
+		t.Errorf("FindProjectRoot(%s) error = %v; want nil", subDir, err)
+	}
+	if root != tempDir {
+		t.Errorf("FindProjectRoot(%s) = %s; want %s", subDir, root, tempDir)
 	}
 }
