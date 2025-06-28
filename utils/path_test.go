@@ -295,3 +295,118 @@ func TestResolveTodoPath_WithProjectRoot(t *testing.T) {
 		t.Errorf("ResolveTodoPath() did not create directory at %s", todoPath)
 	}
 }
+
+// Test 13: ResolveTodoPath creates directory if missing
+func TestResolveTodoPath_CreatesDirectory(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Create temp project directory
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create .claude directory marker
+	claudeDir := filepath.Join(tempDir, ".claude")
+	err = os.Mkdir(claudeDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .claude directory: %v", err)
+	}
+	
+	// Change to project directory
+	oldWd, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(oldWd)
+	
+	// Ensure todos directory doesn't exist yet
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	if FileExists(todosDir) {
+		t.Fatalf("todos directory already exists")
+	}
+	
+	// Resolve todo path
+	todoPath, err := ResolveTodoPath()
+	
+	// Assert no error
+	if err != nil {
+		t.Errorf("ResolveTodoPath() error = %v; want nil", err)
+	}
+	
+	// Verify directory was created
+	if !IsDirectory(todoPath) {
+		t.Errorf("ResolveTodoPath() did not create directory at %s", todoPath)
+	}
+	
+	// Verify correct permissions
+	info, err := os.Stat(todoPath)
+	if err == nil {
+		mode := info.Mode().Perm()
+		if mode != 0755 {
+			t.Errorf("Directory created with wrong permissions: %o; want 755", mode)
+		}
+	}
+}
+
+// Test 14: ResolveTodoPath respects CLAUDE_TODO_PATH override
+func TestResolveTodoPath_WithEnvironmentOverride(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Create custom path
+	customPath := "/tmp/custom-todos"
+	
+	// Set environment variable
+	os.Setenv("CLAUDE_TODO_PATH", customPath)
+	defer os.Unsetenv("CLAUDE_TODO_PATH")
+	
+	// Resolve todo path
+	todoPath, err := ResolveTodoPath()
+	
+	// Assert no error and correct path
+	if err != nil {
+		t.Errorf("ResolveTodoPath() error = %v; want nil", err)
+	}
+	if todoPath != customPath {
+		t.Errorf("ResolveTodoPath() = %s; want %s", todoPath, customPath)
+	}
+}
+
+// Test 15: ResolveTodoPath uses current dir if no project root
+func TestResolveTodoPath_NoProjectRoot(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+	
+	// Create temp directory without project markers
+	tempDir, err := ioutil.TempDir("", "no-project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(oldWd)
+	
+	// Resolve todo path
+	todoPath, err := ResolveTodoPath()
+	
+	// Assert no error
+	if err != nil {
+		t.Errorf("ResolveTodoPath() error = %v; want nil", err)
+	}
+	
+	// Should use current directory when no project root found
+	expectedPath := filepath.Join(tempDir, ".claude", "todos")
+	resolvedTodoPath, _ := filepath.EvalSymlinks(todoPath)
+	resolvedExpectedPath, _ := filepath.EvalSymlinks(expectedPath)
+	
+	if resolvedTodoPath != resolvedExpectedPath {
+		t.Errorf("ResolveTodoPath() = %s; want %s", todoPath, expectedPath)
+	}
+}
