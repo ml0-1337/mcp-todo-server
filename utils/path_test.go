@@ -57,3 +57,20 @@ func TestFileExists_WithExistingFile(t *testing.T) {
 		t.Errorf("FileExists(%s) = false; want true", tempFile.Name())
 	}
 }
+
+// Test 4: FileExists returns false for non-existent file
+func TestFileExists_WithNonExistentFile(t *testing.T) {
+	// Use a path that definitely doesn't exist
+	nonExistentPath := "/tmp/this-file-should-not-exist-12345.txt"
+	
+	// Ensure it doesn't exist
+	os.Remove(nonExistentPath)
+	
+	// Test FileExists
+	exists := FileExists(nonExistentPath)
+	
+	// Assert file doesn't exist
+	if exists {
+		t.Errorf("FileExists(%s) = true; want false", nonExistentPath)
+	}
+}
