@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,8 +12,16 @@ import (
 )
 
 func main() {
-	// Create and start server
-	todoServer, err := server.NewTodoServer()
+	// Parse command line flags
+	var (
+		transport = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
+		port      = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
+		host      = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
+	)
+	flag.Parse()
+	
+	// Create server with transport type
+	todoServer, err := server.NewTodoServer(server.WithTransport(*transport))
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
 	}
@@ -24,9 +33,20 @@ func main() {
 	// Start server in goroutine
 	errChan := make(chan error, 1)
 	go func() {
-		log.Println("Starting MCP Todo Server v1.0.0...")
-		if err := todoServer.Start(); err != nil {
-			errChan <- err
+		switch *transport {
+		case "stdio":
+			log.Println("Starting MCP Todo Server v1.0.0 (STDIO mode)...")
+			if err := todoServer.StartStdio(); err != nil {
+				errChan <- err
+			}
+		case "http":
+			addr := fmt.Sprintf("%s:%s", *host, *port)
+			log.Printf("Starting MCP Todo Server v1.0.0 (HTTP mode) on %s...", addr)
+			if err := todoServer.StartHTTP(addr); err != nil {
+				errChan <- err
+			}
+		default:
+			errChan <- fmt.Errorf("unsupported transport: %s", *transport)
 		}
 	}()
 	

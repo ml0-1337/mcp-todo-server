@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,12 +12,24 @@ import (
 
 // TodoServer represents the MCP server for todo management
 type TodoServer struct {
-	mcpServer *server.MCPServer
-	handlers  *handlers.TodoHandlers
+	mcpServer  *server.MCPServer
+	handlers   *handlers.TodoHandlers
+	transport  string
+	httpServer *server.StreamableHTTPServer
+}
+
+// ServerOption is a function that configures a TodoServer
+type ServerOption func(*TodoServer)
+
+// WithTransport sets the transport type
+func WithTransport(transport string) ServerOption {
+	return func(s *TodoServer) {
+		s.transport = transport
+	}
 }
 
 // NewTodoServer creates a new MCP todo server with all tools registered
-func NewTodoServer() (*TodoServer, error) {
+func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	// Get base path from environment or use default
 	basePath := os.Getenv("CLAUDE_BASE_PATH")
 	if basePath == "" {
@@ -43,14 +56,25 @@ func NewTodoServer() (*TodoServer, error) {
 		server.WithToolCapabilities(true),
 	)
 	
-	// Create todo server wrapper
+	// Create todo server wrapper with default transport
 	ts := &TodoServer{
 		mcpServer: s,
 		handlers:  todoHandlers,
+		transport: "stdio",
+	}
+	
+	// Apply options
+	for _, opt := range opts {
+		opt(ts)
 	}
 	
 	// Register all tools
 	ts.registerTools()
+	
+	// Create HTTP server if needed
+	if ts.transport == "http" {
+		ts.httpServer = server.NewStreamableHTTPServer(s)
+	}
 	
 	return ts, nil
 }
@@ -269,13 +293,32 @@ func (ts *TodoServer) registerTools() {
 
 // Close cleans up server resources
 func (ts *TodoServer) Close() error {
+	if ts.httpServer != nil {
+		ctx := context.Background()
+		if err := ts.httpServer.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
 	if ts.handlers != nil {
 		return ts.handlers.Close()
 	}
 	return nil
 }
 
-// Start starts the MCP server
+// Start starts the MCP server (deprecated - use StartStdio or StartHTTP)
 func (ts *TodoServer) Start() error {
+	return ts.StartStdio()
+}
+
+// StartStdio starts the MCP server in STDIO mode
+func (ts *TodoServer) StartStdio() error {
 	return server.ServeStdio(ts.mcpServer)
+}
+
+// StartHTTP starts the MCP server in HTTP mode
+func (ts *TodoServer) StartHTTP(addr string) error {
+	if ts.httpServer == nil {
+		return fmt.Errorf("HTTP server not initialized")
+	}
+	return ts.httpServer.Start(addr)
 }

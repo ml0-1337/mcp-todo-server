@@ -12,6 +12,16 @@ This MCP server maintains full compatibility with the existing `.claude/todos/` 
 - 🎯 **Template system** for common workflows
 - 🔗 **Todo linking** for multi-phase projects
 - ⚡ **<100ms response time** for all operations
+- 🌐 **HTTP transport** for multi-instance support
+
+## 🆕 New: HTTP Transport Support
+
+The server now supports both STDIO and HTTP transports. HTTP is recommended as it allows:
+- Multiple Claude Code instances to connect simultaneously
+- Running multiple server instances on different ports
+- Better debugging with standard HTTP tools
+
+See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for details.
 
 ## Current Status
 
@@ -67,11 +77,35 @@ cd /Users/macbook/Programming/go_projects/mcp-todo-server
 # Download dependencies
 go mod tidy
 
-# Run tests
-go test ./...
+# Build the server
+go build -o mcp-todo-server
 
-# Build the server (once main.go is implemented)
-go build
+# Test the installation
+./test_server.sh
+```
+
+### Quick Start
+
+#### HTTP Mode (Recommended)
+```bash
+# Start server on default port 8080
+./mcp-todo-server -transport http
+
+# Configure Claude Code with .mcp-http.json:
+{
+  "mcpServers": {
+    "todo": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+#### STDIO Mode (Legacy)
+```bash
+# Use existing .mcp.json configuration
+./mcp-todo-server -transport stdio
 ```
 
 ### Running Tests

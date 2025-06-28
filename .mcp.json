@@ -1,10 +1,8 @@
 {
   "mcpServers": {
     "todo": {
-      "type": "stdio",
-      "command": "/Users/macbook/Programming/go_projects/mcp-todo-server/mcp-todo-server",
-      "args": [],
-      "env": {}
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
