@@ -74,3 +74,21 @@ func TestFileExists_WithNonExistentFile(t *testing.T) {
 		t.Errorf("FileExists(%s) = true; want false", nonExistentPath)
 	}
 }
+
+// Test 5: IsDirectory returns true for directory
+func TestIsDirectory_WithDirectory(t *testing.T) {
+	// Create a temporary directory
+	tempDir, err := ioutil.TempDir("", "test-dir-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Test IsDirectory
+	isDir := IsDirectory(tempDir)
+	
+	// Assert it's a directory
+	if !isDir {
+		t.Errorf("IsDirectory(%s) = false; want true", tempDir)
+	}
+}
