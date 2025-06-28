@@ -147,3 +147,102 @@ func TestFindProjectRoot_WithClaudeDirectory(t *testing.T) {
 		t.Errorf("FindProjectRoot(%s) = %s; want %s", subDir, root, tempDir)
 	}
 }
+
+// Test 8: FindProjectRoot finds .git directory
+func TestFindProjectRoot_WithGitDirectory(t *testing.T) {
+	// Create temp directory structure
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create .git directory
+	gitDir := filepath.Join(tempDir, ".git")
+	err = os.Mkdir(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .git directory: %v", err)
+	}
+	
+	// Create a subdirectory to start search from
+	subDir := filepath.Join(tempDir, "src", "pkg")
+	err = os.MkdirAll(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	// Find project root from subdirectory
+	root, err := FindProjectRoot(subDir)
+	
+	// Assert no error and correct root found
+	if err != nil {
+		t.Errorf("FindProjectRoot(%s) error = %v; want nil", subDir, err)
+	}
+	if root != tempDir {
+		t.Errorf("FindProjectRoot(%s) = %s; want %s", subDir, root, tempDir)
+	}
+}
+
+// Test 9: FindProjectRoot finds go.mod file
+func TestFindProjectRoot_WithGoModFile(t *testing.T) {
+	// Create temp directory structure
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Create go.mod file
+	goModPath := filepath.Join(tempDir, "go.mod")
+	err = ioutil.WriteFile(goModPath, []byte("module test\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create go.mod file: %v", err)
+	}
+	
+	// Create a subdirectory to start search from
+	subDir := filepath.Join(tempDir, "cmd", "app")
+	err = os.MkdirAll(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	// Find project root from subdirectory
+	root, err := FindProjectRoot(subDir)
+	
+	// Assert no error and correct root found
+	if err != nil {
+		t.Errorf("FindProjectRoot(%s) error = %v; want nil", subDir, err)
+	}
+	if root != tempDir {
+		t.Errorf("FindProjectRoot(%s) = %s; want %s", subDir, root, tempDir)
+	}
+}
+
+// Test 10: FindProjectRoot returns error when no markers found
+func TestFindProjectRoot_NoMarkersFound(t *testing.T) {
+	// Create temp directory without any markers
+	tempDir, err := ioutil.TempDir("", "project-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+	
+	// Find project root (should fail)
+	_, err = FindProjectRoot(tempDir)
+	
+	// Assert error is returned
+	if err == nil {
+		t.Errorf("FindProjectRoot(%s) error = nil; want error", tempDir)
+	}
+}
+
+// Test 11: FindProjectRoot handles filesystem root correctly
+func TestFindProjectRoot_FilesystemRoot(t *testing.T) {
+	// Start from root directory (no project markers exist there)
+	_, err := FindProjectRoot("/")
+	
+	// Assert error is returned
+	if err == nil {
+		t.Errorf("FindProjectRoot(/) error = nil; want error")
+	}
+}
