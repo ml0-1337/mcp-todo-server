@@ -107,3 +107,92 @@ func TestGetQuarter(t *testing.T) {
 		}
 	}
 }
+
+// Test 17: todo_archive should update completed timestamp
+func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
+	// Create temp directory for test
+	tempDir, err := ioutil.TempDir("", "archive-timestamp-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create todo manager
+	manager := NewTodoManager(tempDir)
+
+	// Create a test todo
+	todo, err := manager.CreateTodo("Test timestamp update", "high", "feature")
+	if err != nil {
+		t.Fatalf("Failed to create todo: %v", err)
+	}
+
+	// Verify initial state has no completed timestamp
+	originalTodo, err := manager.ReadTodo(todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to read todo: %v", err)
+	}
+	if !originalTodo.Completed.IsZero() {
+		t.Error("New todo should not have completed timestamp")
+	}
+	if originalTodo.Status != "in_progress" {
+		t.Errorf("New todo should have status 'in_progress', got: %s", originalTodo.Status)
+	}
+
+	// Archive the todo
+	err = manager.ArchiveTodo(todo.ID, "")
+	if err != nil {
+		t.Fatalf("Failed to archive todo: %v", err)
+	}
+
+	// Read archived todo
+	quarter := GetQuarter(time.Now())
+	archivePath := filepath.Join(filepath.Dir(tempDir), "archive", quarter, todo.ID+".md")
+	
+	content, err := ioutil.ReadFile(archivePath)
+	if err != nil {
+		t.Fatalf("Failed to read archived todo: %v", err)
+	}
+
+	// Parse archived todo
+	archivedTodo, err := manager.parseTodoFile(string(content))
+	if err != nil {
+		t.Fatalf("Failed to parse archived todo: %v", err)
+	}
+
+	// Verify completed timestamp was set
+	if archivedTodo.Completed.IsZero() {
+		t.Error("Archived todo should have completed timestamp")
+	}
+
+	// Verify timestamp format is correct (should be parseable)
+	// and year/month/day match today
+	now := time.Now()
+	if archivedTodo.Completed.Year() != now.Year() {
+		t.Errorf("Completed year %d doesn't match current year %d", 
+			archivedTodo.Completed.Year(), now.Year())
+	}
+	if archivedTodo.Completed.Month() != now.Month() {
+		t.Errorf("Completed month %v doesn't match current month %v", 
+			archivedTodo.Completed.Month(), now.Month())
+	}
+	if archivedTodo.Completed.Day() != now.Day() {
+		t.Errorf("Completed day %d doesn't match current day %d", 
+			archivedTodo.Completed.Day(), now.Day())
+	}
+
+	// Verify status was updated
+	if archivedTodo.Status != "completed" {
+		t.Errorf("Archived todo should have status 'completed', got: %s", archivedTodo.Status)
+	}
+
+	// Verify other fields remain unchanged
+	if archivedTodo.Task != originalTodo.Task {
+		t.Error("Task should remain unchanged after archive")
+	}
+	if archivedTodo.Priority != originalTodo.Priority {
+		t.Error("Priority should remain unchanged after archive")
+	}
+	if archivedTodo.Type != originalTodo.Type {
+		t.Error("Type should remain unchanged after archive")
+	}
+}
