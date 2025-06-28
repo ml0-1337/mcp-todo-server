@@ -49,3 +49,4 @@ Thumbs.db
 
 # Claude specific temporary files
 .claude/.DS_Store
+.claude/index/
