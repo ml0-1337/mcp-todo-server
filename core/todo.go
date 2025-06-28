@@ -293,3 +293,129 @@ func extractTask(content string) string {
 	// Return empty string if no task heading found
 	return ""
 }
+
+// UpdateTodo updates a specific section or metadata of a todo
+func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	
+	// Read existing todo file
+	filePath := filepath.Join(tm.basePath, id + ".md")
+	existingContent, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("todo not found: %s", id)
+		}
+		return fmt.Errorf("failed to read todo file: %w", err)
+	}
+	
+	// Parse existing content
+	contentStr := string(existingContent)
+	parts := strings.Split(contentStr, "---\n")
+	if len(parts) < 3 {
+		return fmt.Errorf("invalid markdown format: missing frontmatter delimiters")
+	}
+	
+	// Handle metadata updates
+	if metadata != nil && len(metadata) > 0 {
+		// Parse existing frontmatter
+		var frontmatter map[string]interface{}
+		err = yaml.Unmarshal([]byte(parts[1]), &frontmatter)
+		if err != nil {
+			return fmt.Errorf("failed to parse YAML frontmatter: %w", err)
+		}
+		
+		// Update metadata fields
+		for key, value := range metadata {
+			frontmatter[key] = value
+		}
+		
+		// Marshal back to YAML
+		yamlData, err := yaml.Marshal(frontmatter)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
+		
+		parts[1] = string(yamlData)
+	}
+	
+	// Handle section updates
+	if section != "" && operation != "" && content != "" {
+		markdownContent := parts[2]
+		
+		// Map section names to headings
+		sectionMap := map[string]string{
+			"findings":    "## Findings & Research",
+			"tests":       "## Test Cases",
+			"checklist":   "## Checklist",
+			"scratchpad":  "## Working Scratchpad",
+		}
+		
+		sectionHeading, ok := sectionMap[section]
+		if !ok {
+			return fmt.Errorf("invalid section: %s", section)
+		}
+		
+		// Find section boundaries
+		lines := strings.Split(markdownContent, "\n")
+		sectionStart := -1
+		sectionEnd := len(lines)
+		
+		for i, line := range lines {
+			if line == sectionHeading {
+				sectionStart = i
+			} else if sectionStart > -1 && strings.HasPrefix(line, "## ") && i > sectionStart {
+				sectionEnd = i
+				break
+			}
+		}
+		
+		if sectionStart == -1 {
+			return fmt.Errorf("section not found: %s", section)
+		}
+		
+		// Extract section content
+		sectionLines := lines[sectionStart+1:sectionEnd]
+		sectionContent := strings.Join(sectionLines, "\n")
+		
+		// Apply operation
+		switch operation {
+		case "append":
+			sectionContent = strings.TrimRight(sectionContent, "\n") + content
+		case "prepend":
+			sectionContent = content + "\n" + strings.TrimLeft(sectionContent, "\n")
+		case "replace":
+			sectionContent = content
+		default:
+			return fmt.Errorf("invalid operation: %s", operation)
+		}
+		
+		// Rebuild markdown content
+		var newLines []string
+		newLines = append(newLines, lines[:sectionStart+1]...)
+		newLines = append(newLines, strings.Split(sectionContent, "\n")...)
+		newLines = append(newLines, lines[sectionEnd:]...)
+		markdownContent = strings.Join(newLines, "\n")
+		
+		parts[2] = markdownContent
+	}
+	
+	// Reconstruct file content
+	newContent := "---\n" + parts[1] + "---\n" + parts[2]
+	
+	// Write to temp file first (atomic write)
+	tempFile := filePath + ".tmp"
+	err = ioutil.WriteFile(tempFile, []byte(newContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write temp file: %w", err)
+	}
+	
+	// Rename temp file to final location
+	err = os.Rename(tempFile, filePath)
+	if err != nil {
+		os.Remove(tempFile) // Clean up temp file
+		return fmt.Errorf("failed to rename file: %w", err)
+	}
+	
+	return nil
+}

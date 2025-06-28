@@ -600,3 +600,413 @@ This file has no task heading.
 		}
 	})
 }
+
+// Test 9: todo_update should modify specific sections atomically
+func TestUpdateTodo(t *testing.T) {
+	// Test 1: Update findings section with append
+	t.Run("Update findings section with append", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-update-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo first
+		task := "Test update functionality"
+		todo, err := manager.CreateTodo(task, "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Update findings section with append
+		newFindings := "\n\n### Additional Research\n\nFound new information about the topic."
+		err = manager.UpdateTodo(todo.ID, "findings", "append", newFindings, nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo: %v", err)
+		}
+		
+		// Read back and verify
+		updated, err := manager.ReadTodo(todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to read updated todo: %v", err)
+		}
+		
+		// Read file content to check findings section
+		filePath := filepath.Join(tempDir, todo.ID + ".md")
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read file: %v", err)
+		}
+		
+		// Check that new findings were appended
+		if !strings.Contains(string(content), "### Additional Research") {
+			t.Error("New findings not found in file")
+		}
+		
+		// Verify task is unchanged
+		if updated.Task != task {
+			t.Errorf("Task changed unexpectedly. Expected %s, got %s", task, updated.Task)
+		}
+	})
+	
+	// Test 2: Replace test cases section
+	t.Run("Update test cases with replace", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-replace-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test replace operation", "medium", "bug")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Replace test cases section
+		newTests := `
+` + "```go" + `
+// Test 1: New test case
+func TestNewFeature(t *testing.T) {
+    // Test implementation
+}
+` + "```" + `
+`
+		err = manager.UpdateTodo(todo.ID, "tests", "replace", newTests, nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo: %v", err)
+		}
+		
+		// Read file and verify
+		filePath := filepath.Join(tempDir, todo.ID + ".md")
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read file: %v", err)
+		}
+		
+		// Check that test cases were replaced
+		if !strings.Contains(string(content), "TestNewFeature") {
+			t.Error("New test cases not found in file")
+		}
+		
+		// Verify other sections still exist
+		if !strings.Contains(string(content), "## Findings & Research") {
+			t.Error("Other sections were removed")
+		}
+	})
+	
+	// Test 3: Prepend to checklist
+	t.Run("Update checklist with prepend", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-prepend-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test prepend operation", "low", "refactor")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Prepend to checklist
+		newItems := `
+- [ ] Urgent: Review security implications
+- [ ] Urgent: Update documentation
+`
+		err = manager.UpdateTodo(todo.ID, "checklist", "prepend", newItems, nil)
+		if err != nil {
+			t.Fatalf("Failed to update todo: %v", err)
+		}
+		
+		// Read file and verify order
+		filePath := filepath.Join(tempDir, todo.ID + ".md")
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read file: %v", err)
+		}
+		
+		contentStr := string(content)
+		urgentPos := strings.Index(contentStr, "Urgent: Review security")
+		checklistPos := strings.Index(contentStr, "## Checklist")
+		
+		if urgentPos == -1 {
+			t.Fatal("Prepended items not found")
+		}
+		
+		if urgentPos < checklistPos {
+			t.Error("Prepended items appear before checklist header")
+		}
+	})
+	
+	// Test 4: Update metadata status
+	t.Run("Update metadata status", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-status-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test status update", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Update status metadata
+		metadata := map[string]string{
+			"status": "completed",
+		}
+		err = manager.UpdateTodo(todo.ID, "", "", "", metadata)
+		if err != nil {
+			t.Fatalf("Failed to update metadata: %v", err)
+		}
+		
+		// Read back and verify
+		updated, err := manager.ReadTodo(todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to read updated todo: %v", err)
+		}
+		
+		if updated.Status != "completed" {
+			t.Errorf("Status not updated. Expected 'completed', got %s", updated.Status)
+		}
+		
+		// Verify other metadata unchanged
+		if updated.Priority != "high" {
+			t.Errorf("Priority changed unexpectedly. Expected 'high', got %s", updated.Priority)
+		}
+	})
+	
+	// Test 5: Update priority metadata
+	t.Run("Update priority metadata", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-priority-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test priority update", "low", "research")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Update priority and current_test metadata
+		metadata := map[string]string{
+			"priority": "high",
+			"current_test": "Test 3: Integration testing",
+		}
+		err = manager.UpdateTodo(todo.ID, "", "", "", metadata)
+		if err != nil {
+			t.Fatalf("Failed to update metadata: %v", err)
+		}
+		
+		// Read back and verify
+		updated, err := manager.ReadTodo(todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to read updated todo: %v", err)
+		}
+		
+		if updated.Priority != "high" {
+			t.Errorf("Priority not updated. Expected 'high', got %s", updated.Priority)
+		}
+		
+		// Read file to check current_test was added
+		filePath := filepath.Join(tempDir, todo.ID + ".md")
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read file: %v", err)
+		}
+		
+		if !strings.Contains(string(content), "current_test:") {
+			t.Error("current_test metadata not found in file")
+		}
+		if !strings.Contains(string(content), "Test 3: Integration testing") {
+			t.Error("current_test value not found in file")
+		}
+	})
+	
+	// Test 6: Preserve other sections
+	t.Run("Preserve other sections", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-preserve-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test preservation", "medium", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// First add some content to scratchpad
+		scratchContent := "\n\nSome notes here\nMore notes"
+		err = manager.UpdateTodo(todo.ID, "scratchpad", "append", scratchContent, nil)
+		if err != nil {
+			t.Fatalf("Failed to update scratchpad: %v", err)
+		}
+		
+		// Now update findings
+		findingsContent := "\n\nNew findings here"
+		err = manager.UpdateTodo(todo.ID, "findings", "append", findingsContent, nil)
+		if err != nil {
+			t.Fatalf("Failed to update findings: %v", err)
+		}
+		
+		// Read file and verify both updates exist
+		filePath := filepath.Join(tempDir, todo.ID + ".md")
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read file: %v", err)
+		}
+		
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "Some notes here") {
+			t.Error("Scratchpad content was lost")
+		}
+		
+		if !strings.Contains(contentStr, "New findings here") {
+			t.Error("Findings content not found")
+		}
+		
+		// Verify all sections still exist
+		requiredSections := []string{
+			"## Findings & Research",
+			"## Test Strategy",
+			"## Test List",
+			"## Test Cases",
+			"## Maintainability Analysis",
+			"## Test Results Log",
+			"## Checklist",
+			"## Working Scratchpad",
+		}
+		
+		for _, section := range requiredSections {
+			if !strings.Contains(contentStr, section) {
+				t.Errorf("Section %s was removed", section)
+			}
+		}
+	})
+	
+	// Test 7: Handle non-existent todo
+	t.Run("Handle non-existent todo", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-notfound-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Try to update non-existent todo
+		err = manager.UpdateTodo("does-not-exist", "findings", "append", "content", nil)
+		
+		// Should return error
+		if err == nil {
+			t.Error("Expected error for non-existent todo, got nil")
+		}
+		
+		// Error should mention not found
+		if err != nil && !strings.Contains(err.Error(), "not found") {
+			t.Errorf("Error should mention 'not found', got: %v", err)
+		}
+	})
+	
+	// Test 8: Atomic updates (concurrent safety)
+	t.Run("Handle concurrent updates", func(t *testing.T) {
+		// Create temp directory
+		tempDir, err := ioutil.TempDir("", "todo-atomic-test-*")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+		
+		// Create todo manager
+		manager := NewTodoManager(tempDir)
+		
+		// Create a todo
+		todo, err := manager.CreateTodo("Test atomic updates", "high", "feature")
+		if err != nil {
+			t.Fatalf("Failed to create todo: %v", err)
+		}
+		
+		// Simulate concurrent updates
+		done := make(chan bool, 2)
+		errors := make(chan error, 2)
+		
+		// Goroutine 1: Update findings
+		go func() {
+			err := manager.UpdateTodo(todo.ID, "findings", "append", "\n\nConcurrent update 1", nil)
+			errors <- err
+			done <- true
+		}()
+		
+		// Goroutine 2: Update checklist
+		go func() {
+			err := manager.UpdateTodo(todo.ID, "checklist", "append", "\n- [ ] Concurrent task", nil)
+			errors <- err
+			done <- true
+		}()
+		
+		// Wait for both to complete
+		<-done
+		<-done
+		
+		// Check for errors
+		err1 := <-errors
+		err2 := <-errors
+		
+		if err1 != nil {
+			t.Errorf("Goroutine 1 error: %v", err1)
+		}
+		if err2 != nil {
+			t.Errorf("Goroutine 2 error: %v", err2)
+		}
+		
+		// Verify file is not corrupted
+		filePath := filepath.Join(tempDir, todo.ID + ".md")
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			t.Fatalf("Failed to read file: %v", err)
+		}
+		
+		// Check both updates made it
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "Concurrent update 1") || !strings.Contains(contentStr, "Concurrent task") {
+			t.Error("One or both concurrent updates were lost")
+		}
+		
+		// Verify file structure is intact
+		if !strings.HasPrefix(contentStr, "---\n") {
+			t.Error("File structure corrupted - missing YAML frontmatter")
+		}
+	})
+}
