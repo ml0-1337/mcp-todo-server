@@ -4,6 +4,16 @@
 
 This document provides a comprehensive analysis of Claude's native TodoRead and TodoWrite tools, documenting their input/output specifications, behaviors, and limitations. This analysis was conducted to understand the baseline functionality that the MCP Todo Server will replace and enhance.
 
+## Understanding additionalProperties
+
+The `additionalProperties` field in JSON Schema controls whether properties not explicitly defined in the schema are allowed:
+
+- **`true`**: Any additional properties are allowed (they'll be accepted but typically ignored)
+- **`false`**: Only properties explicitly defined in `properties` are allowed
+- **Schema object**: Additional properties must match the specified schema
+
+This setting is crucial for API strictness and forward compatibility.
+
 ## Native Todo Tools
 
 ### 1. TodoRead Tool
@@ -49,6 +59,34 @@ This document provides a comprehensive analysis of Claude's native TodoRead and 
   }
 ]
 ```
+
+**additionalProperties Behavior**:
+
+Since `additionalProperties: true`, the tool accepts but ignores extra properties:
+
+```json
+// Valid inputs (all produce the same output):
+
+// Recommended - empty object
+{}
+
+// Valid - extra properties are ignored
+{
+  "foo": "bar",
+  "unused": 123
+}
+
+// Valid - even complex structures are accepted
+{
+  "random": {
+    "nested": {
+      "data": true
+    }
+  }
+}
+```
+
+All these inputs return the same todo list because TodoRead expects no parameters.
 
 ### 2. TodoWrite Tool
 
@@ -118,6 +156,58 @@ This document provides a comprehensive analysis of Claude's native TodoRead and 
 }
 ```
 
+**additionalProperties Behavior**:
+
+Since `additionalProperties: false` is specified, the behavior differs by level:
+- **Root level**: Extra properties are rejected with validation errors
+- **Item level**: Extra properties are silently dropped (not stored)
+
+```json
+// ✅ VALID - exact schema match
+{
+  "todos": [
+    {
+      "content": "Task 1",
+      "status": "pending",
+      "priority": "high",
+      "id": "task-1"
+    }
+  ]
+}
+
+// ❌ INVALID - extra property at root level
+{
+  "todos": [...],
+  "timestamp": "2024-01-27"  // This would fail validation
+}
+
+// ⚠️ ACCEPTED but properties dropped - extra property in todo item
+{
+  "todos": [
+    {
+      "content": "Task 1",
+      "status": "pending",
+      "priority": "high",
+      "id": "task-1",
+      "tags": ["tdd", "auth"]  // Extra properties are silently dropped
+    }
+  ]
+}
+// When read back, the todo will only have the 4 standard fields
+
+// ❌ INVALID - missing required property
+{
+  "todos": [
+    {
+      "content": "Task 1",
+      "status": "pending",
+      "id": "task-1"
+      // Missing "priority" - would fail validation
+    }
+  ]
+}
+```
+
 ## Limitations of Native Tools
 
 ### 1. Persistence
@@ -182,6 +272,75 @@ When implementing MCP todo tools, they must:
 3. **Add New Tools**: Extend functionality with search, templates, etc.
 4. **Maintain Simplicity**: Keep basic operations as simple as native tools
 
+## Validation Test Results
+
+Testing revealed the actual behavior of `additionalProperties` in the native tools:
+
+### TodoRead Tests
+All tests confirmed that extra properties are accepted without errors:
+- Empty object `{}` ✅
+- Simple properties `{"foo": "bar", "unused": 123}` ✅
+- Nested structures `{"random": {"nested": {"data": true}}}` ✅
+- Various types `{"array": [1,2,3], "bool": false, "null": null}` ✅
+
+### TodoWrite Tests
+1. **Valid schema match** ✅ - Works as expected
+2. **Extra root property** ❌ - Error: "An unexpected parameter `timestamp` was provided"
+3. **Extra item property** ⚠️ - Accepted but silently dropped (not stored)
+4. **Missing required field** ❌ - Proper validation error
+5. **Invalid enum value** ❌ - Clear error with valid options
+
+### Key Finding
+TodoWrite has **hybrid validation behavior**:
+- Strict at root level (rejects extra properties)
+- Permissive at item level (drops extra properties)
+
+This design likely balances error detection with backward compatibility.
+
+## Schema Design Implications
+
+### Why Different additionalProperties Settings?
+
+1. **TodoRead uses `true`**:
+   - Expects no input (empty object preferred)
+   - Permissive to prevent client errors
+   - Forward compatible - won't break if clients send extra data
+   - Common pattern for read-only operations
+
+2. **TodoWrite uses `false`** (with nuanced behavior):
+   - Enforces strict validation at root level
+   - Catches typos in root property names
+   - Silently drops extra properties in todo items
+   - Balances strictness with flexibility
+
+### Best Practices for MCP Tool Design
+
+1. **Use `additionalProperties: false` when**:
+   - You have a well-defined data model
+   - Typos could cause data loss
+   - You want strict validation
+   - The schema is unlikely to change
+
+2. **Use `additionalProperties: true` when**:
+   - The tool accepts no input or minimal input
+   - You want forward compatibility
+   - The tool ignores extra fields anyway
+   - You're building a flexible API
+
+3. **Consider the trade-offs**:
+   - Strict (`false`): Better error detection, less flexible
+   - Permissive (`true`): More flexible, might hide errors
+   - Hybrid approach: Balance strictness where it matters most
+
+### Implementation Note for MCP Servers
+
+When implementing MCP tools, be aware that validation might occur at multiple levels:
+- **Protocol level**: May enforce root-level schema
+- **Application level**: May filter or transform data
+- **Storage level**: May only persist known fields
+
+The native TodoWrite tool demonstrates this with its hybrid behavior - strict at the root but permissive for item properties.
+
 ## Conclusion
 
-The native todo tools provide minimal functionality suitable only for brief sessions. The MCP Todo Server addresses all limitations while maintaining compatibility, enabling Claude to manage complex, long-term projects with full persistence and advanced features.
+The native todo tools provide minimal functionality suitable only for brief sessions. The MCP Todo Server addresses all limitations while maintaining compatibility, enabling Claude to manage complex, long-term projects with full persistence and advanced features. Understanding the `additionalProperties` behavior helps ensure proper schema design for robust tool implementations.
