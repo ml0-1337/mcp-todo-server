@@ -11,9 +11,15 @@ import (
 )
 
 // GetQuarter returns the quarter in YYYY-QQ format for a given time
+// DEPRECATED: Use GetDailyPath instead
 func GetQuarter(t time.Time) string {
 	quarter := (int(t.Month()) + 2) / 3
 	return fmt.Sprintf("%d-Q%d", t.Year(), quarter)
+}
+
+// GetDailyPath returns the daily archive path YYYY/MM/DD for a given time
+func GetDailyPath(t time.Time) string {
+	return filepath.Join(t.Format("2006"), t.Format("01"), t.Format("02"))
 }
 
 // ArchiveTodo moves a todo to the archive folder and sets completed timestamp
@@ -67,15 +73,23 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 		return fmt.Errorf("failed to parse YAML frontmatter: %w", err)
 	}
 
-	// First, determine archive quarter and create directory
+	// First, determine archive path and create directory
 	completedTime := time.Now()
-	quarter := quarterOverride
-	if quarter == "" {
-		quarter = GetQuarter(completedTime)
+	
+	// Parse the todo to get the started date
+	todo, err := tm.parseTodoFile(string(content))
+	if err != nil {
+		return fmt.Errorf("failed to parse todo for archive date: %w", err)
 	}
+	
+	// Use the todo's started date for archiving
+	archivePath := GetDailyPath(todo.Started)
+	
+	// Legacy support: if quarterOverride is provided, we could map it to a date
+	// For now, we'll ignore it and always use the todo's started date
 
 	// Create archive directory structure
-	archiveDir := filepath.Join(filepath.Dir(tm.basePath), "archive", quarter)
+	archiveDir := filepath.Join(filepath.Dir(tm.basePath), "archive", archivePath)
 	err = os.MkdirAll(archiveDir, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create archive directory: %w", err)

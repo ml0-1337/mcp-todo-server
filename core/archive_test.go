@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"io/ioutil"
-	"fmt"
 	"sync"
 )
 
@@ -28,10 +27,12 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 		t.Fatalf("Failed to create todo: %v", err)
 	}
 
-	// Get current quarter for verification
+	// Get current date path for verification
 	now := time.Now()
-	expectedQuarter := fmt.Sprintf("%d-Q%d", now.Year(), (int(now.Month())+2)/3)
-	expectedArchivePath := filepath.Join(tempDir, "..", "archive", expectedQuarter, todo.ID+".md")
+	year := now.Format("2006")
+	month := now.Format("01")
+	day := now.Format("02")
+	expectedArchivePath := filepath.Join(tempDir, "..", "archive", year, month, day, todo.ID+".md")
 
 	// Archive the todo
 	err = manager.ArchiveTodo(todo.ID, "")
@@ -50,7 +51,7 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 		t.Errorf("Todo file should exist in archive at %s", expectedArchivePath)
 	}
 
-	// Test with quarter override
+	// Test with quarter override (deprecated, should use daily path)
 	t.Run("Archive with quarter override", func(t *testing.T) {
 		// Create another test todo
 		todo2, err := manager.CreateTodo("Test quarter override", "medium", "bug")
@@ -58,17 +59,18 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 			t.Fatalf("Failed to create todo: %v", err)
 		}
 
-		// Archive with specific quarter
+		// Archive with specific quarter (ignored in daily archive)
 		overrideQuarter := "2024-Q4"
 		err = manager.ArchiveTodo(todo2.ID, overrideQuarter)
 		if err != nil {
 			t.Fatalf("Failed to archive todo with override: %v", err)
 		}
 
-		// Verify file in override quarter
-		overridePath := filepath.Join(tempDir, "..", "archive", overrideQuarter, todo2.ID+".md")
-		if _, err := os.Stat(overridePath); os.IsNotExist(err) {
-			t.Errorf("Todo file should exist in override quarter at %s", overridePath)
+		// Verify file is in daily structure based on started date
+		now := time.Now()
+		dailyPath := filepath.Join(tempDir, "..", "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo2.ID+".md")
+		if _, err := os.Stat(dailyPath); os.IsNotExist(err) {
+			t.Errorf("Todo file should exist in daily archive at %s", dailyPath)
 		}
 	})
 
@@ -145,9 +147,9 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 		t.Fatalf("Failed to archive todo: %v", err)
 	}
 
-	// Read archived todo
-	quarter := GetQuarter(time.Now())
-	archivePath := filepath.Join(filepath.Dir(tempDir), "archive", quarter, todo.ID+".md")
+	// Read archived todo from daily structure
+	now := time.Now()
+	archivePath := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo.ID+".md")
 	
 	content, err := ioutil.ReadFile(archivePath)
 	if err != nil {
@@ -167,7 +169,6 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 
 	// Verify timestamp format is correct (should be parseable)
 	// and year/month/day match today
-	now := time.Now()
 	if archivedTodo.Completed.Year() != now.Year() {
 		t.Errorf("Completed year %d doesn't match current year %d", 
 			archivedTodo.Completed.Year(), now.Year())
@@ -245,8 +246,8 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Verify todo was archived exactly once
-		quarter := GetQuarter(time.Now())
-		archivePath := filepath.Join(filepath.Dir(tempDir), "archive", quarter, todo.ID+".md")
+		now := time.Now()
+		archivePath := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo.ID+".md")
 		if _, err := os.Stat(archivePath); os.IsNotExist(err) {
 			t.Error("Todo should be archived")
 		}
@@ -267,8 +268,8 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Create archive directory but make it read-only
-		quarter := GetQuarter(time.Now())
-		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", quarter)
+		now := time.Now()
+		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
 		os.MkdirAll(archiveDir, 0755)
 		
 		// Make archive directory read-only to prevent writes
@@ -379,8 +380,8 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	}
 
 	// Verify successful todos are actually archived
-	quarter := GetQuarter(time.Now())
-	archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", quarter)
+	now := time.Now()
+	archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
 
 	for id, shouldSucceed := range expectedSuccess {
 		if shouldSucceed && id != "non-existent-id" {

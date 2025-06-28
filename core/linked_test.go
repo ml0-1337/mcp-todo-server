@@ -150,8 +150,8 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		}
 
 		// Verify parent and children are archived
-		quarter := GetQuarter(time.Now())
-		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", quarter)
+		now := time.Now()
+		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
 		
 		// Check parent archived
 		parentPath := filepath.Join(archiveDir, parent.ID+".md")
