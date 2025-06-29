@@ -510,3 +510,70 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	// Return success response
 	return mcp.NewToolResultText(fmt.Sprintf("Section '%s' added successfully to todo '%s'", key, id)), nil
 }
+
+// HandleTodoReorderSections reorders sections in a todo
+func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Get arguments
+	args := request.GetArguments()
+	
+	// Extract ID parameter
+	id, ok := args["id"].(string)
+	if !ok || id == "" {
+		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
+	}
+	
+	// Extract order parameter - should be a map of section keys to new order values
+	orderParam, ok := args["order"]
+	if !ok {
+		return HandleError(fmt.Errorf("missing required parameter 'order'")), nil
+	}
+	
+	// Type assert order to map
+	orderMap, ok := orderParam.(map[string]interface{})
+	if !ok {
+		return HandleError(fmt.Errorf("'order' must be an object mapping section keys to order values")), nil
+	}
+	
+	// Read the todo
+	todo, err := h.manager.ReadTodo(id)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Check if todo has sections
+	if todo.Sections == nil || len(todo.Sections) == 0 {
+		return HandleError(fmt.Errorf("todo has no sections defined")), nil
+	}
+	
+	// Update section orders
+	for key, orderValue := range orderMap {
+		// Check if section exists
+		section, exists := todo.Sections[key]
+		if !exists {
+			return HandleError(fmt.Errorf("section '%s' not found in todo", key)), nil
+		}
+		
+		// Convert order value to int
+		var newOrder int
+		switch v := orderValue.(type) {
+		case float64:
+			newOrder = int(v)
+		case int:
+			newOrder = v
+		default:
+			return HandleError(fmt.Errorf("order value must be a number for section '%s'", key)), nil
+		}
+		
+		// Update the order
+		section.Order = newOrder
+	}
+	
+	// Save the todo with updated section orders
+	err = h.manager.SaveTodo(todo)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Return success response
+	return mcp.NewToolResultText(fmt.Sprintf("Sections reordered successfully for todo '%s'", id)), nil
+}
