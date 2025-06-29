@@ -283,3 +283,91 @@ func TestValidateSectionSchemaTypes(t *testing.T) {
 		})
 	}
 }
+
+// Test 3: Preserve section order from metadata
+func TestPreserveSectionOrder(t *testing.T) {
+	tests := []struct {
+		name          string
+		yaml          string
+		expectedOrder []string // Expected section keys in order
+	}{
+		{
+			name: "sections ordered by order field",
+			yaml: `sections:
+  test_list:
+    title: "## Test List"
+    order: 3
+    schema: "checklist"
+    required: true
+  findings:
+    title: "## Findings"
+    order: 1
+    schema: "research"
+    required: true
+  strategy:
+    title: "## Strategy"
+    order: 2
+    schema: "strategy"
+    required: true`,
+			expectedOrder: []string{"findings", "strategy", "test_list"},
+		},
+		{
+			name: "handle duplicate order values (sort by key as tiebreaker)",
+			yaml: `sections:
+  zebra:
+    title: "## Zebra"
+    order: 1
+    schema: "freeform"
+  alpha:
+    title: "## Alpha"
+    order: 1
+    schema: "freeform"
+  beta:
+    title: "## Beta"
+    order: 2
+    schema: "freeform"`,
+			expectedOrder: []string{"alpha", "zebra", "beta"},
+		},
+		{
+			name: "handle missing order (defaults to 0)",
+			yaml: `sections:
+  no_order:
+    title: "## No Order"
+    schema: "freeform"
+  first:
+    title: "## First"
+    order: 1
+    schema: "freeform"
+  negative:
+    title: "## Negative"
+    order: -1
+    schema: "freeform"`,
+			expectedOrder: []string{"negative", "no_order", "first"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Parse sections
+			sections, err := ParseSectionDefinitions([]byte(tt.yaml))
+			if err != nil {
+				t.Fatalf("ParseSectionDefinitions() error = %v", err)
+			}
+			
+			// Get ordered sections
+			ordered := GetOrderedSections(sections)
+			
+			// Check order
+			if len(ordered) != len(tt.expectedOrder) {
+				t.Errorf("GetOrderedSections() returned %d sections, want %d", len(ordered), len(tt.expectedOrder))
+				return
+			}
+			
+			for i, expectedKey := range tt.expectedOrder {
+				if ordered[i].Key != expectedKey {
+					t.Errorf("GetOrderedSections() position %d = %v, want %v", i, ordered[i].Key, expectedKey)
+				}
+			}
+		})
+	}
+}

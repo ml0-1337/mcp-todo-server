@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"gopkg.in/yaml.v3"
 )
@@ -227,4 +228,38 @@ func (v *FreeformValidator) GetMetrics(content string) map[string]interface{} {
 	return map[string]interface{}{
 		"length": len(content),
 	}
+}
+
+// OrderedSection represents a section with its key for ordering
+type OrderedSection struct {
+	Key        string
+	Definition *SectionDefinition
+}
+
+// GetOrderedSections returns sections sorted by their order field
+func GetOrderedSections(sections map[string]*SectionDefinition) []OrderedSection {
+	if sections == nil {
+		return nil
+	}
+	
+	// Convert map to slice
+	ordered := make([]OrderedSection, 0, len(sections))
+	for key, def := range sections {
+		ordered = append(ordered, OrderedSection{
+			Key:        key,
+			Definition: def,
+		})
+	}
+	
+	// Sort by order field, then by key as tiebreaker
+	sort.Slice(ordered, func(i, j int) bool {
+		// Compare by order first
+		if ordered[i].Definition.Order != ordered[j].Definition.Order {
+			return ordered[i].Definition.Order < ordered[j].Definition.Order
+		}
+		// Use key as tiebreaker
+		return ordered[i].Key < ordered[j].Key
+	})
+	
+	return ordered
 }
