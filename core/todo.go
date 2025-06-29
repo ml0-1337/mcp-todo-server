@@ -486,11 +486,25 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		sectionLines := lines[sectionStart+1 : sectionEnd]
 		sectionContent := strings.Join(sectionLines, "\n")
 
+		// Check if this is a results section that needs timestamping
+		needsTimestamp := false
+		if todo.Sections != nil {
+			if sectionDef, ok := todo.Sections[section]; ok {
+				needsTimestamp = (sectionDef.Schema == SchemaResults)
+			}
+		}
+		
 		// Apply operation
 		switch operation {
 		case "append":
+			if needsTimestamp {
+				content = formatWithTimestamp(content)
+			}
 			sectionContent = strings.TrimRight(sectionContent, "\n") + "\n" + content
 		case "prepend":
+			if needsTimestamp {
+				content = formatWithTimestamp(content)
+			}
 			sectionContent = content + "\n" + strings.TrimLeft(sectionContent, "\n")
 		case "replace":
 			sectionContent = content
