@@ -16,7 +16,7 @@ func BuildTodoHierarchy(todos []*Todo) ([]*TodoNode, []*Todo) {
 	// Create a map for quick lookup
 	todoMap := make(map[string]*Todo)
 	nodeMap := make(map[string]*TodoNode)
-	
+
 	// Initialize nodes
 	for _, todo := range todos {
 		todoMap[todo.ID] = todo
@@ -25,15 +25,15 @@ func BuildTodoHierarchy(todos []*Todo) ([]*TodoNode, []*Todo) {
 			Children: []*TodoNode{},
 		}
 	}
-	
+
 	// Build parent-child relationships
 	var roots []*TodoNode
 	var orphans []*Todo
 	visitedInPath := make(map[string]bool) // For circular reference detection
-	
+
 	for _, todo := range todos {
 		node := nodeMap[todo.ID]
-		
+
 		if todo.ParentID == "" {
 			// This is a root node
 			roots = append(roots, node)
@@ -59,13 +59,13 @@ func BuildTodoHierarchy(todos []*Todo) ([]*TodoNode, []*Todo) {
 			}
 		}
 	}
-	
+
 	// Sort roots and children for consistent display
 	sortNodes(roots)
 	for _, node := range nodeMap {
 		sortNodes(node.Children)
 	}
-	
+
 	return roots, orphans
 }
 
@@ -75,7 +75,7 @@ func hasCircularReference(childID, parentID string, todoMap map[string]*Todo, vi
 	for k := range visited {
 		delete(visited, k)
 	}
-	
+
 	current := parentID
 	for current != "" {
 		if current == childID {
@@ -85,14 +85,14 @@ func hasCircularReference(childID, parentID string, todoMap map[string]*Todo, vi
 			return false // Already visited this node, no cycle through childID
 		}
 		visited[current] = true
-		
+
 		if todo, exists := todoMap[current]; exists {
 			current = todo.ParentID
 		} else {
 			break
 		}
 	}
-	
+
 	return false
 }
 
@@ -100,35 +100,35 @@ func hasCircularReference(childID, parentID string, todoMap map[string]*Todo, vi
 func sortNodes(nodes []*TodoNode) {
 	sort.Slice(nodes, func(i, j int) bool {
 		a, b := nodes[i].Todo, nodes[j].Todo
-		
+
 		// Status priority: in_progress > blocked > completed
 		statusPriority := map[string]int{
 			"in_progress": 0,
 			"blocked":     1,
 			"completed":   2,
 		}
-		
+
 		aPriority := statusPriority[a.Status]
 		bPriority := statusPriority[b.Status]
-		
+
 		if aPriority != bPriority {
 			return aPriority < bPriority
 		}
-		
+
 		// Priority: high > medium > low
 		priorityValue := map[string]int{
 			"high":   0,
 			"medium": 1,
 			"low":    2,
 		}
-		
+
 		aValue := priorityValue[a.Priority]
 		bValue := priorityValue[b.Priority]
-		
+
 		if aValue != bValue {
 			return aValue < bValue
 		}
-		
+
 		// Finally sort by ID
 		return a.ID < b.ID
 	})
@@ -151,7 +151,7 @@ func getNodeDepth(node *TodoNode, currentDepth int) int {
 	if len(node.Children) == 0 {
 		return currentDepth
 	}
-	
+
 	maxChildDepth := currentDepth
 	for _, child := range node.Children {
 		childDepth := getNodeDepth(child, currentDepth+1)
@@ -159,7 +159,7 @@ func getNodeDepth(node *TodoNode, currentDepth int) int {
 			maxChildDepth = childDepth
 		}
 	}
-	
+
 	return maxChildDepth
 }
 
@@ -196,13 +196,13 @@ func findNodeInTree(node *TodoNode, id string) *TodoNode {
 	if node.Todo.ID == id {
 		return node
 	}
-	
+
 	for _, child := range node.Children {
 		if found := findNodeInTree(child, id); found != nil {
 			return found
 		}
 	}
-	
+
 	return nil
 }
 
@@ -219,17 +219,17 @@ func GetNodePath(roots []*TodoNode, id string) []*TodoNode {
 // getPathToNode recursively builds the path to a node
 func getPathToNode(node *TodoNode, targetID string, currentPath []*TodoNode) []*TodoNode {
 	currentPath = append(currentPath, node)
-	
+
 	if node.Todo.ID == targetID {
 		return currentPath
 	}
-	
+
 	for _, child := range node.Children {
 		if path := getPathToNode(child, targetID, currentPath); path != nil {
 			return path
 		}
 	}
-	
+
 	return nil
 }
 
@@ -258,7 +258,7 @@ func GetOrphanedPhases(todos []*Todo) []*Todo {
 	for _, todo := range todos {
 		todoIDs[todo.ID] = true
 	}
-	
+
 	var orphans []*Todo
 	for _, todo := range todos {
 		// Check if this is a phase or subtask with a parent_id that doesn't exist
@@ -268,7 +268,7 @@ func GetOrphanedPhases(todos []*Todo) []*Todo {
 			}
 		}
 	}
-	
+
 	return orphans
 }
 
@@ -285,7 +285,7 @@ type HierarchyStats struct {
 // GetHierarchyStats calculates statistics about the todo hierarchy
 func GetHierarchyStats(todos []*Todo) *HierarchyStats {
 	roots, orphans := BuildTodoHierarchy(todos)
-	
+
 	stats := &HierarchyStats{
 		TotalRoots:   len(roots),
 		TotalOrphans: len(orphans),
@@ -293,7 +293,7 @@ func GetHierarchyStats(todos []*Todo) *HierarchyStats {
 		ByType:       make(map[string]int),
 		ByStatus:     make(map[string]int),
 	}
-	
+
 	// Count todos with parents and by type/status
 	for _, todo := range todos {
 		if todo.ParentID != "" {
@@ -302,44 +302,44 @@ func GetHierarchyStats(todos []*Todo) *HierarchyStats {
 		stats.ByType[todo.Type]++
 		stats.ByStatus[todo.Status]++
 	}
-	
+
 	return stats
 }
 
 // ValidateHierarchy checks for issues in the todo hierarchy
 func ValidateHierarchy(todos []*Todo) []string {
 	var issues []string
-	
+
 	// Check for orphaned phases/subtasks
 	orphans := GetOrphanedPhases(todos)
 	for _, orphan := range orphans {
-		issues = append(issues, fmt.Sprintf("Orphaned %s '%s' references non-existent parent '%s'", 
+		issues = append(issues, fmt.Sprintf("Orphaned %s '%s' references non-existent parent '%s'",
 			orphan.Type, orphan.ID, orphan.ParentID))
 	}
-	
+
 	// Check for circular references
 	visitedInPath := make(map[string]bool)
 	todoMap := make(map[string]*Todo)
 	for _, todo := range todos {
 		todoMap[todo.ID] = todo
 	}
-	
+
 	for _, todo := range todos {
 		if todo.ParentID != "" {
 			if hasCircularReference(todo.ID, todo.ParentID, todoMap, visitedInPath) {
-				issues = append(issues, fmt.Sprintf("Circular reference detected: '%s' -> '%s'", 
+				issues = append(issues, fmt.Sprintf("Circular reference detected: '%s' -> '%s'",
 					todo.ID, todo.ParentID))
 			}
 		}
 	}
-	
+
 	// Check for phase/subtask without parent_id
 	for _, todo := range todos {
 		if (todo.Type == "phase" || todo.Type == "subtask") && todo.ParentID == "" {
-			issues = append(issues, fmt.Sprintf("%s '%s' should have a parent_id", 
+			issues = append(issues, fmt.Sprintf("%s '%s' should have a parent_id",
 				todo.Type, todo.ID))
 		}
 	}
-	
+
 	return issues
 }

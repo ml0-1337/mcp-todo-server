@@ -1,12 +1,12 @@
 package core
 
 import (
-	"testing"
-	"time"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
+	"time"
 )
 
 // Test 23: Linked todos should maintain referential integrity
@@ -152,7 +152,7 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		// Verify parent and children are archived
 		now := time.Now()
 		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
-		
+
 		// Check parent archived
 		parentPath := filepath.Join(archiveDir, parent.ID+".md")
 		if _, err := os.Stat(parentPath); os.IsNotExist(err) {

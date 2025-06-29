@@ -3,10 +3,10 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
-	"testing"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	"strings"
+	"testing"
 )
 
 func TestHandleTodoCreateMulti(t *testing.T) {
@@ -15,14 +15,14 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 	mockSearch := NewMockSearchEngine()
 	mockStats := NewMockStatsEngine()
 	mockTemplates := NewMockTemplateManager()
-	
+
 	// Create handlers
 	handlers := NewTodoHandlersWithDependencies(mockManager, mockSearch, mockStats, mockTemplates)
-	
+
 	// Track created todos
 	createdTodos := []*core.Todo{}
 	todoCounter := 0
-	
+
 	// Mock CreateTodo to return incrementing IDs
 	mockManager.CreateTodoFunc = func(task, priority, todoType string) (*core.Todo, error) {
 		todoCounter++
@@ -36,7 +36,7 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 		createdTodos = append(createdTodos, todo)
 		return todo, nil
 	}
-	
+
 	// Mock UpdateTodo for setting parent_id
 	updatedMetadata := make(map[string]map[string]string)
 	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
@@ -45,7 +45,7 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 		}
 		return nil
 	}
-	
+
 	// Create request
 	req := &MockCallToolRequest{
 		Arguments: map[string]interface{}{
@@ -73,38 +73,38 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Call handler
 	result, err := handlers.HandleTodoCreateMulti(context.Background(), req.ToCallToolRequest())
-	
+
 	// Check no error
 	if err != nil {
 		t.Fatalf("HandleTodoCreateMulti() error = %v", err)
 	}
-	
+
 	// Check result
 	if result == nil {
 		t.Fatal("Expected result, got nil")
 	}
-	
+
 	// Check result content
 	content := result.Content[0].(mcp.TextContent).Text
-	
+
 	// Verify output contains success message
 	if !strings.Contains(content, "Created multi-phase project") {
 		t.Error("Result should contain success message")
 	}
-	
+
 	// Verify tree structure is shown
 	if !strings.Contains(content, "Project Structure:") {
 		t.Error("Result should show project structure")
 	}
-	
+
 	// Check correct number of todos created
 	if len(createdTodos) != 4 { // 1 parent + 3 children
 		t.Errorf("Expected 4 todos created, got %d", len(createdTodos))
 	}
-	
+
 	// Verify parent todo
 	if createdTodos[0].Task != "API Development Project" {
 		t.Errorf("First todo should be parent, got %s", createdTodos[0].Task)
@@ -112,7 +112,7 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 	if createdTodos[0].Type != "multi-phase" {
 		t.Errorf("Parent type should be multi-phase, got %s", createdTodos[0].Type)
 	}
-	
+
 	// Verify children have parent_id set
 	parentID := createdTodos[0].ID
 	for i := 1; i < 4; i++ {
@@ -125,7 +125,7 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 			t.Errorf("Child %d parent_id was not set", i)
 		}
 	}
-	
+
 	// Verify visualization includes all todos
 	for _, todo := range createdTodos {
 		if !strings.Contains(content, todo.ID) {
@@ -135,7 +135,7 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 			t.Errorf("Result should include todo task %s", todo.Task)
 		}
 	}
-	
+
 	// Check summary
 	if !strings.Contains(content, "Successfully created 4 todos (1 parent, 3 children)") {
 		t.Error("Result should show correct count summary")
@@ -148,15 +148,15 @@ func TestHandleTodoCreateMulti_CreateParentError(t *testing.T) {
 	mockSearch := NewMockSearchEngine()
 	mockStats := NewMockStatsEngine()
 	mockTemplates := NewMockTemplateManager()
-	
+
 	// Create handlers
 	handlers := NewTodoHandlersWithDependencies(mockManager, mockSearch, mockStats, mockTemplates)
-	
+
 	// Mock CreateTodo to fail
 	mockManager.CreateTodoFunc = func(task, priority, todoType string) (*core.Todo, error) {
 		return nil, fmt.Errorf("Database error")
 	}
-	
+
 	// Create request
 	req := &MockCallToolRequest{
 		Arguments: map[string]interface{}{
@@ -170,20 +170,20 @@ func TestHandleTodoCreateMulti_CreateParentError(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Call handler
 	result, err := handlers.HandleTodoCreateMulti(context.Background(), req.ToCallToolRequest())
-	
+
 	// Should not return error (errors are handled via result)
 	if err != nil {
 		t.Fatalf("HandleTodoCreateMulti() error = %v", err)
 	}
-	
+
 	// Check error in result
 	if result == nil {
 		t.Fatal("Expected result, got nil")
 	}
-	
+
 	content := result.Content[0].(mcp.TextContent).Text
 	if !strings.Contains(content, "failed to create parent todo") {
 		t.Errorf("Result should contain parent creation error, got: %s", content)
@@ -196,10 +196,10 @@ func TestHandleTodoCreateMulti_CreateChildError(t *testing.T) {
 	mockSearch := NewMockSearchEngine()
 	mockStats := NewMockStatsEngine()
 	mockTemplates := NewMockTemplateManager()
-	
+
 	// Create handlers
 	handlers := NewTodoHandlersWithDependencies(mockManager, mockSearch, mockStats, mockTemplates)
-	
+
 	callCount := 0
 	// Mock CreateTodo to succeed for parent, fail for child
 	mockManager.CreateTodoFunc = func(task, priority, todoType string) (*core.Todo, error) {
@@ -217,7 +217,7 @@ func TestHandleTodoCreateMulti_CreateChildError(t *testing.T) {
 		// Child creation fails
 		return nil, fmt.Errorf("Failed to create child")
 	}
-	
+
 	// Create request
 	req := &MockCallToolRequest{
 		Arguments: map[string]interface{}{
@@ -231,15 +231,15 @@ func TestHandleTodoCreateMulti_CreateChildError(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Call handler
 	result, err := handlers.HandleTodoCreateMulti(context.Background(), req.ToCallToolRequest())
-	
+
 	// Should not return error
 	if err != nil {
 		t.Fatalf("HandleTodoCreateMulti() error = %v", err)
 	}
-	
+
 	// Check error in result
 	content := result.Content[0].(mcp.TextContent).Text
 	if !strings.Contains(content, "failed to create child 0") {

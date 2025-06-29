@@ -178,15 +178,15 @@ func TestExtractTodoCreateMultiParams(t *testing.T) {
 			wantErr: "child 0 cannot be of type 'multi-phase'",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &MockCallToolRequest{
 				Arguments: tt.args,
 			}
-			
+
 			params, err := ExtractTodoCreateMultiParams(req.ToCallToolRequest())
-			
+
 			if tt.wantErr != "" {
 				if err == nil {
 					t.Errorf("ExtractTodoCreateMultiParams() error = nil, wantErr %v", tt.wantErr)
@@ -197,12 +197,12 @@ func TestExtractTodoCreateMultiParams(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("ExtractTodoCreateMultiParams() unexpected error = %v", err)
 				return
 			}
-			
+
 			if tt.check != nil {
 				tt.check(t, params)
 			}

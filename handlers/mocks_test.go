@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"fmt"
-	"sync"
-	"time"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	"sync"
+	"time"
 )
 
 // MockCall represents a method call with arguments
@@ -16,21 +16,21 @@ type MockCall struct {
 
 // MockTodoManager is a mock implementation of TodoManagerInterface
 type MockTodoManager struct {
-	mu sync.Mutex
+	mu    sync.Mutex
 	calls []MockCall
-	
+
 	// Configurable responses
-	CreateTodoFunc        func(task, priority, todoType string) (*core.Todo, error)
-	ReadTodoFunc          func(id string) (*core.Todo, error)
+	CreateTodoFunc          func(task, priority, todoType string) (*core.Todo, error)
+	ReadTodoFunc            func(id string) (*core.Todo, error)
 	ReadTodoWithContentFunc func(id string) (*core.Todo, string, error)
-	UpdateTodoFunc        func(id, section, operation, content string, metadata map[string]string) error
-	SaveTodoFunc          func(todo *core.Todo) error
-	ListTodosFunc         func(status, priority string, days int) ([]*core.Todo, error)
-	ReadTodoContentFunc   func(id string) (string, error)
-	ArchiveTodoFunc       func(id, quarter string) error
-	ArchiveOldTodosFunc   func(days int) (int, error)
-	FindDuplicateTodosFunc func() ([][]string, error)
-	GetBasePathFunc       func() string
+	UpdateTodoFunc          func(id, section, operation, content string, metadata map[string]string) error
+	SaveTodoFunc            func(todo *core.Todo) error
+	ListTodosFunc           func(status, priority string, days int) ([]*core.Todo, error)
+	ReadTodoContentFunc     func(id string) (string, error)
+	ArchiveTodoFunc         func(id, quarter string) error
+	ArchiveOldTodosFunc     func(days int) (int, error)
+	FindDuplicateTodosFunc  func() ([][]string, error)
+	GetBasePathFunc         func() string
 }
 
 func NewMockTodoManager() *MockTodoManager {
@@ -152,13 +152,13 @@ func (m *MockTodoManager) GetBasePath() string {
 
 // MockSearchEngine is a mock implementation of SearchEngineInterface
 type MockSearchEngine struct {
-	mu sync.Mutex
+	mu    sync.Mutex
 	calls []MockCall
-	
-	IndexTodoFunc      func(todo *core.Todo, content string) error
-	DeleteTodoFunc     func(id string) error
-	SearchTodosFunc    func(queryStr string, filters map[string]string, limit int) ([]core.SearchResult, error)
-	CloseFunc          func() error
+
+	IndexTodoFunc       func(todo *core.Todo, content string) error
+	DeleteTodoFunc      func(id string) error
+	SearchTodosFunc     func(queryStr string, filters map[string]string, limit int) ([]core.SearchResult, error)
+	CloseFunc           func() error
 	GetIndexedCountFunc func() (uint64, error)
 }
 
@@ -222,14 +222,14 @@ func (m *MockSearchEngine) GetIndexedCount() (uint64, error) {
 
 // MockStatsEngine is a mock implementation of StatsEngineInterface
 type MockStatsEngine struct {
-	mu sync.Mutex
+	mu    sync.Mutex
 	calls []MockCall
-	
-	GenerateTodoStatsFunc              func() (*core.TodoStats, error)
-	CalculateCompletionRatesByTypeFunc func() (map[string]float64, error)
+
+	GenerateTodoStatsFunc                  func() (*core.TodoStats, error)
+	CalculateCompletionRatesByTypeFunc     func() (map[string]float64, error)
 	CalculateCompletionRatesByPriorityFunc func() (map[string]float64, error)
-	CalculateAverageCompletionTimeFunc func() (time.Duration, error)
-	CalculateTestCoverageFunc          func(todoID string) (float64, error)
+	CalculateAverageCompletionTimeFunc     func() (time.Duration, error)
+	CalculateTestCoverageFunc              func(todoID string) (float64, error)
 }
 
 func NewMockStatsEngine() *MockStatsEngine {
@@ -297,9 +297,9 @@ func (m *MockStatsEngine) CalculateTestCoverage(todoID string) (float64, error) 
 
 // MockTemplateManager is a mock implementation of TemplateManagerInterface
 type MockTemplateManager struct {
-	mu sync.Mutex
+	mu    sync.Mutex
 	calls []MockCall
-	
+
 	LoadTemplateFunc       func(name string) (*core.Template, error)
 	ListTemplatesFunc      func() ([]string, error)
 	CreateFromTemplateFunc func(templateName, task, priority, todoType string) (*core.Todo, error)

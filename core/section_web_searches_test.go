@@ -11,16 +11,16 @@ import (
 func TestWebSearchesSectionInStandardMappings(t *testing.T) {
 	// Check if "## Web Searches" is in the standard mappings
 	mapping, exists := standardSectionMappings["## Web Searches"]
-	
+
 	if !exists {
 		t.Fatal("web_searches section not found in standardSectionMappings")
 	}
-	
+
 	// Verify the key is correct
 	if mapping.Key != "web_searches" {
 		t.Errorf("Expected key 'web_searches', got '%s'", mapping.Key)
 	}
-	
+
 	// Verify it uses research schema
 	if mapping.Schema != SchemaResearch {
 		t.Errorf("Expected schema SchemaResearch, got '%s'", mapping.Schema)
@@ -31,7 +31,7 @@ func TestWebSearchesSectionInStandardMappings(t *testing.T) {
 func TestWebSearchesUsesResearchValidation(t *testing.T) {
 	// Get validator for research schema
 	validator := GetValidator(SchemaResearch)
-	
+
 	// Test that it accepts any text content
 	testContent := `[2025-06-29] Query: "test driven development best practices"
 Results: TDD involves writing tests first...
@@ -40,12 +40,12 @@ Results: TDD involves writing tests first...
 Key findings:
 - Table-driven tests are idiomatic
 - Use subtests for better organization`
-	
+
 	err := validator.Validate(testContent)
 	if err != nil {
 		t.Errorf("Research validator should accept any content, got error: %v", err)
 	}
-	
+
 	// Check metrics
 	metrics := validator.GetMetrics(testContent)
 	wordCount, ok := metrics["word_count"].(int)
@@ -78,18 +78,18 @@ Test strategy content
 ## Test List
 - [ ] Test 1
 `
-	
+
 	// Infer sections from markdown
 	sections := InferSectionsFromMarkdown(content)
-	
+
 	// Get ordered sections
 	ordered := GetOrderedSections(sections)
-	
+
 	// Verify we have the expected sections
 	if len(ordered) != 4 {
 		t.Fatalf("Expected 4 sections, got %d", len(ordered))
 	}
-	
+
 	// Check the order
 	expectedOrder := []string{"findings", "web_searches", "test_strategy", "test_list"}
 	for i, expected := range expectedOrder {
@@ -97,7 +97,7 @@ Test strategy content
 			t.Errorf("Position %d: expected '%s', got '%s'", i, expected, ordered[i].Key)
 		}
 	}
-	
+
 	// Verify specific orders
 	if sections["findings"].Order >= sections["web_searches"].Order {
 		t.Error("web_searches should come after findings")
@@ -111,38 +111,38 @@ Test strategy content
 func TestNewTodosIncludeWebSearchesSection(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	// Create a TodoManager
 	tm := NewTodoManager(tempDir)
-	
+
 	// Create a new todo
 	todo, err := tm.CreateTodo("Test task with web searches", "high", "feature")
 	if err != nil {
 		t.Fatalf("Failed to create todo: %v", err)
 	}
-	
+
 	// Read the todo file
-	filePath := filepath.Join(tempDir, todo.ID + ".md")
+	filePath := filepath.Join(tempDir, todo.ID+".md")
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("Failed to read todo file: %v", err)
 	}
-	
+
 	// Check that web searches section is included
 	if !strings.Contains(string(content), "## Web Searches") {
 		t.Error("New todo should include ## Web Searches section")
 	}
-	
+
 	// Verify order: should be after Findings and before Test Strategy
 	contentStr := string(content)
 	findingsIdx := strings.Index(contentStr, "## Findings & Research")
 	webSearchesIdx := strings.Index(contentStr, "## Web Searches")
 	testStrategyIdx := strings.Index(contentStr, "## Test Strategy")
-	
+
 	if findingsIdx == -1 || webSearchesIdx == -1 || testStrategyIdx == -1 {
 		t.Fatal("Expected sections not found")
 	}
-	
+
 	if webSearchesIdx <= findingsIdx {
 		t.Error("Web Searches should come after Findings & Research")
 	}

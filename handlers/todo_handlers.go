@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
@@ -23,20 +23,20 @@ type TodoHandlers struct {
 func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 	// Create todo manager
 	manager := core.NewTodoManager(todoPath)
-	
+
 	// Create search engine
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
 	search, err := core.NewSearchEngine(indexPath, todoPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search engine: %w", err)
 	}
-	
+
 	// Create stats engine
 	stats := core.NewStatsEngine(manager)
-	
+
 	// Create template manager
 	templates := core.NewTemplateManager(templatePath)
-	
+
 	return &TodoHandlers{
 		manager:   manager,
 		search:    search,
@@ -86,7 +86,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Check if using template
 	if params.Template != "" {
 		// Load and apply template
@@ -94,18 +94,18 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		if err != nil {
 			return HandleError(fmt.Errorf("template error: %w", err)), nil
 		}
-		
+
 		// Write todo file
 		filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
 		return FormatTodoTemplateResponse(todo, filePath), nil
 	}
-	
+
 	// Create todo
 	todo, err := h.manager.CreateTodo(params.Task, params.Priority, params.Type)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Set parent ID if provided
 	if params.ParentID != "" {
 		todo.ParentID = params.ParentID
@@ -116,7 +116,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 			fmt.Printf("Warning: failed to set parent_id: %v\n", err)
 		}
 	}
-	
+
 	// Index in search
 	content := fmt.Sprintf("# Task: %s\n\n## Findings & Research\n\n## Test Strategy\n\n", todo.Task)
 	err = h.search.IndexTodo(todo, content)
@@ -124,10 +124,10 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		// Log but don't fail the creation
 		fmt.Printf("Warning: failed to index todo: %v\n", err)
 	}
-	
+
 	// Get existing todos for similarity detection
 	existingTodos, _ := h.manager.ListTodos("", "", 0)
-	
+
 	// Return enhanced response with hints
 	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
 	return FormatTodoCreateResponseWithHints(todo, filePath, existingTodos), nil
@@ -140,13 +140,13 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Create parent todo
 	parentTodo, err := h.manager.CreateTodo(params.Parent.Task, params.Parent.Priority, params.Parent.Type)
 	if err != nil {
 		return HandleError(fmt.Errorf("failed to create parent todo: %w", err)), nil
 	}
-	
+
 	// Index parent in search
 	parentContent := fmt.Sprintf("# Task: %s\n\n## Findings & Research\n\n## Test Strategy\n\n", parentTodo.Task)
 	err = h.search.IndexTodo(parentTodo, parentContent)
@@ -154,7 +154,7 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 		// Log but don't fail
 		fmt.Printf("Warning: failed to index parent todo: %v\n", err)
 	}
-	
+
 	// Create children todos
 	createdChildren := make([]*core.Todo, 0, len(params.Children))
 	for i, childInfo := range params.Children {
@@ -166,23 +166,23 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 			// Note: In a production system, we'd want proper transaction support
 			return HandleError(fmt.Errorf("failed to create child %d: %w", i, err)), nil
 		}
-		
+
 		// Set parent ID
 		err = h.manager.UpdateTodo(childTodo.ID, "", "", "", map[string]string{"parent_id": parentTodo.ID})
 		if err != nil {
 			fmt.Printf("Warning: failed to set parent_id for child %s: %v\n", childTodo.ID, err)
 		}
-		
+
 		// Index child in search
 		childContent := fmt.Sprintf("# Task: %s\n\n## Findings & Research\n\n## Test Strategy\n\n", childTodo.Task)
 		err = h.search.IndexTodo(childTodo, childContent)
 		if err != nil {
 			fmt.Printf("Warning: failed to index child todo: %v\n", err)
 		}
-		
+
 		createdChildren = append(createdChildren, childTodo)
 	}
-	
+
 	// Return response with all created todos
 	return FormatTodoCreateMultiResponse(parentTodo, createdChildren), nil
 }
@@ -194,7 +194,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Single todo read
 	if params.ID != "" {
 		if params.Format == "full" {
@@ -213,13 +213,13 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 			return FormatTodoReadResponse([]*core.Todo{todo}, params.Format, true), nil
 		}
 	}
-	
+
 	// List todos with filters
 	todos, err := h.manager.ListTodos(params.Filter.Status, params.Filter.Priority, params.Filter.Days)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// For full format with multiple todos, read content for each
 	if params.Format == "full" {
 		contents := make(map[string]string)
@@ -231,7 +231,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 		}
 		return formatTodosFullWithContent(todos, contents), nil
 	}
-	
+
 	return FormatTodoReadResponse(todos, params.Format, false), nil
 }
 
@@ -242,8 +242,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
-	
+
 	// Prepare metadata map
 	metadata := make(map[string]string)
 	if params.Metadata.Status != "" {
@@ -255,7 +254,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	if params.Metadata.CurrentTest != "" {
 		metadata["current_test"] = params.Metadata.CurrentTest
 	}
-	
+
 	// If updating a section, validate content against schema (skip for toggle operation)
 	if params.Section != "" && params.Content != "" && params.Operation != "toggle" {
 		// Read todo to get section metadata
@@ -263,7 +262,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		if err != nil {
 			return HandleError(err), nil
 		}
-		
+
 		// Check if todo has section metadata
 		if todo.Sections != nil {
 			// Find the section definition
@@ -282,7 +281,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 					break
 				}
 			}
-			
+
 			// If section not found in metadata, check if it's a valid section name
 			if !sectionFound {
 				// The section doesn't exist in this todo
@@ -293,24 +292,24 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 			return HandleError(fmt.Errorf("section '%s' does not exist in this todo", params.Section)), nil
 		}
 	}
-	
+
 	// Update todo
 	err = h.manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, metadata)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Re-index after update and prepare enriched response
 	todo, err := h.manager.ReadTodo(params.ID)
 	if err == nil {
 		// Read full content for indexing and response
 		content, _ := h.manager.ReadTodoContent(params.ID)
 		h.search.IndexTodo(todo, content)
-		
+
 		// Return enriched response with full todo data
 		return FormatEnrichedTodoUpdateResponse(todo, content, params.Section, params.Operation), nil
 	}
-	
+
 	// Fallback to simple response if we couldn't read the todo
 	return FormatTodoUpdateResponse(params.ID, params.Section, params.Operation), nil
 }
@@ -322,7 +321,7 @@ func (h *TodoHandlers) HandleTodoSearch(ctx context.Context, request mcp.CallToo
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Prepare filters
 	filters := make(map[string]string)
 	if params.Filters.Status != "" {
@@ -334,13 +333,13 @@ func (h *TodoHandlers) HandleTodoSearch(ctx context.Context, request mcp.CallToo
 	if params.Filters.DateTo != "" {
 		filters["date_to"] = params.Filters.DateTo
 	}
-	
+
 	// Search
 	results, err := h.search.SearchTodos(params.Query, filters, params.Limit)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	return FormatTodoSearchResponse(results), nil
 }
 
@@ -351,16 +350,16 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Read todo BEFORE archiving to get its metadata
 	todo, readErr := h.manager.ReadTodo(params.ID)
-	
+
 	// Archive todo
 	err = h.manager.ArchiveTodo(params.ID, params.Quarter)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Construct archive path
 	var archivePath string
 	if readErr == nil && todo != nil {
@@ -377,14 +376,14 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		// This might happen with timestamp parsing errors
 		archivePath = filepath.Join(".claude", "archive", params.ID+".md")
 	}
-	
+
 	// Remove from search index
 	err = h.search.DeleteTodo(params.ID)
 	if err != nil {
 		// Log but don't fail
 		fmt.Printf("Warning: failed to remove from search index: %v\n", err)
 	}
-	
+
 	return FormatTodoArchiveResponse(params.ID, archivePath), nil
 }
 
@@ -398,24 +397,24 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 		if err != nil {
 			return HandleError(err), nil
 		}
-		
+
 		response := "Available templates:\n"
 		for _, t := range templates {
 			response += fmt.Sprintf("- %s\n", t)
 		}
 		return mcp.NewToolResultText(response), nil
 	}
-	
+
 	// Create from template
 	task, _ := request.RequireString("task")
 	priority := request.GetString("priority", "high")
 	todoType := request.GetString("type", "feature")
-	
+
 	todo, err := h.templates.CreateFromTemplate(template, task, priority, todoType)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Write and index
 	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
 	content := fmt.Sprintf("# Task: %s\n\n", todo.Task) // Template content would be added
@@ -423,7 +422,7 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 	if err != nil {
 		fmt.Printf("Warning: failed to index todo: %v\n", err)
 	}
-	
+
 	return FormatTodoTemplateResponse(todo, filePath), nil
 }
 
@@ -434,14 +433,14 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	childID, err := request.RequireString("child_id")
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	linkType := request.GetString("link_type", "parent-child")
-	
+
 	// Create link
 	if h.createLinker == nil {
 		return HandleError(fmt.Errorf("linker not available")), nil
@@ -454,7 +453,7 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	return FormatTodoLinkResponse(parentID, childID, linkType), nil
 }
 
@@ -462,19 +461,19 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 func (h *TodoHandlers) HandleTodoStats(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Get time period
 	period := request.GetString("period", "all")
-	
+
 	// Calculate stats
 	stats, err := h.stats.GenerateTodoStats()
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Filter by period if needed
 	if period != "all" {
 		// TODO: Implement period filtering
 		// For now, return all stats
 	}
-	
+
 	return FormatTodoStatsResponse(stats), nil
 }
 
@@ -482,7 +481,7 @@ func (h *TodoHandlers) HandleTodoStats(ctx context.Context, request mcp.CallTool
 func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Get operation type
 	operation := request.GetString("operation", "archive_old")
-	
+
 	switch operation {
 	case "archive_old":
 		// Archive todos older than specified days
@@ -492,18 +491,18 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 			return HandleError(err), nil
 		}
 		return mcp.NewToolResultText(fmt.Sprintf("Archived %d todos older than %d days", count, days)), nil
-		
+
 	case "find_duplicates":
 		// Find duplicate todos
 		duplicates, err := h.manager.FindDuplicateTodos()
 		if err != nil {
 			return HandleError(err), nil
 		}
-		
+
 		if len(duplicates) == 0 {
 			return mcp.NewToolResultText("No duplicate todos found"), nil
 		}
-		
+
 		response := fmt.Sprintf("Found %d sets of duplicates:\n", len(duplicates))
 		for _, group := range duplicates {
 			response += fmt.Sprintf("\n- %s\n", group[0])
@@ -512,7 +511,7 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 			}
 		}
 		return mcp.NewToolResultText(response), nil
-		
+
 	default:
 		return HandleError(fmt.Errorf("unknown operation: %s", operation)), nil
 	}
@@ -525,19 +524,19 @@ func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallT
 	if err != nil {
 		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
 	}
-	
+
 	// Read todo
 	todo, err := h.manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Read todo content to analyze sections
 	content, err := h.manager.ReadTodoContent(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Format sections response with content status
 	return FormatTodoSectionsResponseWithContent(todo, content), nil
 }
@@ -549,21 +548,21 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	if err != nil {
 		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
 	}
-	
+
 	key, err := request.RequireString("key")
 	if err != nil {
 		return HandleError(fmt.Errorf("missing required parameter 'key'")), nil
 	}
-	
+
 	title, err := request.RequireString("title")
 	if err != nil {
 		return HandleError(fmt.Errorf("missing required parameter 'title'")), nil
 	}
-	
+
 	schema := request.GetString("schema", "freeform")
 	required := request.GetBool("required", false)
 	order := request.GetInt("order", 100) // Default to high order (end of sections)
-	
+
 	// Validate schema
 	validSchemas := map[string]bool{
 		"freeform":   true,
@@ -573,17 +572,17 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 		"strategy":   true,
 		"results":    true,
 	}
-	
+
 	if !validSchemas[schema] {
 		return HandleError(fmt.Errorf("invalid schema: %s", schema)), nil
 	}
-	
+
 	// Read the todo
 	todo, err := h.manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Check if section already exists
 	if todo.Sections != nil {
 		if _, exists := todo.Sections[key]; exists {
@@ -593,7 +592,7 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 		// Initialize sections map if it doesn't exist
 		todo.Sections = make(map[string]*core.SectionDefinition)
 	}
-	
+
 	// Add the new section
 	todo.Sections[key] = &core.SectionDefinition{
 		Title:    title,
@@ -601,13 +600,13 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 		Schema:   core.SectionSchema(schema),
 		Required: required,
 	}
-	
+
 	// Save the todo with the new section
 	err = h.manager.SaveTodo(todo)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Return success response
 	return mcp.NewToolResultText(fmt.Sprintf("Section '%s' added successfully to todo '%s'", key, id)), nil
 }
@@ -616,36 +615,36 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Get arguments
 	args := request.GetArguments()
-	
+
 	// Extract ID parameter
 	id, ok := args["id"].(string)
 	if !ok || id == "" {
 		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
 	}
-	
+
 	// Extract order parameter - should be a map of section keys to new order values
 	orderParam, ok := args["order"]
 	if !ok {
 		return HandleError(fmt.Errorf("missing required parameter 'order'")), nil
 	}
-	
+
 	// Type assert order to map
 	orderMap, ok := orderParam.(map[string]interface{})
 	if !ok {
 		return HandleError(fmt.Errorf("'order' must be an object mapping section keys to order values")), nil
 	}
-	
+
 	// Read the todo
 	todo, err := h.manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Check if todo has sections
 	if todo.Sections == nil || len(todo.Sections) == 0 {
 		return HandleError(fmt.Errorf("todo has no sections defined")), nil
 	}
-	
+
 	// Update section orders
 	for key, orderValue := range orderMap {
 		// Check if section exists
@@ -653,7 +652,7 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 		if !exists {
 			return HandleError(fmt.Errorf("section '%s' not found in todo", key)), nil
 		}
-		
+
 		// Convert order value to int
 		var newOrder int
 		switch v := orderValue.(type) {
@@ -664,17 +663,17 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 		default:
 			return HandleError(fmt.Errorf("order value must be a number for section '%s'", key)), nil
 		}
-		
+
 		// Update the order
 		section.Order = newOrder
 	}
-	
+
 	// Save the todo with updated section orders
 	err = h.manager.SaveTodo(todo)
 	if err != nil {
 		return HandleError(err), nil
 	}
-	
+
 	// Return success response
 	return mcp.NewToolResultText(fmt.Sprintf("Sections reordered successfully for todo '%s'", id)), nil
 }

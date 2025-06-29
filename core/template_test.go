@@ -1,10 +1,10 @@
 package core
 
 import (
-	"testing"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"io/ioutil"
+	"testing"
 )
 
 // Test 20: Templates should load from .claude/templates directory
@@ -295,10 +295,10 @@ Content here`
 
 // Helper function to check if string contains substring
 func containsPlaceholder(content, placeholder string) bool {
-	return len(content) > 0 && len(placeholder) > 0 && 
-		   (placeholder == "" || content == "" || 
-		   (len(content) >= len(placeholder) && 
-		    findSubstring(content, placeholder) >= 0))
+	return len(content) > 0 && len(placeholder) > 0 &&
+		(placeholder == "" || content == "" ||
+			(len(content) >= len(placeholder) &&
+				findSubstring(content, placeholder) >= 0))
 }
 
 // Simple substring search

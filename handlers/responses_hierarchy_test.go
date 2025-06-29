@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/user/mcp-todo-server/core"
 	"strings"
 	"testing"
 	"time"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/user/mcp-todo-server/core"
 )
 
 func TestFormatTodosSummaryWithHierarchy(t *testing.T) {
@@ -73,40 +73,40 @@ func TestFormatTodosSummaryWithHierarchy(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	result := formatTodosSummary(todos)
 	output := result.Content[0].(mcp.TextContent).Text
-	
+
 	// Debug output
 	t.Logf("Full output:\n%s", output)
-	
+
 	// Check for hierarchical view section
 	if !strings.Contains(output, "HIERARCHICAL VIEW:") {
 		t.Error("Output should contain HIERARCHICAL VIEW section")
 	}
-	
+
 	// Check for tree structure
 	if !strings.Contains(output, "[→] project-main: Main Project [HIGH] [multi-phase]") {
 		t.Error("Should show project-main as root")
 	}
-	
+
 	if !strings.Contains(output, "├── [→] phase-2: Phase 2: Implementation [HIGH] [phase]") {
 		t.Error("Should show phase-2 with tree branch")
 	}
-	
+
 	if !strings.Contains(output, "│   ├── [→] subtask-2-1: Build core features [subtask]") {
 		t.Error("Should show subtask-2-1 nested under phase-2")
 	}
-	
+
 	// Check for orphans
 	if !strings.Contains(output, "ORPHANED PHASES/SUBTASKS") {
 		t.Error("Should show orphaned phases section")
 	}
-	
+
 	if !strings.Contains(output, "[✗] orphan-phase: Orphaned Phase [HIGH] [phase]") {
 		t.Error("Should show orphan-phase in orphans section")
 	}
-	
+
 	// Check for grouped view section
 	if !strings.Contains(output, "GROUPED BY STATUS:") {
 		t.Error("Should also show grouped view")
@@ -141,25 +141,25 @@ func TestFormatTodosSummaryWithoutHierarchy(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	result := formatTodosSummary(todos)
 	output := result.Content[0].(mcp.TextContent).Text
-	
+
 	// Should not show hierarchical view
 	if strings.Contains(output, "HIERARCHICAL VIEW:") {
 		t.Error("Should not show hierarchical view for flat todos")
 	}
-	
+
 	// Should show grouped view
 	if !strings.Contains(output, "GROUPED BY STATUS:") {
 		t.Error("Should show grouped view")
 	}
-	
+
 	// Check status groups
 	if !strings.Contains(output, "IN_PROGRESS (1):") {
 		t.Error("Should show in_progress group")
 	}
-	
+
 	if !strings.Contains(output, "[→] task-1: Task 1 [HIGH]") {
 		t.Error("Should show task-1 in correct format")
 	}
@@ -168,10 +168,10 @@ func TestFormatTodosSummaryWithoutHierarchy(t *testing.T) {
 func TestFormatTodosSummaryEmpty(t *testing.T) {
 	// Test with empty todo list
 	todos := []*core.Todo{}
-	
+
 	result := formatTodosSummary(todos)
 	output := result.Content[0].(mcp.TextContent).Text
-	
+
 	if output != "No todos found" {
 		t.Errorf("Expected 'No todos found', got: %s", output)
 	}
@@ -214,20 +214,20 @@ func TestFormatTodosSummaryMixedHierarchy(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	result := formatTodosSummary(todos)
 	output := result.Content[0].(mcp.TextContent).Text
-	
+
 	// Should show hierarchical view because we have parent-child relationships
 	if !strings.Contains(output, "HIERARCHICAL VIEW:") {
 		t.Error("Should show hierarchical view when any relationships exist")
 	}
-	
+
 	// Should show both hierarchical and standalone todos
 	if !strings.Contains(output, "[→] parent: Parent Task [HIGH] [multi-phase]") {
 		t.Error("Should show parent in hierarchy")
 	}
-	
+
 	if !strings.Contains(output, "[✓] standalone-1: Standalone 1 [LOW]") {
 		t.Error("Should show standalone todos as roots")
 	}

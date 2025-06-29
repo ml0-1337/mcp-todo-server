@@ -36,7 +36,7 @@ func FindProjectRoot(startPath string) (string, error) {
 		"package.json", // Node.js project
 		".mcp.json",    // MCP configuration
 	}
-	
+
 	current := startPath
 	for {
 		// Check each marker
@@ -46,7 +46,7 @@ func FindProjectRoot(startPath string) (string, error) {
 				return current, nil
 			}
 		}
-		
+
 		// Move up one directory
 		parent := filepath.Dir(current)
 		if parent == current {
@@ -64,13 +64,13 @@ func ResolveTodoPath() (string, error) {
 		log.Printf("Using custom todo path: %s", customPath)
 		return customPath, nil
 	}
-	
+
 	// 2. Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
-	
+
 	// 3. Find project root
 	projectRoot, err := FindProjectRoot(cwd)
 	if err != nil {
@@ -80,15 +80,15 @@ func ResolveTodoPath() (string, error) {
 	} else {
 		log.Printf("Found project root: %s", projectRoot)
 	}
-	
+
 	// 4. Build todo path (ALWAYS project-level)
 	todoPath := filepath.Join(projectRoot, ".claude", "todos")
-	
+
 	// 5. Ensure directory exists
 	if err := os.MkdirAll(todoPath, 0755); err != nil {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
-	
+
 	log.Printf("Using todo directory: %s", todoPath)
 	return todoPath, nil
 }
@@ -100,28 +100,28 @@ func ResolveTemplatePath() (string, error) {
 		log.Printf("Using custom template path: %s", customPath)
 		return customPath, nil
 	}
-	
+
 	// 2. Get mode and debug flag
 	mode := GetEnv("CLAUDE_TEMPLATE_MODE", "auto")
 	debug := GetEnv("CLAUDE_DEBUG", "false") == "true"
-	
+
 	// 3. Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Printf("Warning: Could not get working directory: %v", err)
 		cwd = "."
 	}
-	
+
 	// 4. Find project root for project-relative paths
 	projectRoot, _ := FindProjectRoot(cwd)
 	if projectRoot == "" {
 		projectRoot = cwd
 	}
-	
+
 	// 5. Build candidate paths based on mode
 	var candidates []string
 	homeDir, _ := os.UserHomeDir()
-	
+
 	switch mode {
 	case "auto":
 		candidates = []string{
@@ -141,11 +141,11 @@ func ResolveTemplatePath() (string, error) {
 		// Special handling needed - return both paths
 		projectPath := filepath.Join(projectRoot, ".claude", "templates")
 		userPath := filepath.Join(homeDir, ".claude", "templates")
-		
+
 		// For hybrid mode, we'd need to modify the template manager
 		// to handle multiple directories
 		log.Printf("Hybrid mode: checking project (%s) and user (%s)", projectPath, userPath)
-		
+
 		// For now, use project if exists, otherwise user
 		if IsDirectory(projectPath) {
 			return projectPath, nil
@@ -156,7 +156,7 @@ func ResolveTemplatePath() (string, error) {
 		mode = "auto"
 		return ResolveTemplatePath() // Recursive call with auto mode
 	}
-	
+
 	// 6. Find first existing directory
 	for _, path := range candidates {
 		if debug {
@@ -167,13 +167,13 @@ func ResolveTemplatePath() (string, error) {
 			return path, nil
 		}
 	}
-	
+
 	// 7. No directory found - show helpful error
 	log.Printf("Warning: No template directory found. Searched:")
 	for _, path := range candidates {
 		log.Printf("  - %s", path)
 	}
-	
+
 	// Return first candidate as default (will be created if needed)
 	return candidates[0], nil
 }

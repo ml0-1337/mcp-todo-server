@@ -1,13 +1,13 @@
 package core
 
 import (
-	"testing"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
-	"fmt"
 )
 
 // TestGenerateBaseID tests the generateBaseID function with various inputs
@@ -41,9 +41,9 @@ func TestGenerateBaseID(t *testing.T) {
 			checkFor: []string{"add", "support"},
 		},
 		{
-			name:     "Very long task",
-			task:     strings.Repeat("Very long task name ", 20),
-			wantLen:  50, // Should be truncated
+			name:    "Very long task",
+			task:    strings.Repeat("Very long task name ", 20),
+			wantLen: 50, // Should be truncated
 		},
 		{
 			name:     "Task with only special chars",
@@ -163,13 +163,13 @@ func TestIsArchived(t *testing.T) {
 		// Since isArchivedWrapper now just checks if it's NOT in main directory,
 		// we need a different approach for non-existent todos
 		nonExistentID := "non-existent-todo-12345"
-		
+
 		// Check it's not in main directory
 		mainPath := filepath.Join(manager.basePath, nonExistentID+".md")
 		if _, err := os.Stat(mainPath); err == nil {
 			t.Error("Non-existent todo should not be in main directory")
 		}
-		
+
 		// For the purpose of this test, a non-existent todo should not be considered archived
 		// We'll skip this test as the new logic doesn't distinguish between archived and non-existent
 		t.Skip("Test not applicable with simplified isArchived logic")
@@ -265,7 +265,7 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 		t.Logf("Child2 ID: %s", child2.ID)
 		t.Logf("TempDir: %s", tempDir)
 		t.Logf("Manager basePath: %s", manager.basePath)
-		
+
 		// Verify parent is archived
 		if !isArchivedWrapper(manager, parent.ID) {
 			t.Error("Parent should be archived")
@@ -293,7 +293,7 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create child: %v", err)
 		}
-		
+
 		// Mark child as completed too
 		manager.UpdateTodo(child.ID, "", "", "", map[string]string{"status": "completed"})
 
@@ -369,7 +369,7 @@ func isArchivedWrapper(tm *TodoManager, id string) bool {
 		// File exists in main directory, not archived
 		return false
 	}
-	
+
 	// If not in main directory, it should be archived
 	// We can verify by checking that it's NOT in the main directory
 	return true

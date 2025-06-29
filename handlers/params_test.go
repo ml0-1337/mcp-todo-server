@@ -62,17 +62,17 @@ func TestExtractCreateParams_FromMap(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test the extraction logic directly
 			params, err := extractCreateParamsFromMap(tt.args)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("extractCreateParamsFromMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !tt.wantErr && params != nil {
 				if params.Task != tt.expect.Task {
 					t.Errorf("Task = %v, want %v", params.Task, tt.expect.Task)
@@ -98,42 +98,42 @@ func TestExtractCreateParams_FromMap(t *testing.T) {
 // This is the core logic from ExtractTodoCreateParams, testable without MCP types
 func extractCreateParamsFromMap(args map[string]interface{}) (*TodoCreateParams, error) {
 	params := &TodoCreateParams{}
-	
+
 	// Required parameter
 	task, ok := args["task"].(string)
 	if !ok || task == "" {
 		return nil, fmt.Errorf("missing required parameter 'task'")
 	}
 	params.Task = task
-	
+
 	// Optional parameters with defaults
 	params.Priority = "high"
 	if priority, ok := args["priority"].(string); ok {
 		params.Priority = priority
 	}
-	
+
 	params.Type = "feature"
 	if todoType, ok := args["type"].(string); ok {
 		params.Type = todoType
 	}
-	
+
 	if template, ok := args["template"].(string); ok {
 		params.Template = template
 	}
-	
+
 	if parentID, ok := args["parent_id"].(string); ok {
 		params.ParentID = parentID
 	}
-	
+
 	// Validate enums
 	if !isValidPriority(params.Priority) {
 		return nil, fmt.Errorf("invalid priority '%s', must be one of: high, medium, low", params.Priority)
 	}
-	
+
 	if !isValidTodoType(params.Type) {
 		return nil, fmt.Errorf("invalid type '%s', must be one of: feature, bug, refactor, research, multi-phase", params.Type)
 	}
-	
+
 	return params, nil
 }
 
@@ -189,16 +189,16 @@ func TestExtractReadParams_FromMap(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params, err := extractReadParamsFromMap(tt.args)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("extractReadParamsFromMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !tt.wantErr && params != nil {
 				if params.ID != tt.expect.ID {
 					t.Errorf("ID = %v, want %v", params.ID, tt.expect.ID)
@@ -217,12 +217,12 @@ func TestExtractReadParams_FromMap(t *testing.T) {
 // extractReadParamsFromMap extracts read params from a map
 func extractReadParamsFromMap(args map[string]interface{}) (*TodoReadParams, error) {
 	params := &TodoReadParams{}
-	
+
 	// Optional ID for single todo
 	if id, ok := args["id"].(string); ok {
 		params.ID = id
 	}
-	
+
 	// Extract filter if provided
 	if filterObj, ok := args["filter"].(map[string]interface{}); ok {
 		if status, ok := filterObj["status"].(string); ok {
@@ -235,7 +235,7 @@ func extractReadParamsFromMap(args map[string]interface{}) (*TodoReadParams, err
 			params.Filter.Days = int(days)
 		}
 	}
-	
+
 	// Format with default
 	params.Format = "summary"
 	if format, ok := args["format"].(string); ok {
@@ -244,7 +244,7 @@ func extractReadParamsFromMap(args map[string]interface{}) (*TodoReadParams, err
 	if !isValidFormat(params.Format) {
 		return nil, fmt.Errorf("invalid format '%s', must be one of: full, summary, list", params.Format)
 	}
-	
+
 	return params, nil
 }
 
@@ -320,16 +320,16 @@ func TestExtractUpdateParams_FromMap(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params, err := extractUpdateParamsFromMap(tt.args)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("extractUpdateParamsFromMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !tt.wantErr && params != nil {
 				if params.ID != tt.expect.ID {
 					t.Errorf("ID = %v, want %v", params.ID, tt.expect.ID)
@@ -354,28 +354,28 @@ func TestExtractUpdateParams_FromMap(t *testing.T) {
 // extractUpdateParamsFromMap extracts update params from a map
 func extractUpdateParamsFromMap(args map[string]interface{}) (*TodoUpdateParams, error) {
 	params := &TodoUpdateParams{}
-	
+
 	// Required ID
 	id, ok := args["id"].(string)
 	if !ok || id == "" {
 		return nil, fmt.Errorf("missing required parameter 'id'")
 	}
 	params.ID = id
-	
+
 	// Optional section update
 	if section, ok := args["section"].(string); ok {
 		params.Section = section
 	}
-	
+
 	params.Operation = "append"
 	if operation, ok := args["operation"].(string); ok {
 		params.Operation = operation
 	}
-	
+
 	if content, ok := args["content"].(string); ok {
 		params.Content = content
 	}
-	
+
 	// Extract metadata if provided
 	if metaObj, ok := args["metadata"].(map[string]interface{}); ok {
 		if status, ok := metaObj["status"].(string); ok {
@@ -388,12 +388,12 @@ func extractUpdateParamsFromMap(args map[string]interface{}) (*TodoUpdateParams,
 			params.Metadata.CurrentTest = currentTest
 		}
 	}
-	
+
 	// Validate operation
 	if !isValidOperation(params.Operation) {
 		return nil, fmt.Errorf("invalid operation '%s'", params.Operation)
 	}
-	
+
 	return params, nil
 }
 
@@ -410,7 +410,7 @@ func TestIsValidPriority(t *testing.T) {
 		{"", false},
 		{"HIGH", false},
 	}
-	
+
 	for _, tt := range tests {
 		result := isValidPriority(tt.priority)
 		if result != tt.valid {
@@ -432,7 +432,7 @@ func TestIsValidTodoType(t *testing.T) {
 		{"enhancement", false},
 		{"", false},
 	}
-	
+
 	for _, tt := range tests {
 		result := isValidTodoType(tt.todoType)
 		if result != tt.valid {
@@ -452,7 +452,7 @@ func TestIsValidOperation(t *testing.T) {
 		{"delete", false},
 		{"", false},
 	}
-	
+
 	for _, tt := range tests {
 		result := isValidOperation(tt.operation)
 		if result != tt.valid {
@@ -472,7 +472,7 @@ func TestIsValidFormat(t *testing.T) {
 		{"json", false},
 		{"", false},
 	}
-	
+
 	for _, tt := range tests {
 		result := isValidFormat(tt.format)
 		if result != tt.valid {

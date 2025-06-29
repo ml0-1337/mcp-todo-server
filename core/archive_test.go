@@ -1,12 +1,12 @@
 package core
 
 import (
-	"testing"
-	"time"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"io/ioutil"
 	"sync"
+	"testing"
+	"time"
 )
 
 // Test 16: todo_archive should move files to correct quarterly folder
@@ -150,7 +150,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	// Read archived todo from daily structure
 	now := time.Now()
 	archivePath := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo.ID+".md")
-	
+
 	content, err := ioutil.ReadFile(archivePath)
 	if err != nil {
 		t.Fatalf("Failed to read archived todo: %v", err)
@@ -170,15 +170,15 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	// Verify timestamp format is correct (should be parseable)
 	// and year/month/day match today
 	if archivedTodo.Completed.Year() != now.Year() {
-		t.Errorf("Completed year %d doesn't match current year %d", 
+		t.Errorf("Completed year %d doesn't match current year %d",
 			archivedTodo.Completed.Year(), now.Year())
 	}
 	if archivedTodo.Completed.Month() != now.Month() {
-		t.Errorf("Completed month %v doesn't match current month %v", 
+		t.Errorf("Completed month %v doesn't match current month %v",
 			archivedTodo.Completed.Month(), now.Month())
 	}
 	if archivedTodo.Completed.Day() != now.Day() {
-		t.Errorf("Completed day %d doesn't match current day %d", 
+		t.Errorf("Completed day %d doesn't match current day %d",
 			archivedTodo.Completed.Day(), now.Day())
 	}
 
@@ -271,7 +271,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		now := time.Now()
 		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
 		os.MkdirAll(archiveDir, 0755)
-		
+
 		// Make archive directory read-only to prevent writes
 		os.Chmod(archiveDir, 0555)
 		defer os.Chmod(archiveDir, 0755) // Restore for cleanup
@@ -324,8 +324,8 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	todoIDs := []string{
 		todo1.ID,
 		todo2.ID,
-		todo3.ID,           // Missing file
-		"non-existent-id",  // Never existed
+		todo3.ID,          // Missing file
+		"non-existent-id", // Never existed
 		todo4.ID,
 	}
 

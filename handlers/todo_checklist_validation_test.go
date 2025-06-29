@@ -3,30 +3,30 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"testing"
 	"github.com/user/mcp-todo-server/core"
+	"testing"
 )
 
 func TestHandleTodoUpdateChecklistValidation(t *testing.T) {
 	// Test 16: Validate checklist syntax in checklist schema
 	// Input: Various checklist content formats
 	// Expected: Only valid checkbox syntax accepted
-	
+
 	ctx := context.Background()
-	
+
 	// Create mock dependencies
 	mockManager := NewMockTodoManager()
 	mockSearch := NewMockSearchEngine()
 	mockStats := NewMockStatsEngine()
 	mockTemplates := NewMockTemplateManager()
-	
+
 	handlers := NewTodoHandlersWithDependencies(
 		mockManager,
 		mockSearch,
 		mockStats,
 		mockTemplates,
 	)
-	
+
 	// Setup test todo with checklist section
 	testTodo := &core.Todo{
 		ID:   "test-todo",
@@ -40,7 +40,7 @@ func TestHandleTodoUpdateChecklistValidation(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Configure mock to return test todo
 	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 		if id == "test-todo" {
@@ -48,18 +48,18 @@ func TestHandleTodoUpdateChecklistValidation(t *testing.T) {
 		}
 		return nil, fmt.Errorf("todo not found")
 	}
-	
+
 	// Track update calls
 	var updateCalled bool
 	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
 		updateCalled = true
 		return nil
 	}
-	
+
 	// Test: Valid checklist syntax accepted
 	t.Run("Valid checklist syntax", func(t *testing.T) {
 		updateCalled = false
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id":        "test-todo",
@@ -71,25 +71,25 @@ func TestHandleTodoUpdateChecklistValidation(t *testing.T) {
 - [x] Task 4 done`,
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success but got error")
 		}
-		
+
 		if !updateCalled {
 			t.Error("Expected update to be called")
 		}
 	})
-	
+
 	// Test: Invalid checkbox syntax rejected
 	t.Run("Invalid checkbox syntax", func(t *testing.T) {
 		updateCalled = false
-		
+
 		testCases := []struct {
 			name    string
 			content string
@@ -124,11 +124,11 @@ Some random text that isn't a checklist
 - [] No space inside`,
 			},
 		}
-		
+
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				updateCalled = false
-				
+
 				request := MockCallToolRequest{
 					Arguments: map[string]interface{}{
 						"id":        "test-todo",
@@ -137,27 +137,27 @@ Some random text that isn't a checklist
 						"content":   tc.content,
 					},
 				}
-				
+
 				result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
 				if err != nil {
 					t.Fatalf("Expected no error, got: %v", err)
 				}
-				
+
 				if !result.IsError {
 					t.Errorf("Expected validation error for: %s", tc.name)
 				}
-				
+
 				if updateCalled {
 					t.Errorf("Update should not be called for invalid content: %s", tc.name)
 				}
 			})
 		}
 	})
-	
+
 	// Test: Empty lines allowed
 	t.Run("Empty lines allowed", func(t *testing.T) {
 		updateCalled = false
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id":        "test-todo",
@@ -170,25 +170,25 @@ Some random text that isn't a checklist
 - [ ] Task 3 with multiple empty lines above`,
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success but got error - empty lines should be allowed")
 		}
-		
+
 		if !updateCalled {
 			t.Error("Expected update to be called")
 		}
 	})
-	
+
 	// Test: Whitespace-only content allowed
 	t.Run("Whitespace only content", func(t *testing.T) {
 		updateCalled = false
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id":        "test-todo",
@@ -197,21 +197,21 @@ Some random text that isn't a checklist
 				"content":   "   \n\t\n   ",
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success - whitespace-only content should be allowed")
 		}
-		
+
 		if !updateCalled {
 			t.Error("Expected update to be called")
 		}
 	})
-	
+
 	// Test: Non-checklist section not validated with checklist rules
 	t.Run("Non-checklist section uses different validation", func(t *testing.T) {
 		// Add a research section to the todo
@@ -220,9 +220,9 @@ Some random text that isn't a checklist
 			Order:  2,
 			Schema: "research",
 		}
-		
+
 		updateCalled = false
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id":        "test-todo",
@@ -233,16 +233,16 @@ No checkbox syntax required here.
 - This dash doesn't need to be a checkbox`,
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success - research sections don't require checkbox syntax")
 		}
-		
+
 		if !updateCalled {
 			t.Error("Expected update to be called")
 		}

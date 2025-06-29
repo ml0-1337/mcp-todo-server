@@ -2,12 +2,12 @@ package core
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
-	"io/ioutil"
-	"gopkg.in/yaml.v3"
 	"strings"
+	"time"
 )
 
 // GetQuarter returns the quarter in YYYY-QQ format for a given time
@@ -26,13 +26,13 @@ func GetDailyPath(t time.Time) string {
 func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	
+
 	// Check if todo has active children
 	children, err := tm.GetChildren(id)
 	if err != nil {
 		return fmt.Errorf("failed to check for children: %w", err)
 	}
-	
+
 	// Check for incomplete children
 	incompleteChildren := 0
 	for _, child := range children {
@@ -40,7 +40,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 			incompleteChildren++
 		}
 	}
-	
+
 	if incompleteChildren > 0 {
 		return fmt.Errorf("cannot archive todo %s: has active children", id)
 	}
@@ -75,16 +75,16 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 
 	// First, determine archive path and create directory
 	completedTime := time.Now()
-	
+
 	// Parse the todo to get the started date
 	todo, err := tm.parseTodoFile(string(content))
 	if err != nil {
 		return fmt.Errorf("failed to parse todo for archive date: %w", err)
 	}
-	
+
 	// Use the todo's started date for archiving
 	archivePath := GetDailyPath(todo.Started)
-	
+
 	// Legacy support: if quarterOverride is provided, we could map it to a date
 	// For now, we'll ignore it and always use the todo's started date
 
@@ -149,7 +149,7 @@ func (tm *TodoManager) BulkArchiveTodos(ids []string) []BulkResult {
 	// Process each todo independently
 	for i, id := range ids {
 		results[i].ID = id
-		
+
 		// Attempt to archive
 		err := tm.ArchiveTodo(id, "")
 		if err != nil {
@@ -181,13 +181,13 @@ func (tm *TodoManager) ArchiveTodoWithCascade(id string, quarterOverride string,
 		// Just regular archive
 		return tm.ArchiveTodo(id, quarterOverride)
 	}
-	
+
 	// Get all children first
 	children, err := tm.GetChildren(id)
 	if err != nil {
 		return fmt.Errorf("failed to get children: %w", err)
 	}
-	
+
 	// Archive all completed children first
 	for _, child := range children {
 		if child.Status == "completed" && !isArchived(tm.basePath, child.ID) {
@@ -197,7 +197,7 @@ func (tm *TodoManager) ArchiveTodoWithCascade(id string, quarterOverride string,
 			}
 		}
 	}
-	
+
 	// Now archive the parent
 	return tm.ArchiveTodo(id, quarterOverride)
 }

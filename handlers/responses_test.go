@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/core"
 )
 
@@ -56,7 +56,7 @@ func TestFormatTodoSummaryLine(t *testing.T) {
 			expected: "[ ] todo-4: Unknown task",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := formatTodoSummaryLine(tt.todo)
@@ -77,7 +77,7 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 		Priority: "high",
 		Type:     "feature",
 	}
-	
+
 	t.Run("FormatTodoCreateResponse", func(t *testing.T) {
 		result := FormatTodoCreateResponse(todo, "/path/to/test.md")
 		if result == nil {
@@ -87,35 +87,35 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 			t.Error("Expected success result, not error")
 		}
 	})
-	
+
 	t.Run("FormatTodoReadResponse single", func(t *testing.T) {
 		result := FormatTodoReadResponse([]*core.Todo{todo}, "summary", true)
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoReadResponse list", func(t *testing.T) {
 		result := FormatTodoReadResponse([]*core.Todo{todo}, "list", false)
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoReadResponse empty", func(t *testing.T) {
 		result := FormatTodoReadResponse([]*core.Todo{}, "list", false)
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoUpdateResponse", func(t *testing.T) {
 		result := FormatTodoUpdateResponse("todo-123", "findings", "append")
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoSearchResponse with results", func(t *testing.T) {
 		results := []core.SearchResult{
 			{ID: "todo-1", Task: "Task 1", Score: 0.9},
@@ -125,21 +125,21 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoSearchResponse empty", func(t *testing.T) {
 		result := FormatTodoSearchResponse([]core.SearchResult{})
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoArchiveResponse", func(t *testing.T) {
 		result := FormatTodoArchiveResponse("todo-123", "/archive/path")
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoStatsResponse", func(t *testing.T) {
 		stats := &core.TodoStats{
 			TotalTodos:      10,
@@ -152,14 +152,14 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoTemplateResponse", func(t *testing.T) {
 		result := FormatTodoTemplateResponse(todo, "/path/to/template.md")
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
 	})
-	
+
 	t.Run("FormatTodoLinkResponse", func(t *testing.T) {
 		result := FormatTodoLinkResponse("parent-123", "child-456", "parent-child")
 		if result == nil {
@@ -177,19 +177,19 @@ func TestFormatSearchResult(t *testing.T) {
 		Score:   0.95,
 		Snippet: "Test snippet",
 	}
-	
+
 	if result.ID != "test-123" {
 		t.Errorf("Expected ID 'test-123', got %s", result.ID)
 	}
-	
+
 	if result.Task != "Test task" {
 		t.Errorf("Expected Task 'Test task', got %s", result.Task)
 	}
-	
+
 	if result.Score != 0.95 {
 		t.Errorf("Expected Score 0.95, got %f", result.Score)
 	}
-	
+
 	if result.Snippet != "Test snippet" {
 		t.Errorf("Expected Snippet 'Test snippet', got %s", result.Snippet)
 	}
@@ -202,15 +202,15 @@ func TestFormattingHelpers(t *testing.T) {
 			{ID: "todo-1", Task: "First task"},
 			{ID: "todo-2", Task: "Second task"},
 		}
-		
+
 		result := formatTodosList(todos)
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
-		
+
 		// We can't access the content directly, but we can verify it returns a result
 	})
-	
+
 	t.Run("formatTodosSummary groups by status", func(t *testing.T) {
 		todos := []*core.Todo{
 			{ID: "todo-1", Task: "Task 1", Status: "in_progress", Priority: "high"},
@@ -218,12 +218,12 @@ func TestFormattingHelpers(t *testing.T) {
 			{ID: "todo-3", Task: "Task 3", Status: "completed", Priority: "low"},
 			{ID: "todo-4", Task: "Task 4", Status: "blocked", Priority: "high"},
 		}
-		
+
 		result := formatTodosSummary(todos)
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
-		
+
 		// Result should group todos by status
 	})
 }
@@ -237,7 +237,7 @@ func TestResponseFormattingEdgeCases(t *testing.T) {
 			t.Fatal("Expected non-nil result even for nil input")
 		}
 	})
-	
+
 	t.Run("todo with special characters", func(t *testing.T) {
 		todo := &core.Todo{
 			ID:       "test-123",
@@ -245,13 +245,13 @@ func TestResponseFormattingEdgeCases(t *testing.T) {
 			Status:   "in_progress",
 			Priority: "high",
 		}
-		
+
 		line := formatTodoSummaryLine(todo)
 		if !strings.Contains(line, "Task with \"quotes\" and 'apostrophes'") {
 			t.Error("Expected special characters to be preserved")
 		}
 	})
-	
+
 	t.Run("very long task description", func(t *testing.T) {
 		longTask := strings.Repeat("Very long task description ", 10)
 		todo := &core.Todo{
@@ -260,7 +260,7 @@ func TestResponseFormattingEdgeCases(t *testing.T) {
 			Status:   "in_progress",
 			Priority: "medium",
 		}
-		
+
 		line := formatTodoSummaryLine(todo)
 		if !strings.Contains(line, longTask) {
 			t.Error("Expected full task description")

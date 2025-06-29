@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"testing"
 	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-	
+	"testing"
+
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -88,7 +88,7 @@ Temporary notes and ideas.
 	if len(result.Content) != 1 {
 		t.Fatalf("Expected 1 content item, got %d", len(result.Content))
 	}
-	
+
 	textContent := result.Content[0].(mcp.TextContent)
 	var output map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &output)
@@ -152,7 +152,7 @@ Temporary notes and ideas.
 		{"Write tests", "completed"},
 		{"Run tests", "in_progress"},
 	}
-	
+
 	for i, expected := range items {
 		if item, ok := checklist[i].(map[string]interface{}); ok {
 			if item["text"] != expected.text {
@@ -253,7 +253,7 @@ Bug investigation results.
 	if len(result.Content) != 1 {
 		t.Fatalf("Expected 1 content item, got %d", len(result.Content))
 	}
-	
+
 	textContent := result.Content[0].(mcp.TextContent)
 	var output []map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &output)

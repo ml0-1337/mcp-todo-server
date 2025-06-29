@@ -3,30 +3,30 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"testing"
 	"github.com/user/mcp-todo-server/core"
+	"testing"
 )
 
 func TestHandleTodoSectionsContentStatus(t *testing.T) {
 	// Test 15: Section discovery includes content status
 	// Input: Request with todo ID
 	// Expected: Sections response includes hasContent and contentLength fields
-	
+
 	ctx := context.Background()
-	
+
 	// Create mock dependencies
 	mockManager := NewMockTodoManager()
 	mockSearch := NewMockSearchEngine()
 	mockStats := NewMockStatsEngine()
 	mockTemplates := NewMockTemplateManager()
-	
+
 	handlers := NewTodoHandlersWithDependencies(
 		mockManager,
 		mockSearch,
 		mockStats,
 		mockTemplates,
 	)
-	
+
 	// Test: Sections with content status
 	t.Run("Sections with content status", func(t *testing.T) {
 		// Setup test todo with sections
@@ -51,7 +51,7 @@ func TestHandleTodoSectionsContentStatus(t *testing.T) {
 				},
 			},
 		}
-		
+
 		// Configure mock to return test todo
 		mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 			if id == "test-todo" {
@@ -59,7 +59,7 @@ func TestHandleTodoSectionsContentStatus(t *testing.T) {
 			}
 			return nil, fmt.Errorf("todo not found")
 		}
-		
+
 		// Configure mock to return todo content with some sections filled
 		mockManager.ReadTodoContentFunc = func(id string) (string, error) {
 			if id == "test-todo" {
@@ -106,31 +106,31 @@ We need to implement refresh token functionality.
 			}
 			return "", fmt.Errorf("todo not found")
 		}
-		
+
 		// Create request
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id": "test-todo",
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoSections(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		// Verify result is not an error
 		if result.IsError {
 			t.Fatal("Expected success but got error")
 		}
-		
+
 		// Since we can't easily parse the result content, we'll just verify it succeeded
 		// In a real implementation, we would parse the response and check:
 		// - findings section has content (hasContent: true, contentLength: ~150)
 		// - checklist section has content (hasContent: true, contentLength: ~100)
 		// - test_cases section is empty (hasContent: false, contentLength: 0)
 	})
-	
+
 	// Test: All sections empty
 	t.Run("All sections empty", func(t *testing.T) {
 		// Configure mock to return todo content with empty sections
@@ -161,25 +161,25 @@ sections:
 			}
 			return "", fmt.Errorf("todo not found")
 		}
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id": "test-todo",
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoSections(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success but got error")
 		}
-		
+
 		// All sections should show hasContent: false
 	})
-	
+
 	// Test: Legacy todo without sections metadata still shows content status
 	t.Run("Legacy todo content status", func(t *testing.T) {
 		// Setup legacy todo without sections metadata
@@ -188,14 +188,14 @@ sections:
 			Task: "Legacy Todo",
 			// No sections defined
 		}
-		
+
 		mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 			if id == "legacy-todo" {
 				return legacyTodo, nil
 			}
 			return nil, fmt.Errorf("todo not found")
 		}
-		
+
 		// Configure mock to return todo content
 		mockManager.ReadTodoContentFunc = func(id string) (string, error) {
 			if id == "legacy-todo" {
@@ -234,25 +234,25 @@ Some research findings here.
 			}
 			return "", fmt.Errorf("todo not found")
 		}
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id": "legacy-todo",
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoSections(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success but got error")
 		}
-		
+
 		// Should infer sections and show content status for each
 	})
-	
+
 	// Test: Section with only whitespace considered empty
 	t.Run("Whitespace only sections", func(t *testing.T) {
 		// Configure mock to return todo with sections
@@ -282,7 +282,7 @@ Some research findings here.
 			}
 			return nil, fmt.Errorf("todo not found")
 		}
-		
+
 		mockManager.ReadTodoContentFunc = func(id string) (string, error) {
 			if id == "whitespace-todo" {
 				return `---
@@ -308,22 +308,22 @@ todo_id: whitespace-todo
 			}
 			return "", fmt.Errorf("todo not found")
 		}
-		
+
 		request := MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"id": "whitespace-todo",
 			},
 		}
-		
+
 		result, err := handlers.HandleTodoSections(ctx, request.ToCallToolRequest())
 		if err != nil {
 			t.Fatalf("Expected no error, got: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Fatal("Expected success but got error")
 		}
-		
+
 		// All sections should show hasContent: false (whitespace only)
 	})
 }

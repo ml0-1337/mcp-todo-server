@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
@@ -26,7 +26,7 @@ func TestHandleTodoUpdateToggleOperation(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Mutable content that changes with toggles
 	var currentContent = `---
 todo_id: test-todo
@@ -71,7 +71,7 @@ sections:
 					break
 				}
 			}
-			
+
 			if checklistStart >= 0 {
 				// Extract checklist section
 				checklistLines := []string{}
@@ -81,7 +81,7 @@ sections:
 					}
 					checklistLines = append(checklistLines, lines[i])
 				}
-				
+
 				// Apply toggle (simulate what UpdateTodo would do)
 				// Simple toggle simulation for test
 				for i, line := range checklistLines {
@@ -96,7 +96,7 @@ sections:
 					}
 				}
 				toggledContent := strings.Join(checklistLines, "\n")
-				
+
 				// Update current content
 				newLines := append(lines[:checklistStart+2], strings.Split(toggledContent, "\n")...)
 				currentContent = strings.Join(newLines, "\n")
@@ -174,12 +174,12 @@ sections:
 					"content":   tt.toggleItem,
 				},
 			}
-			
+
 			result, err := handlers.HandleTodoUpdate(context.Background(), request.ToCallToolRequest())
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			
+
 			// Parse response
 			if len(result.Content) == 0 {
 				t.Fatal("No content in result")
@@ -188,19 +188,19 @@ sections:
 			if !ok {
 				t.Fatalf("Expected TextContent, got %T", result.Content[0])
 			}
-			
+
 			// Debug: print the response if parsing fails
 			var response TodoUpdateResponse
 			err = json.Unmarshal([]byte(textContent.Text), &response)
 			if err != nil {
 				t.Fatalf("Failed to parse response: %v\nResponse text: %s", err, textContent.Text)
 			}
-			
+
 			// Check that we got checklist items
 			if len(response.Todo.Checklist) != 3 {
 				t.Errorf("Expected 3 checklist items, got %d", len(response.Todo.Checklist))
 			}
-			
+
 			// Verify states
 			for _, item := range response.Todo.Checklist {
 				expectedStatus, ok := tt.expectedStates[item.Text]
@@ -215,4 +215,3 @@ sections:
 		})
 	}
 }
-

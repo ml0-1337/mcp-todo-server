@@ -34,45 +34,45 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve todo path: %w", err)
 	}
-	
+
 	templatePath, err := utils.ResolveTemplatePath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve template path: %w", err)
 	}
-	
+
 	// Create handlers with resolved paths
 	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handlers: %w", err)
 	}
-	
+
 	// Create MCP server instance
 	s := server.NewMCPServer(
 		"MCP Todo Server",
 		"1.0.0",
 		server.WithToolCapabilities(true),
 	)
-	
+
 	// Create todo server wrapper with default transport
 	ts := &TodoServer{
 		mcpServer: s,
 		handlers:  todoHandlers,
 		transport: "stdio",
 	}
-	
+
 	// Apply options
 	for _, opt := range opts {
 		opt(ts)
 	}
-	
+
 	// Register all tools
 	ts.registerTools()
-	
+
 	// Create HTTP server if needed
 	if ts.transport == "http" {
 		ts.httpServer = server.NewStreamableHTTPServer(s)
 	}
-	
+
 	return ts, nil
 }
 
@@ -83,7 +83,7 @@ func (ts *TodoServer) ListTools() []mcp.Tool {
 	tools := []mcp.Tool{
 		mcp.NewTool("todo_create", mcp.WithDescription("Create a new todo")),
 		mcp.NewTool("todo_create_multi", mcp.WithDescription("Create multiple todos with parent-child relationships")),
-		mcp.NewTool("todo_read", mcp.WithDescription("Read todo(s)")), 
+		mcp.NewTool("todo_read", mcp.WithDescription("Read todo(s)")),
 		mcp.NewTool("todo_update", mcp.WithDescription("Update a todo")),
 		mcp.NewTool("todo_search", mcp.WithDescription("Search todos")),
 		mcp.NewTool("todo_archive", mcp.WithDescription("Archive a todo")),
@@ -101,7 +101,7 @@ func (ts *TodoServer) registerTools() {
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_create",
 			mcp.WithDescription("Create a new todo with full metadata. TIP: Use parent_id for phases and subtasks. Types 'phase' and 'subtask' require parent_id."),
-			mcp.WithString("task", 
+			mcp.WithString("task",
 				mcp.Required(),
 				mcp.Description("Task description")),
 			mcp.WithString("priority",
@@ -117,7 +117,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoCreate,
 	)
-	
+
 	// Register todo_create_multi
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_create_multi",
@@ -167,7 +167,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoCreateMulti,
 	)
-	
+
 	// Register todo_read
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_read",
@@ -196,7 +196,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoRead,
 	)
-	
+
 	// Register todo_update
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_update",
@@ -230,7 +230,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoUpdate,
 	)
-	
+
 	// Register todo_search
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_search",
@@ -264,7 +264,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoSearch,
 	)
-	
+
 	// Register todo_archive
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_archive",
@@ -277,7 +277,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoArchive,
 	)
-	
+
 	// Register todo_template
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_template",
@@ -295,7 +295,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoTemplate,
 	)
-	
+
 	// Register todo_link
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_link",
@@ -312,7 +312,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoLink,
 	)
-	
+
 	// Register todo_stats
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_stats",
@@ -323,7 +323,7 @@ func (ts *TodoServer) registerTools() {
 		),
 		ts.handlers.HandleTodoStats,
 	)
-	
+
 	// Register todo_clean
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_clean",

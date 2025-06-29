@@ -50,8 +50,8 @@ func TestToggleChecklistItem(t *testing.T) {
 - [~] Tilde marker`,
 		},
 		{
-			name: "toggle uppercase X",
-			content: `- [X] Uppercase task`,
+			name:     "toggle uppercase X",
+			content:  `- [X] Uppercase task`,
 			itemText: "Uppercase task",
 			expected: `- [ ] Uppercase task`,
 		},

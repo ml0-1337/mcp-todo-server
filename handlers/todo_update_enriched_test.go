@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
@@ -29,12 +29,12 @@ func TestHandleTodoUpdateEnrichedResponse(t *testing.T) {
 				Schema: core.SchemaChecklist,
 			},
 			"scratchpad": {
-				Title:  "## Working Scratchpad", 
+				Title:  "## Working Scratchpad",
 				Schema: core.SchemaFreeform,
 			},
 		},
 	}
-	
+
 	testContent := `---
 todo_id: test-todo
 status: in_progress
@@ -97,10 +97,10 @@ Some notes here.`
 	}
 
 	tests := []struct {
-		name            string
-		request         *MockCallToolRequest
-		validateResult  func(t *testing.T, result *mcp.CallToolResult)
-		expectError     bool
+		name           string
+		request        *MockCallToolRequest
+		validateResult func(t *testing.T, result *mcp.CallToolResult)
+		expectError    bool
 	}{
 		{
 			name: "update checklist returns enriched response",
@@ -117,12 +117,12 @@ Some notes here.`
 				if len(result.Content) != 1 {
 					t.Fatalf("Expected 1 content item, got %d", len(result.Content))
 				}
-				
+
 				textContent, ok := result.Content[0].(mcp.TextContent)
 				if !ok {
 					t.Fatalf("Expected TextContent, got %T", result.Content[0])
 				}
-				
+
 				// Parse JSON response
 				var response TodoUpdateResponse
 				err := json.Unmarshal([]byte(textContent.Text), &response)
@@ -130,21 +130,21 @@ Some notes here.`
 					t.Logf("Response text: %s", textContent.Text)
 					t.Fatalf("Failed to parse response JSON: %v", err)
 				}
-				
+
 				// Validate response structure
 				if response.Message == "" {
 					t.Error("Expected message in response")
 				}
-				
+
 				if response.Todo == nil {
 					t.Fatal("Expected todo in response")
 				}
-				
+
 				// Check todo fields
 				if response.Todo.ID != "test-todo" {
 					t.Errorf("Expected todo ID 'test-todo', got %s", response.Todo.ID)
 				}
-				
+
 				// Check checklist parsing (original 3 items since mock doesn't update content)
 				if len(response.Todo.Checklist) != 3 {
 					t.Errorf("Expected 3 checklist items, got %d", len(response.Todo.Checklist))
@@ -157,7 +157,7 @@ Some notes here.`
 						}
 					}
 				}
-				
+
 				// Check progress
 				if response.Progress == nil {
 					t.Error("Expected progress in response")
@@ -203,17 +203,17 @@ Some notes here.`
 				textContent := result.Content[0].(mcp.TextContent)
 				var response TodoUpdateResponse
 				json.Unmarshal([]byte(textContent.Text), &response)
-				
+
 				if len(response.Todo.Checklist) != 5 {
 					t.Errorf("Expected 5 checklist items, got %d", len(response.Todo.Checklist))
 				}
-				
+
 				// Count states
 				stateCount := map[string]int{}
 				for _, item := range response.Todo.Checklist {
 					stateCount[item.Status]++
 				}
-				
+
 				if stateCount["completed"] != 1 {
 					t.Errorf("Expected 1 completed, got %d", stateCount["completed"])
 				}
@@ -239,12 +239,12 @@ Some notes here.`
 				textContent := result.Content[0].(mcp.TextContent)
 				var response TodoUpdateResponse
 				json.Unmarshal([]byte(textContent.Text), &response)
-				
+
 				// Should still parse and return checklist
 				if len(response.Todo.Checklist) == 0 {
 					t.Error("Expected checklist to be parsed even when updating different section")
 				}
-				
+
 				// Check sections
 				if response.Todo.Sections == nil {
 					t.Error("Expected sections in response")
@@ -269,11 +269,11 @@ Some notes here.`
 				textContent := result.Content[0].(mcp.TextContent)
 				var response TodoUpdateResponse
 				json.Unmarshal([]byte(textContent.Text), &response)
-				
+
 				if len(response.Todo.Checklist) != 0 {
 					t.Errorf("Expected 0 checklist items for empty content, got %d", len(response.Todo.Checklist))
 				}
-				
+
 				// Progress should handle empty checklist gracefully
 				if response.Progress["checklist"] != nil {
 					t.Error("Expected no checklist progress for empty checklist")
@@ -285,22 +285,22 @@ Some notes here.`
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := handlers.HandleTodoUpdate(context.Background(), tt.request.ToCallToolRequest())
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			
+
 			if result == nil {
 				t.Fatal("Expected result but got nil")
 			}
-			
+
 			tt.validateResult(t, result)
 		})
 	}
@@ -329,7 +329,7 @@ func TestFormatEnrichedTodoUpdateResponse(t *testing.T) {
 			operation: "update",
 			validateResult: func(t *testing.T, result *mcp.CallToolResult) {
 				text := result.Content[0].(mcp.TextContent).Text
-				
+
 				// Check for expected elements
 				if !strings.Contains(text, `"completed": 1`) {
 					t.Error("Expected completed count in response")
@@ -352,12 +352,12 @@ func TestFormatEnrichedTodoUpdateResponse(t *testing.T) {
 			operation: "append",
 			validateResult: func(t *testing.T, result *mcp.CallToolResult) {
 				text := result.Content[0].(mcp.TextContent).Text
-				
+
 				// Should still parse checklist from other sections
 				if !strings.Contains(text, `"status": "completed"`) {
 					t.Error("Expected checklist to be parsed")
 				}
-				
+
 				// Should show section has content
 				if !strings.Contains(text, `"hasContent": true`) {
 					t.Error("Expected findings section to show content")
@@ -369,11 +369,11 @@ func TestFormatEnrichedTodoUpdateResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := FormatEnrichedTodoUpdateResponse(todo, tt.content, tt.section, tt.operation)
-			
+
 			if result == nil {
 				t.Fatal("Expected result but got nil")
 			}
-			
+
 			tt.validateResult(t, result)
 		})
 	}

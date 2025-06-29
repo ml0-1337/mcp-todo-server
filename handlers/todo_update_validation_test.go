@@ -3,16 +3,16 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"testing"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	"testing"
 )
 
 // Test 11: Update section with schema validation enabled
 func TestUpdateSectionWithSchemaValidation(t *testing.T) {
 	// Create mock managers
 	mockManager := NewMockTodoManager()
-	
+
 	// Setup todo with sections that have schemas
 	testTodo := &core.Todo{
 		ID:       "test-todo-validation",
@@ -41,14 +41,14 @@ func TestUpdateSectionWithSchemaValidation(t *testing.T) {
 			},
 		},
 	}
-	
+
 	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 		if id == "test-todo-validation" {
 			return testTodo, nil
 		}
 		return nil, nil
 	}
-	
+
 	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
 		// The real UpdateTodo would validate against the hardcoded section map
 		// For now, just accept the section
@@ -118,7 +118,7 @@ func TestUpdateSectionWithSchemaValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call handler
 			result, err := handlers.HandleTodoUpdate(context.Background(), tt.request.ToCallToolRequest())
-			
+
 			// Check error
 			if err != nil {
 				t.Errorf("HandleTodoUpdate() unexpected error = %v", err)
@@ -131,13 +131,13 @@ func TestUpdateSectionWithSchemaValidation(t *testing.T) {
 					t.Errorf("Expected error but got success")
 					return
 				}
-				
+
 				content, ok := result.Content[0].(mcp.TextContent)
 				if !ok {
 					t.Errorf("Expected TextContent, got %T", result.Content[0])
 					return
 				}
-				
+
 				if !contains(content.Text, tt.errorMsg) {
 					t.Errorf("Expected error message containing '%s', got: %s", tt.errorMsg, content.Text)
 				}
@@ -155,7 +155,7 @@ func TestUpdateSectionWithSchemaValidation(t *testing.T) {
 func TestRejectUpdateThatViolatesSchema(t *testing.T) {
 	// Create mock managers
 	mockManager := NewMockTodoManager()
-	
+
 	// Setup todo with various section schemas
 	testTodo := &core.Todo{
 		ID:       "test-todo-strict",
@@ -184,14 +184,14 @@ func TestRejectUpdateThatViolatesSchema(t *testing.T) {
 			},
 		},
 	}
-	
+
 	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 		if id == "test-todo-strict" {
 			return testTodo, nil
 		}
 		return nil, fmt.Errorf("todo not found: %s", id)
 	}
-	
+
 	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
 		// Mock accepts the update since validation happens in handler
 		return nil
@@ -211,9 +211,9 @@ func TestRejectUpdateThatViolatesSchema(t *testing.T) {
 
 	// Test cases for different schema violations
 	tests := []struct {
-		name        string
-		request     *MockCallToolRequest
-		errorMsg    string
+		name     string
+		request  *MockCallToolRequest
+		errorMsg string
 	}{
 		{
 			name: "tests section without code blocks",
@@ -269,7 +269,7 @@ func TestRejectUpdateThatViolatesSchema(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call handler
 			result, err := handlers.HandleTodoUpdate(context.Background(), tt.request.ToCallToolRequest())
-			
+
 			// Should not return a Go error
 			if err != nil {
 				t.Errorf("HandleTodoUpdate() unexpected error = %v", err)
@@ -283,14 +283,14 @@ func TestRejectUpdateThatViolatesSchema(t *testing.T) {
 					t.Errorf("Expected validation error but got success")
 					return
 				}
-				
+
 				// Check error message
 				content, ok := result.Content[0].(mcp.TextContent)
 				if !ok {
 					t.Errorf("Expected TextContent, got %T", result.Content[0])
 					return
 				}
-				
+
 				if !contains(content.Text, tt.errorMsg) {
 					t.Errorf("Expected error message containing '%s', got: %s", tt.errorMsg, content.Text)
 				}

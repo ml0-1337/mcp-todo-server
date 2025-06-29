@@ -1,12 +1,12 @@
 package core
 
 import (
-	"testing"
-	"time"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"io/ioutil"
 	"strings"
+	"testing"
+	"time"
 )
 
 // Test daily archive structure implementation
@@ -46,7 +46,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		month := now.Format("01")
 		day := now.Format("02")
 		expectedArchivePath := filepath.Join(tempDir, "..", "archive", year, month, day, todo.ID+".md")
-		
+
 		if _, err := os.Stat(expectedArchivePath); os.IsNotExist(err) {
 			t.Errorf("Todo file should exist in archive at %s", expectedArchivePath)
 		}
@@ -58,7 +58,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		if !strings.Contains(string(content), "completed:") ||
-		   !strings.Contains(string(content), "status: completed") {
+			!strings.Contains(string(content), "status: completed") {
 			t.Error("Archived todo should have completed timestamp and status")
 		}
 	})
@@ -221,7 +221,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		year := now.Format("2006")
 		month := now.Format("01")
 		day := now.Format("02")
-		
+
 		yearDir := filepath.Join(archiveBase, year)
 		monthDir := filepath.Join(yearDir, month)
 		dayDir := filepath.Join(monthDir, day)

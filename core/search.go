@@ -2,12 +2,12 @@ package core
 
 import (
 	"fmt"
-	"path/filepath"
-	"os"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
-	
+
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/blevesearch/bleve/v2/mapping"
@@ -30,10 +30,10 @@ type TodoDocument struct {
 
 // SearchResult represents a search result
 type SearchResult struct {
-	ID       string
-	Task     string
-	Score    float64
-	Snippet  string
+	ID      string
+	Task    string
+	Score   float64
+	Snippet string
 }
 
 // SearchEngine manages the bleve search index
@@ -62,18 +62,18 @@ func NewSearchEngine(indexPath, todosPath string) (*SearchEngine, error) {
 			return nil, fmt.Errorf("failed to recreate corrupted index: %w", err)
 		}
 	}
-	
+
 	engine := &SearchEngine{
 		index:    index,
 		basePath: todosPath,
 	}
-	
+
 	// Index existing todos
 	err = engine.indexExistingTodos()
 	if err != nil {
 		return nil, fmt.Errorf("failed to index existing todos: %w", err)
 	}
-	
+
 	return engine, nil
 }
 
@@ -81,48 +81,48 @@ func NewSearchEngine(indexPath, todosPath string) (*SearchEngine, error) {
 func buildIndexMapping() mapping.IndexMapping {
 	// Create a standard document mapping
 	todoMapping := bleve.NewDocumentMapping()
-	
+
 	// Task field - boosted for relevance
 	taskFieldMapping := bleve.NewTextFieldMapping()
 	taskFieldMapping.Analyzer = standard.Name
 	taskFieldMapping.Store = true
 	taskFieldMapping.IncludeInAll = true
 	todoMapping.AddFieldMappingsAt("task", taskFieldMapping)
-	
+
 	// Content fields
 	textFieldMapping := bleve.NewTextFieldMapping()
 	textFieldMapping.Analyzer = standard.Name
 	textFieldMapping.Store = true
 	textFieldMapping.IncludeInAll = true
-	
+
 	todoMapping.AddFieldMappingsAt("content", textFieldMapping)
 	todoMapping.AddFieldMappingsAt("findings", textFieldMapping)
 	todoMapping.AddFieldMappingsAt("tests", textFieldMapping)
-	
+
 	// Metadata fields
 	keywordFieldMapping := bleve.NewKeywordFieldMapping()
 	keywordFieldMapping.Store = true
-	
+
 	todoMapping.AddFieldMappingsAt("id", keywordFieldMapping)
 	todoMapping.AddFieldMappingsAt("status", keywordFieldMapping)
 	todoMapping.AddFieldMappingsAt("priority", keywordFieldMapping)
 	todoMapping.AddFieldMappingsAt("type", keywordFieldMapping)
-	
+
 	// Date fields
 	dateFieldMapping := bleve.NewDateTimeFieldMapping()
 	dateFieldMapping.Store = true
 	dateFieldMapping.Index = true
 	// Specify that we're using RFC3339 format for dates
 	dateFieldMapping.DateFormat = "dateTimeOptional"
-	
+
 	todoMapping.AddFieldMappingsAt("started", dateFieldMapping)
 	todoMapping.AddFieldMappingsAt("completed", dateFieldMapping)
-	
+
 	// Create index mapping
 	indexMapping := bleve.NewIndexMapping()
 	indexMapping.AddDocumentMapping("todo", todoMapping)
 	indexMapping.DefaultMapping = todoMapping
-	
+
 	return indexMapping
 }
 
@@ -137,31 +137,31 @@ func (se *SearchEngine) indexExistingTodos() error {
 		}
 		return fmt.Errorf("failed to read todos directory: %w", err)
 	}
-	
+
 	// Create a batch for efficient indexing
 	batch := se.index.NewBatch()
-	
+
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".md") {
 			continue
 		}
-		
+
 		// Read and parse todo file
 		todoID := strings.TrimSuffix(file.Name(), ".md")
 		filePath := filepath.Join(se.basePath, file.Name())
-		
+
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			continue // Skip files we can't read
 		}
-		
+
 		// Parse todo to get structured data
 		manager := &TodoManager{basePath: se.basePath}
 		todo, err := manager.parseTodoFile(string(content))
 		if err != nil {
 			continue // Skip malformed files
 		}
-		
+
 		// Create search document
 		doc := TodoDocument{
 			ID:        todoID,
@@ -173,22 +173,21 @@ func (se *SearchEngine) indexExistingTodos() error {
 			Completed: todo.Completed,
 			Content:   string(content),
 		}
-		
-		
+
 		// Extract sections for better search
 		doc.Findings = extractSection(string(content), "## Findings & Research")
 		doc.Tests = extractSection(string(content), "## Test Cases")
-		
+
 		// Add to batch
 		batch.Index(todoID, doc)
 	}
-	
+
 	// Execute batch
 	err = se.index.Batch(batch)
 	if err != nil {
 		return fmt.Errorf("failed to index batch: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -197,22 +196,22 @@ func extractSection(content, heading string) string {
 	lines := strings.Split(content, "\n")
 	inSection := false
 	var sectionLines []string
-	
+
 	for _, line := range lines {
 		if line == heading {
 			inSection = true
 			continue
 		}
-		
+
 		if inSection && strings.HasPrefix(line, "## ") {
 			break
 		}
-		
+
 		if inSection {
 			sectionLines = append(sectionLines, line)
 		}
 	}
-	
+
 	return strings.Join(sectionLines, "\n")
 }
 
@@ -234,7 +233,7 @@ func (se *SearchEngine) GetIndexedCount() (uint64, error) {
 func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, limit int) ([]SearchResult, error) {
 	// Build composite query
 	var searchQuery query.Query
-	
+
 	// Handle text query
 	if queryStr != "" {
 		// Check if it's a phrase query (quoted)
@@ -244,33 +243,33 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 		} else {
 			// Sanitize query to handle special characters safely
 			sanitized := sanitizeSearchQuery(queryStr)
-			
+
 			// If sanitization removed all content, return empty results
 			if sanitized == "" {
 				return []SearchResult{}, nil
 			}
-			
+
 			// Debug: log sanitized query
 			// fmt.Printf("DEBUG SearchTodos - Original: %q, Sanitized: %q\n", queryStr, sanitized)
-			
+
 			// For non-phrase queries, use field-specific queries with boosting
 			// Create separate queries for each field with different boost values
 			taskQuery := bleve.NewMatchQuery(sanitized)
 			taskQuery.SetField("task")
 			taskQuery.SetBoost(3.0) // Highest priority for task/title matches
-			
+
 			findingsQuery := bleve.NewMatchQuery(sanitized)
 			findingsQuery.SetField("findings")
 			findingsQuery.SetBoost(1.5) // Medium priority for findings
-			
+
 			testsQuery := bleve.NewMatchQuery(sanitized)
 			testsQuery.SetField("tests")
 			testsQuery.SetBoost(1.0) // Lower priority for test cases
-			
+
 			contentQuery := bleve.NewMatchQuery(sanitized)
 			contentQuery.SetField("content")
 			contentQuery.SetBoost(0.5) // Lowest priority for full content
-			
+
 			// Use DisjunctionQuery for "best match" behavior
 			searchQuery = bleve.NewDisjunctionQuery(taskQuery, findingsQuery, testsQuery, contentQuery)
 		}
@@ -278,73 +277,73 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 		// If no query string, match all documents
 		searchQuery = bleve.NewMatchAllQuery()
 	}
-	
+
 	// Apply filters if provided
 	if len(filters) > 0 {
 		var queries []query.Query
 		queries = append(queries, searchQuery)
-		
+
 		// Status filter
 		if status, ok := filters["status"]; ok && status != "" {
 			statusQuery := bleve.NewTermQuery(status)
 			statusQuery.SetField("status")
 			queries = append(queries, statusQuery)
 		}
-		
+
 		// Date range filter - commented out for now, will do post-filtering
 		// TODO: Fix bleve date range query
 		/*
-		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
-			// Parse the dates in UTC
-			fromTime, err := time.ParseInLocation("2006-01-02", dateFrom, time.UTC)
-			if err != nil {
-				return nil, fmt.Errorf("invalid date_from format: %w", err)
-			}
-			
-			var toTime *time.Time
-			if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
-				t, err := time.ParseInLocation("2006-01-02", dateTo, time.UTC)
+			if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
+				// Parse the dates in UTC
+				fromTime, err := time.ParseInLocation("2006-01-02", dateFrom, time.UTC)
 				if err != nil {
-					return nil, fmt.Errorf("invalid date_to format: %w", err)
+					return nil, fmt.Errorf("invalid date_from format: %w", err)
 				}
-				// Set to end of day
-				t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
-				toTime = &t
+
+				var toTime *time.Time
+				if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
+					t, err := time.ParseInLocation("2006-01-02", dateTo, time.UTC)
+					if err != nil {
+						return nil, fmt.Errorf("invalid date_to format: %w", err)
+					}
+					// Set to end of day
+					t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+					toTime = &t
+				}
+
+				// Create date range query for started field
+				var dateRangeQuery *query.DateRangeQuery
+				if toTime != nil {
+					dateRangeQuery = bleve.NewDateRangeQuery(fromTime, *toTime)
+				} else {
+					// No end date means from date to now
+					now := time.Now().UTC()
+					dateRangeQuery = bleve.NewDateRangeQuery(fromTime, now)
+					}
+				dateRangeQuery.SetField("started")
+				queries = append(queries, dateRangeQuery)
 			}
-			
-			// Create date range query for started field
-			var dateRangeQuery *query.DateRangeQuery
-			if toTime != nil {
-				dateRangeQuery = bleve.NewDateRangeQuery(fromTime, *toTime)
-			} else {
-				// No end date means from date to now
-				now := time.Now().UTC()
-				dateRangeQuery = bleve.NewDateRangeQuery(fromTime, now)
-				}
-			dateRangeQuery.SetField("started")
-			queries = append(queries, dateRangeQuery)
-		}
 		*/
-		
+
 		// Combine all queries with AND
 		searchQuery = bleve.NewConjunctionQuery(queries...)
 	}
-	
+
 	// Create search request
 	searchRequest := bleve.NewSearchRequest(searchQuery)
 	searchRequest.Size = limit
 	searchRequest.Fields = []string{"task", "id", "started", "status"}
 	searchRequest.Highlight = bleve.NewHighlight() // Enable snippets
-	
+
 	// Execute search
 	searchResults, err := se.index.Search(searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
-	
+
 	// Convert results and apply date filtering
 	var results []SearchResult
-	
+
 	// Parse date filters for post-filtering
 	var dateFrom, dateTo *time.Time
 	if df, ok := filters["date_from"]; ok && df != "" {
@@ -361,7 +360,7 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 			dateTo = &t
 		}
 	}
-	
+
 	for _, hit := range searchResults.Hits {
 		// If we have date filters, check the started date
 		if dateFrom != nil || dateTo != nil {
@@ -371,14 +370,14 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 			if err != nil {
 				continue
 			}
-			
+
 			// Parse the todo
 			manager := &TodoManager{basePath: se.basePath}
 			todo, err := manager.parseTodoFile(string(content))
 			if err != nil {
 				continue
 			}
-			
+
 			// Check date range
 			if dateFrom != nil && todo.Started.Before(*dateFrom) {
 				continue
@@ -387,17 +386,17 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 				continue
 			}
 		}
-		
+
 		result := SearchResult{
 			ID:    hit.ID,
 			Score: hit.Score,
 		}
-		
+
 		// Get task from stored fields
 		if task, ok := hit.Fields["task"].(string); ok {
 			result.Task = task
 		}
-		
+
 		// Get snippet from highlights
 		if len(hit.Fragments) > 0 {
 			for _, fragments := range hit.Fragments {
@@ -407,10 +406,10 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 				}
 			}
 		}
-		
+
 		results = append(results, result)
 	}
-	
+
 	return results, nil
 }
 
@@ -426,7 +425,7 @@ func (se *SearchEngine) IndexTodo(todo *Todo, content string) error {
 		Completed: todo.Completed,
 		Content:   content,
 	}
-	
+
 	return se.index.Index(todo.ID, doc)
 }
 
@@ -443,13 +442,13 @@ func sanitizeSearchQuery(query string) string {
 		// Don't execute as regex - treat as literal by removing slashes
 		query = query[1 : len(query)-1]
 	}
-	
+
 	// Remove null bytes and other control characters
-	query = strings.ReplaceAll(query, "\x00", " ")  // Replace null with space instead of removing
+	query = strings.ReplaceAll(query, "\x00", " ") // Replace null with space instead of removing
 	query = strings.ReplaceAll(query, "\n", " ")
 	query = strings.ReplaceAll(query, "\r", " ")
 	query = strings.ReplaceAll(query, "\t", " ")
-	
+
 	// Replace special characters that break queries with spaces
 	// Keep alphanumeric, spaces, and some safe punctuation
 	var result []rune
@@ -471,17 +470,17 @@ func sanitizeSearchQuery(query string) string {
 			result = append(result, ' ')
 		}
 	}
-	
+
 	// Convert back to string and clean up extra spaces
 	cleaned := string(result)
-	
+
 	// Replace multiple consecutive spaces with single space
 	for strings.Contains(cleaned, "  ") {
 		cleaned = strings.ReplaceAll(cleaned, "  ", " ")
 	}
-	
+
 	// Trim leading and trailing spaces
 	cleaned = strings.TrimSpace(cleaned)
-	
+
 	return cleaned
 }

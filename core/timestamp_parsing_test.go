@@ -1,11 +1,11 @@
 package core
 
 import (
-	"testing"
-	"time"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"testing"
+	"time"
 )
 
 // Test 1: Parse todo with standard timestamp format - Should parse successfully
@@ -43,7 +43,7 @@ This todo uses the standard timestamp format.
 	// Create manager and read todo
 	manager := NewTodoManager(tempDir)
 	todo, err := manager.ReadTodo("test-standard-timestamp")
-	
+
 	// This test should pass with current implementation
 	if err != nil {
 		t.Fatalf("Failed to parse todo with standard timestamp format: %v", err)
@@ -97,7 +97,7 @@ This todo uses RFC3339 timestamp format like the problematic test-archive-demo.m
 	// Create manager and read todo
 	manager := NewTodoManager(tempDir)
 	todo, err := manager.ReadTodo("test-rfc3339-timestamp")
-	
+
 	// This test should now PASS with the fix
 	if err != nil {
 		t.Fatalf("Failed to parse todo with RFC3339 timestamp format: %v", err)
@@ -151,7 +151,7 @@ This todo uses RFC3339Nano timestamp format with nanosecond precision.
 	// Create manager and read todo
 	manager := NewTodoManager(tempDir)
 	todo, err := manager.ReadTodo("test-rfc3339nano-timestamp")
-	
+
 	// This test should now PASS with the fix
 	if err != nil {
 		t.Fatalf("Failed to parse todo with RFC3339Nano timestamp format: %v", err)
@@ -205,7 +205,7 @@ This todo uses an invalid timestamp format.
 	// Create manager and read todo
 	manager := NewTodoManager(tempDir)
 	_, err = manager.ReadTodo("test-invalid-timestamp")
-	
+
 	// This test should always FAIL, even after implementation
 	if err == nil {
 		t.Fatal("Expected parsing to fail with invalid timestamp format, but it succeeded")

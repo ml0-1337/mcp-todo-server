@@ -135,12 +135,12 @@ Regular bullet point
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ParseChecklist(tt.content)
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("ParseChecklist() returned %d items, want %d", len(result), len(tt.expected))
 				return
 			}
-			
+
 			for i, item := range result {
 				if item.Text != tt.expected[i].Text {
 					t.Errorf("Item %d: got text %q, want %q", i, item.Text, tt.expected[i].Text)
@@ -195,14 +195,14 @@ func TestToggleChecklistItemEdgeCases(t *testing.T) {
 - [ ] Complete task with details`,
 		},
 		{
-			name: "whitespace in item text",
-			content: `- [ ] Item with  extra   spaces`,
+			name:     "whitespace in item text",
+			content:  `- [ ] Item with  extra   spaces`,
 			itemText: "Item with  extra   spaces",
 			expected: `- [>] Item with  extra   spaces`,
 		},
 		{
-			name: "special regex characters",
-			content: `- [ ] Item with $pecial (chars) [test]`,
+			name:     "special regex characters",
+			content:  `- [ ] Item with $pecial (chars) [test]`,
 			itemText: "Item with $pecial (chars) [test]",
 			expected: `- [>] Item with $pecial (chars) [test]`,
 		},

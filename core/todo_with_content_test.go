@@ -1,11 +1,11 @@
 package core
 
 import (
-	"testing"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 )
 
 // Test 1: ReadTodoWithContent returns todo metadata and full content

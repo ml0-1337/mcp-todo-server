@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"testing"
-	"time"
 	"encoding/json"
 	"strings"
-	
+	"testing"
+	"time"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
@@ -23,7 +23,7 @@ func TestFormatTodosFullWithContent(t *testing.T) {
 		ParentID: "parent-123",
 		Tags:     []string{"test", "format"},
 	}
-	
+
 	// Test content with all sections
 	content := `---
 todo_id: test-full-format
@@ -57,26 +57,26 @@ Working notes and temporary content.
 
 	// Call formatTodosFullWithContent (to be implemented)
 	result := formatTodosFullWithContent([]*core.Todo{todo}, map[string]string{todo.ID: content})
-	
+
 	// Parse result
 	if len(result.Content) != 1 {
 		t.Fatalf("Expected 1 content item, got %d", len(result.Content))
 	}
-	
+
 	textContent := result.Content[0].(mcp.TextContent)
 	var output []map[string]interface{}
 	err := json.Unmarshal([]byte(textContent.Text), &output)
 	if err != nil {
 		t.Fatalf("Failed to parse JSON output: %v", err)
 	}
-	
+
 	// Verify we have one todo
 	if len(output) != 1 {
 		t.Fatalf("Expected 1 todo, got %d", len(output))
 	}
-	
+
 	todoData := output[0]
-	
+
 	// Verify metadata fields
 	if todoData["id"] != "test-full-format" {
 		t.Errorf("Expected id 'test-full-format', got %v", todoData["id"])
@@ -90,13 +90,13 @@ Working notes and temporary content.
 	if todoData["parent_id"] != "parent-123" {
 		t.Errorf("Expected parent_id 'parent-123', got %v", todoData["parent_id"])
 	}
-	
+
 	// Verify sections exist
 	sections, ok := todoData["sections"].(map[string]interface{})
 	if !ok {
 		t.Fatal("Expected 'sections' field in output")
 	}
-	
+
 	// Verify findings section
 	findings, ok := sections["findings"].(string)
 	if !ok {
@@ -105,7 +105,7 @@ Working notes and temporary content.
 	if !strings.Contains(findings, "important research") {
 		t.Errorf("Findings section missing expected content")
 	}
-	
+
 	// Verify test_strategy section
 	testStrategy, ok := sections["test_strategy"].(string)
 	if !ok {
@@ -114,7 +114,7 @@ Working notes and temporary content.
 	if !strings.Contains(testStrategy, "Integration tests") {
 		t.Errorf("Test strategy section missing expected content")
 	}
-	
+
 	// Verify checklist is parsed
 	checklist, ok := sections["checklist"].([]interface{})
 	if !ok {
@@ -123,7 +123,7 @@ Working notes and temporary content.
 	if len(checklist) != 3 {
 		t.Errorf("Expected 3 checklist items, got %d", len(checklist))
 	}
-	
+
 	// Verify first checklist item
 	if item, ok := checklist[0].(map[string]interface{}); ok {
 		if item["text"] != "Item 1" {
@@ -133,7 +133,7 @@ Working notes and temporary content.
 			t.Errorf("Expected status 'pending', got %v", item["status"])
 		}
 	}
-	
+
 	// Verify scratchpad section
 	scratchpad, ok := sections["scratchpad"].(string)
 	if !ok {
@@ -154,7 +154,7 @@ func TestFormatSingleTodoFullWithContent(t *testing.T) {
 		Type:     "bug",
 		Started:  time.Date(2025, 6, 29, 10, 0, 0, 0, time.UTC),
 	}
-	
+
 	content := `---
 todo_id: single-todo
 started: "2025-06-29 10:00:00"
@@ -174,24 +174,24 @@ Single todo findings.
 
 	// Call formatSingleTodoWithContent (to be implemented)
 	result := formatSingleTodoWithContent(todo, content, "full")
-	
+
 	// Parse result
 	if len(result.Content) != 1 {
 		t.Fatalf("Expected 1 content item, got %d", len(result.Content))
 	}
-	
+
 	textContent := result.Content[0].(mcp.TextContent)
 	var output map[string]interface{}
 	err := json.Unmarshal([]byte(textContent.Text), &output)
 	if err != nil {
 		t.Fatalf("Failed to parse JSON output: %v", err)
 	}
-	
+
 	// Verify it's a single todo object, not an array
 	if output["id"] != "single-todo" {
 		t.Errorf("Expected id 'single-todo', got %v", output["id"])
 	}
-	
+
 	// Verify sections exist
 	if _, ok := output["sections"]; !ok {
 		t.Error("Expected 'sections' field in single todo output")

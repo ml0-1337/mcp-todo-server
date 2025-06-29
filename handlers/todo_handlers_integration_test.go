@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 	"time"
-	
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
@@ -622,8 +622,8 @@ func TestHandleTodoSearch(t *testing.T) {
 				se.SearchTodosFunc = func(queryStr string, filters map[string]string, limit int) ([]core.SearchResult, error) {
 					return []core.SearchResult{
 						{
-							ID:        "todo-1",
-							Score:     0.95,
+							ID:      "todo-1",
+							Score:   0.95,
 							Snippet: "Test <mark>search</mark> result",
 						},
 					}, nil

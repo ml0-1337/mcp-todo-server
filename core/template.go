@@ -3,13 +3,13 @@ package core
 import (
 	"bytes"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
-	"gopkg.in/yaml.v3"
 )
 
 // Template represents a todo template with metadata and content
@@ -36,40 +36,40 @@ func NewTemplateManager(templatesDir string) *TemplateManager {
 func (tm *TemplateManager) LoadTemplate(name string) (*Template, error) {
 	// Construct template file path
 	templatePath := filepath.Join(tm.templatesDir, name+".md")
-	
+
 	// Check if template exists
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("template not found: %s", name)
 	}
-	
+
 	// Read template file
 	content, err := ioutil.ReadFile(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template: %w", err)
 	}
-	
+
 	// Parse template file
 	contentStr := string(content)
 	parts := strings.Split(contentStr, "---\n")
 	if len(parts) < 3 {
 		return nil, fmt.Errorf("invalid template format: missing frontmatter delimiters")
 	}
-	
+
 	// Parse YAML frontmatter
 	var template Template
 	err = yaml.Unmarshal([]byte(parts[1]), &template)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template frontmatter: %w", err)
 	}
-	
+
 	// Set the content (everything after frontmatter)
 	template.Content = parts[2]
-	
+
 	// Validate template name matches filename
 	if template.Name != name {
 		return nil, fmt.Errorf("template name mismatch: file '%s' contains template '%s'", name, template.Name)
 	}
-	
+
 	return &template, nil
 }
 
@@ -80,7 +80,7 @@ func (tm *TemplateManager) ListTemplates() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read templates directory: %w", err)
 	}
-	
+
 	// Collect template names
 	var templates []string
 	for _, file := range files {
@@ -90,7 +90,7 @@ func (tm *TemplateManager) ListTemplates() ([]string, error) {
 			templates = append(templates, templateName)
 		}
 	}
-	
+
 	return templates, nil
 }
 
@@ -102,20 +102,20 @@ func (tm *TemplateManager) CreateFromTemplate(templateName, task, priority, todo
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Prepare variables
 	vars := map[string]interface{}{
 		"task":     task,
 		"priority": priority,
 		"type":     todoType,
 	}
-	
+
 	// Execute template
 	_, err = tm.ExecuteTemplate(tmpl, vars)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create todo with template content
 	todo := &Todo{
 		ID:       generateBaseID(task),
@@ -125,7 +125,7 @@ func (tm *TemplateManager) CreateFromTemplate(templateName, task, priority, todo
 		Priority: priority,
 		Type:     todoType,
 	}
-	
+
 	// Note: In a real implementation, we'd write the todo with the template content
 	// For now, just return the todo object
 	return todo, nil
@@ -137,13 +137,13 @@ func (tm *TemplateManager) ExecuteTemplate(tmpl *Template, vars map[string]inter
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
-	
+
 	// Execute the template with variables
 	var buf bytes.Buffer
 	err = t.Execute(&buf, vars)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
-	
+
 	return buf.String(), nil
 }

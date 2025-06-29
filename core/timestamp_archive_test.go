@@ -1,11 +1,11 @@
 package core
 
 import (
-	"testing"
-	"time"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"testing"
+	"time"
 )
 
 // Test 5: Archive todo with standard timestamp - Should archive to correct daily path

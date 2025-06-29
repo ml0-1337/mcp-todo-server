@@ -3,9 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/mark3labs/mcp-go/mcp"
 	"os"
 	"strings"
-	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // Common error types
@@ -22,29 +22,29 @@ func HandleError(err error) *mcp.CallToolResult {
 	if err == nil {
 		return nil
 	}
-	
+
 	// Handle common error patterns
 	errStr := err.Error()
 	switch {
 	case os.IsNotExist(err):
 		return mcp.NewToolResultError("Todo not found")
-		
+
 	case strings.Contains(errStr, "not found"):
 		return mcp.NewToolResultError("Todo not found")
-		
+
 	case strings.Contains(errStr, "validation error:"):
 		// Preserve validation errors with their specific messages
 		return mcp.NewToolResultError(errStr)
-		
+
 	case strings.Contains(errStr, "invalid"):
 		return mcp.NewToolResultError("Invalid parameter or ID format")
-		
+
 	case strings.Contains(errStr, "search"):
 		return mcp.NewToolResultError("Search operation failed")
-		
+
 	case strings.Contains(errStr, "archive"):
 		return mcp.NewToolResultError("Archive operation failed")
-		
+
 	default:
 		// Generic error with details
 		return mcp.NewToolResultError(fmt.Sprintf("Operation failed: %v", err))

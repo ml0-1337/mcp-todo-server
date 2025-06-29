@@ -1,10 +1,10 @@
 package core
 
 import (
-	"testing"
-	"time"
 	"io/ioutil"
 	"os"
+	"testing"
+	"time"
 )
 
 // Test 22: todo_stats should calculate metrics accurately
@@ -70,7 +70,7 @@ func TestTodoStatsCalculation(t *testing.T) {
 		// Should be around 24 hours (based on test data)
 		expectedHours := 24.0
 		tolerance := 1.0 // Allow 1 hour tolerance
-		
+
 		if avgTime.Hours() < expectedHours-tolerance || avgTime.Hours() > expectedHours+tolerance {
 			t.Errorf("Expected average completion time around %v hours, got %v", expectedHours, avgTime.Hours())
 		}
@@ -204,17 +204,16 @@ func createTestTodos(t *testing.T, manager *TodoManager) {
 func markAsCompleted(t *testing.T, manager *TodoManager, id string, completedTime time.Time) {
 	// Calculate started time (24 hours before completed)
 	startedTime := completedTime.Add(-24 * time.Hour)
-	
+
 	// Update using the UpdateTodo method with metadata
 	metadata := map[string]string{
-		"status": "completed",
+		"status":    "completed",
 		"completed": completedTime.Format("2006-01-02 15:04:05"),
-		"started": startedTime.Format("2006-01-02 15:04:05"),
+		"started":   startedTime.Format("2006-01-02 15:04:05"),
 	}
-	
+
 	err := manager.UpdateTodo(id, "", "", "", metadata)
 	if err != nil {
 		t.Fatalf("Failed to update todo: %v", err)
 	}
 }
-

@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	
+
 	"github.com/user/mcp-todo-server/server"
 )
 
@@ -19,17 +19,17 @@ func main() {
 		host      = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
 	)
 	flag.Parse()
-	
+
 	// Create server with transport type
 	todoServer, err := server.NewTodoServer(server.WithTransport(*transport))
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
 	}
-	
+
 	// Set up graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	// Start server in goroutine
 	errChan := make(chan error, 1)
 	go func() {
@@ -49,7 +49,7 @@ func main() {
 			errChan <- fmt.Errorf("unsupported transport: %s", *transport)
 		}
 	}()
-	
+
 	// Wait for shutdown signal or error
 	select {
 	case err := <-errChan:

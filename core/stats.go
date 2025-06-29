@@ -12,13 +12,13 @@ import (
 
 // TodoStats represents aggregated statistics about todos
 type TodoStats struct {
-	TotalTodos       int
-	CompletedTodos   int
-	InProgressTodos  int
-	BlockedTodos     int
-	TodosByType      map[string]int
-	TodosByPriority  map[string]int
-	CompletionRates  map[string]float64
+	TotalTodos            int
+	CompletedTodos        int
+	InProgressTodos       int
+	BlockedTodos          int
+	TodosByType           map[string]int
+	TodosByPriority       map[string]int
+	CompletionRates       map[string]float64
 	AverageCompletionTime time.Duration
 }
 
@@ -50,7 +50,7 @@ func (se *StatsEngine) CalculateCompletionRatesByType() (map[string]float64, err
 		if todoType == "" {
 			todoType = "unknown"
 		}
-		
+
 		totalByType[todoType]++
 		if todo.Status == "completed" {
 			completedByType[todoType]++
@@ -87,7 +87,7 @@ func (se *StatsEngine) CalculateCompletionRatesByPriority() (map[string]float64,
 		if priority == "" {
 			priority = "medium"
 		}
-		
+
 		totalByPriority[priority]++
 		if todo.Status == "completed" {
 			completedByPriority[priority]++
@@ -152,7 +152,7 @@ func (se *StatsEngine) CalculateTestCoverage(todoID string) (float64, error) {
 	// Extract test list section
 	contentStr := string(content)
 	testListSection := se.extractSection(contentStr, "## Test List", "##")
-	
+
 	// Also try extracting from test section if not found
 	if testListSection == "" {
 		testListSection = se.extractSection(contentStr, "## Test Cases", "##")
@@ -248,14 +248,14 @@ func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".md") {
 			// Extract ID from filename
 			todoID := strings.TrimSuffix(file.Name(), ".md")
-			
+
 			// Read the todo
 			todo, err := se.manager.ReadTodo(todoID)
 			if err != nil {
 				// Skip files that can't be read as todos
 				continue
 			}
-			
+
 			todos = append(todos, todo)
 		}
 	}
@@ -274,11 +274,11 @@ func (se *StatsEngine) extractSection(content, startMarker, endMarker string) st
 			inSection = true
 			continue
 		}
-		
+
 		if inSection && endMarker != "" && strings.HasPrefix(line, endMarker) && line != startMarker {
 			break
 		}
-		
+
 		if inSection {
 			sectionLines = append(sectionLines, line)
 		}

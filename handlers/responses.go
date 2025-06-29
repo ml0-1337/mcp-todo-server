@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
-	"time"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	"strings"
+	"time"
 )
 
 // FormatTodoCreateResponse formats the response for todo_create
@@ -16,7 +16,7 @@ func FormatTodoCreateResponse(todo *core.Todo, filePath string) *mcp.CallToolRes
 		"path":    filePath,
 		"message": fmt.Sprintf("Todo created successfully: %s", todo.ID),
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -28,7 +28,7 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 		"path":    filePath,
 		"message": fmt.Sprintf("Todo created successfully: %s", todo.ID),
 	}
-	
+
 	// Detect patterns in the title
 	if hint := core.DetectPattern(todo.Task); hint != nil {
 		response["hint"] = map[string]interface{}{
@@ -37,7 +37,7 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 			"message":       hint.Message,
 		}
 	}
-	
+
 	// Find similar todos
 	if existingTodos != nil && len(existingTodos) > 0 {
 		similar := core.FindSimilarTodos(existingTodos, todo.Task)
@@ -45,7 +45,7 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 			response["similar_todos"] = similar
 		}
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -54,13 +54,13 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 func FormatTodoCreateMultiResponse(parent *core.Todo, children []*core.Todo) *mcp.CallToolResult {
 	// Build hierarchy visualization
 	var result strings.Builder
-	
+
 	result.WriteString(fmt.Sprintf("Created multi-phase project: %s\n\n", parent.ID))
-	
+
 	// Show tree structure
 	result.WriteString("📋 Project Structure:\n")
 	result.WriteString(fmt.Sprintf("[→] %s: %s [%s] [%s]\n", parent.ID, parent.Task, strings.ToUpper(parent.Priority), parent.Type))
-	
+
 	for i, child := range children {
 		isLast := i == len(children)-1
 		prefix := "├── "
@@ -69,12 +69,12 @@ func FormatTodoCreateMultiResponse(parent *core.Todo, children []*core.Todo) *mc
 		}
 		result.WriteString(fmt.Sprintf("%s[→] %s: %s [%s]\n", prefix, child.ID, child.Task, child.Type))
 	}
-	
+
 	result.WriteString(fmt.Sprintf("\n✅ Successfully created %d todos (%d parent, %d children)\n", len(children)+1, 1, len(children)))
-	
+
 	// Add tip
 	result.WriteString("\n💡 TIP: Use `todo_read` to see the full hierarchy or `todo_update` to modify individual todos.")
-	
+
 	return mcp.NewToolResultText(result.String())
 }
 
@@ -83,7 +83,7 @@ func FormatTodoReadResponse(todos []*core.Todo, format string, singleTodo bool) 
 	if singleTodo && len(todos) > 0 {
 		return formatSingleTodo(todos[0], format)
 	}
-	
+
 	switch format {
 	case "full":
 		return formatTodosFull(todos)
@@ -100,13 +100,13 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 		// For full format, we'd need to read the entire file content
 		// For now, return structured data
 		data := map[string]interface{}{
-			"id":        todo.ID,
-			"task":      todo.Task,
-			"status":    todo.Status,
-			"priority":  todo.Priority,
-			"type":      todo.Type,
-			"started":   todo.Started.Format(time.RFC3339),
-			"tags":      todo.Tags,
+			"id":       todo.ID,
+			"task":     todo.Task,
+			"status":   todo.Status,
+			"priority": todo.Priority,
+			"type":     todo.Type,
+			"started":  todo.Started.Format(time.RFC3339),
+			"tags":     todo.Tags,
 		}
 		if !todo.Completed.IsZero() {
 			data["completed"] = todo.Completed.Format(time.RFC3339)
@@ -114,11 +114,11 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 		if todo.ParentID != "" {
 			data["parent_id"] = todo.ParentID
 		}
-		
+
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
 		return mcp.NewToolResultText(string(jsonData))
 	}
-	
+
 	// Summary format
 	return mcp.NewToolResultText(formatTodoSummaryLine(todo))
 }
@@ -126,7 +126,7 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 // formatTodosFull formats multiple todos in full format
 func formatTodosFull(todos []*core.Todo) *mcp.CallToolResult {
 	var results []map[string]interface{}
-	
+
 	for _, todo := range todos {
 		data := map[string]interface{}{
 			"id":       todo.ID,
@@ -142,7 +142,7 @@ func formatTodosFull(todos []*core.Todo) *mcp.CallToolResult {
 		}
 		results = append(results, data)
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(results, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -150,7 +150,7 @@ func formatTodosFull(todos []*core.Todo) *mcp.CallToolResult {
 // formatTodosFullWithContent formats multiple todos with full content
 func formatTodosFullWithContent(todos []*core.Todo, contents map[string]string) *mcp.CallToolResult {
 	var results []map[string]interface{}
-	
+
 	for _, todo := range todos {
 		data := map[string]interface{}{
 			"id":       todo.ID,
@@ -167,12 +167,12 @@ func formatTodosFullWithContent(todos []*core.Todo, contents map[string]string) 
 		if todo.ParentID != "" {
 			data["parent_id"] = todo.ParentID
 		}
-		
+
 		// Add sections with content
 		if content, exists := contents[todo.ID]; exists {
 			sections := extractSectionContents(content)
 			sectionData := make(map[string]interface{})
-			
+
 			for key, sectionContent := range sections {
 				if key == "checklist" {
 					// Parse checklist items
@@ -182,13 +182,13 @@ func formatTodosFullWithContent(todos []*core.Todo, contents map[string]string) 
 					sectionData[key] = sectionContent
 				}
 			}
-			
+
 			data["sections"] = sectionData
 		}
-		
+
 		results = append(results, data)
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(results, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -199,7 +199,7 @@ func formatSingleTodoWithContent(todo *core.Todo, content string, format string)
 		// Use existing formatSingleTodo for other formats
 		return formatSingleTodo(todo, format)
 	}
-	
+
 	// Full format with content
 	data := map[string]interface{}{
 		"id":       todo.ID,
@@ -216,11 +216,11 @@ func formatSingleTodoWithContent(todo *core.Todo, content string, format string)
 	if todo.ParentID != "" {
 		data["parent_id"] = todo.ParentID
 	}
-	
+
 	// Add sections with content
 	sections := extractSectionContents(content)
 	sectionData := make(map[string]interface{})
-	
+
 	for key, sectionContent := range sections {
 		if key == "checklist" {
 			// Parse checklist items
@@ -230,9 +230,9 @@ func formatSingleTodoWithContent(todo *core.Todo, content string, format string)
 			sectionData[key] = sectionContent
 		}
 	}
-	
+
 	data["sections"] = sectionData
-	
+
 	jsonData, _ := json.MarshalIndent(data, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -243,11 +243,11 @@ func formatTodosList(todos []*core.Todo) *mcp.CallToolResult {
 	for _, todo := range todos {
 		lines = append(lines, fmt.Sprintf("- %s: %s", todo.ID, todo.Task))
 	}
-	
+
 	if len(lines) == 0 {
 		return mcp.NewToolResultText("No todos found")
 	}
-	
+
 	return mcp.NewToolResultText(strings.Join(lines, "\n"))
 }
 
@@ -256,9 +256,9 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 	if len(todos) == 0 {
 		return mcp.NewToolResultText("No todos found")
 	}
-	
+
 	var result strings.Builder
-	
+
 	// Check if we have any parent-child relationships
 	hasHierarchy := false
 	for _, todo := range todos {
@@ -267,16 +267,16 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 			break
 		}
 	}
-	
+
 	// If we have hierarchical relationships, show tree view first
 	if hasHierarchy {
 		roots, orphans := core.BuildTodoHierarchy(todos)
-		
+
 		// Only show tree if we have actual hierarchy
 		if len(roots) > 0 || len(orphans) > 0 {
 			formatter := core.NewTreeFormatter()
 			treeView := formatter.FormatHierarchy(roots, orphans)
-			
+
 			if treeView != "" {
 				result.WriteString("HIERARCHICAL VIEW:\n")
 				result.WriteString(treeView)
@@ -284,16 +284,16 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 			}
 		}
 	}
-	
+
 	// Then show traditional grouped view
 	result.WriteString("\nGROUPED BY STATUS:")
-	
+
 	// Group by status
 	statusGroups := make(map[string][]*core.Todo)
 	for _, todo := range todos {
 		statusGroups[todo.Status] = append(statusGroups[todo.Status], todo)
 	}
-	
+
 	// Format by status
 	for _, status := range []string{"in_progress", "blocked", "completed"} {
 		if todos, ok := statusGroups[status]; ok && len(todos) > 0 {
@@ -303,7 +303,7 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 			}
 		}
 	}
-	
+
 	return mcp.NewToolResultText(result.String())
 }
 
@@ -317,21 +317,21 @@ func formatTodoSummaryLine(todo *core.Todo) string {
 	} else if todo.Status == "blocked" {
 		status = "[✗]"
 	}
-	
+
 	priority := ""
 	if todo.Priority == "high" {
 		priority = " [HIGH]"
 	} else if todo.Priority == "low" {
 		priority = " [LOW]"
 	}
-	
+
 	return fmt.Sprintf("%s %s: %s%s", status, todo.ID, todo.Task, priority)
 }
 
 // TodoUpdateResponse represents the enriched response after updating a todo
 type TodoUpdateResponse struct {
 	Message  string                 `json:"message"`
-	Todo     *TodoSummary          `json:"todo"`
+	Todo     *TodoSummary           `json:"todo"`
 	Progress map[string]interface{} `json:"progress,omitempty"`
 }
 
@@ -360,7 +360,7 @@ func FormatTodoUpdateResponse(todoID string, section string, operation string) *
 	if section != "" {
 		message = fmt.Sprintf("Todo '%s' %s section updated (%s)", todoID, section, operation)
 	}
-	
+
 	return mcp.NewToolResultText(message)
 }
 
@@ -370,7 +370,7 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 	if section != "" {
 		message = fmt.Sprintf("Todo '%s' %s section updated (%s)", todo.ID, section, operation)
 	}
-	
+
 	summary := &TodoSummary{
 		ID:       todo.ID,
 		Task:     todo.Task,
@@ -379,16 +379,16 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 		Type:     todo.Type,
 		ParentID: todo.ParentID,
 	}
-	
+
 	// Parse sections from content
 	sections := make(map[string]SectionSummary)
 	sectionContents := extractSectionContents(content)
-	
+
 	// Check for checklist content
 	if checklistContent, exists := sectionContents["checklist"]; exists {
 		summary.Checklist = core.ParseChecklist(checklistContent)
 	}
-	
+
 	// Add section summaries
 	for key, sectionContent := range sectionContents {
 		sections[key] = SectionSummary{
@@ -398,14 +398,14 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 		}
 	}
 	summary.Sections = sections
-	
+
 	// Calculate progress
 	progress := make(map[string]interface{})
 	if len(summary.Checklist) > 0 {
 		completed := 0
 		inProgress := 0
 		pending := 0
-		
+
 		for _, item := range summary.Checklist {
 			switch item.Status {
 			case "completed":
@@ -416,13 +416,13 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 				pending++
 			}
 		}
-		
+
 		total := len(summary.Checklist)
 		completionPercentage := 0
 		if total > 0 {
 			completionPercentage = (completed * 100) / total
 		}
-		
+
 		progress["checklist"] = fmt.Sprintf("%d/%d completed (%d%%)", completed, total, completionPercentage)
 		progress["checklist_breakdown"] = map[string]int{
 			"pending":     pending,
@@ -431,7 +431,7 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 			"total":       total,
 		}
 	}
-	
+
 	// Count sections with content
 	sectionsWithContent := 0
 	totalSections := len(sections)
@@ -443,13 +443,13 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 	if totalSections > 0 {
 		progress["sections"] = fmt.Sprintf("%d/%d sections have content", sectionsWithContent, totalSections)
 	}
-	
+
 	response := TodoUpdateResponse{
 		Message:  message,
 		Todo:     summary,
 		Progress: progress,
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -458,17 +458,17 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 func extractSectionContents(content string) map[string]string {
 	sections := make(map[string]string)
 	lines := strings.Split(content, "\n")
-	
+
 	currentSection := ""
 	currentContent := []string{}
-	
+
 	for _, line := range lines {
 		if strings.HasPrefix(line, "## ") {
 			// Save previous section
 			if currentSection != "" {
 				sections[currentSection] = strings.Join(currentContent, "\n")
 			}
-			
+
 			// Start new section
 			title := strings.TrimPrefix(line, "## ")
 			currentSection = normalizeKey(title)
@@ -477,12 +477,12 @@ func extractSectionContents(content string) map[string]string {
 			currentContent = append(currentContent, line)
 		}
 	}
-	
+
 	// Save last section
 	if currentSection != "" {
 		sections[currentSection] = strings.Join(currentContent, "\n")
 	}
-	
+
 	return sections
 }
 
@@ -514,10 +514,10 @@ func normalizeKey(title string) string {
 
 // FormatSearchResult represents a search result
 type FormatSearchResult struct {
-	ID       string  `json:"id"`
-	Task     string  `json:"task"`
-	Score    float64 `json:"score"`
-	Snippet  string  `json:"snippet,omitempty"`
+	ID      string  `json:"id"`
+	Task    string  `json:"task"`
+	Score   float64 `json:"score"`
+	Snippet string  `json:"snippet,omitempty"`
 }
 
 // FormatTodoSearchResponse formats the response for todo_search
@@ -525,20 +525,20 @@ func FormatTodoSearchResponse(results []core.SearchResult) *mcp.CallToolResult {
 	if len(results) == 0 {
 		return mcp.NewToolResultText("No todos found matching your search")
 	}
-	
+
 	var formatted []FormatSearchResult
 	for _, r := range results {
 		formatted = append(formatted, FormatSearchResult{
-			ID:       r.ID,
-			Task:     r.Task,
-			Score:    r.Score,
-			Snippet:  r.Snippet,
+			ID:      r.ID,
+			Task:    r.Task,
+			Score:   r.Score,
+			Snippet: r.Snippet,
 		})
 	}
-	
+
 	// Add summary
 	summary := fmt.Sprintf("Found %d todos matching your search:\n", len(results))
-	
+
 	jsonData, _ := json.MarshalIndent(formatted, "", "  ")
 	return mcp.NewToolResultText(summary + string(jsonData))
 }
@@ -550,7 +550,7 @@ func FormatTodoArchiveResponse(todoID string, archivePath string) *mcp.CallToolR
 		"archive_path": archivePath,
 		"message":      fmt.Sprintf("Todo '%s' archived successfully", todoID),
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -569,7 +569,7 @@ func FormatTodoTemplateResponse(todo *core.Todo, filePath string) *mcp.CallToolR
 		"template": "applied",
 		"message":  fmt.Sprintf("Todo created from template: %s", todo.ID),
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -582,7 +582,7 @@ func FormatTodoLinkResponse(parentID, childID string, linkType string) *mcp.Call
 		"link_type": linkType,
 		"message":   fmt.Sprintf("Todos linked successfully: %s -> %s", parentID, childID),
 	}
-	
+
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
@@ -590,27 +590,27 @@ func FormatTodoLinkResponse(parentID, childID string, linkType string) *mcp.Call
 // FormatTodoSectionsResponse formats todo sections response
 func FormatTodoSectionsResponse(todo *core.Todo) *mcp.CallToolResult {
 	var response strings.Builder
-	
+
 	response.WriteString(fmt.Sprintf("Todo: %s\n\n", todo.ID))
 	response.WriteString("Sections:\n")
-	
+
 	if todo.Sections == nil || len(todo.Sections) == 0 {
 		response.WriteString("No section metadata defined (legacy todo)\n")
 	} else {
 		// Get sections in order
 		ordered := core.GetOrderedSections(todo.Sections)
-		
+
 		for _, section := range ordered {
 			response.WriteString(fmt.Sprintf("\n%s:\n", section.Key))
 			response.WriteString(fmt.Sprintf("  title: %s\n", section.Definition.Title))
 			response.WriteString(fmt.Sprintf("  order: %d\n", section.Definition.Order))
 			response.WriteString(fmt.Sprintf("  schema: %s\n", section.Definition.Schema))
 			response.WriteString(fmt.Sprintf("  required: %v\n", section.Definition.Required))
-			
+
 			if section.Definition.Custom {
 				response.WriteString("  custom: true\n")
 			}
-			
+
 			if section.Definition.Metadata != nil && len(section.Definition.Metadata) > 0 {
 				response.WriteString("  metadata:\n")
 				for k, v := range section.Definition.Metadata {
@@ -619,38 +619,38 @@ func FormatTodoSectionsResponse(todo *core.Todo) *mcp.CallToolResult {
 			}
 		}
 	}
-	
+
 	return mcp.NewToolResultText(response.String())
 }
 
 // FormatTodoSectionsResponseWithContent formats todo sections response with content status
 func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp.CallToolResult {
 	var response strings.Builder
-	
+
 	response.WriteString(fmt.Sprintf("Todo: %s\n\n", todo.ID))
 	response.WriteString("Sections:\n")
-	
+
 	// Parse content to extract sections
 	sectionContents := extractSectionContents(content)
-	
+
 	if todo.Sections == nil || len(todo.Sections) == 0 {
 		// Legacy todo - infer sections from markdown
 		todo.Sections = core.InferSectionsFromMarkdown(content)
 	}
-	
+
 	if todo.Sections == nil || len(todo.Sections) == 0 {
 		response.WriteString("No sections found\n")
 	} else {
 		// Get sections in order
 		ordered := core.GetOrderedSections(todo.Sections)
-		
+
 		for _, section := range ordered {
 			response.WriteString(fmt.Sprintf("\n%s:\n", section.Key))
 			response.WriteString(fmt.Sprintf("  title: %s\n", section.Definition.Title))
 			response.WriteString(fmt.Sprintf("  order: %d\n", section.Definition.Order))
 			response.WriteString(fmt.Sprintf("  schema: %s\n", section.Definition.Schema))
 			response.WriteString(fmt.Sprintf("  required: %v\n", section.Definition.Required))
-			
+
 			// Add content status
 			sectionContent, exists := sectionContents[section.Definition.Title]
 			if exists {
@@ -663,11 +663,11 @@ func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp
 				response.WriteString("  hasContent: false\n")
 				response.WriteString("  contentLength: 0\n")
 			}
-			
+
 			if section.Definition.Custom {
 				response.WriteString("  custom: true\n")
 			}
-			
+
 			if section.Definition.Metadata != nil && len(section.Definition.Metadata) > 0 {
 				response.WriteString("  metadata:\n")
 				for k, v := range section.Definition.Metadata {
@@ -676,7 +676,6 @@ func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp
 			}
 		}
 	}
-	
+
 	return mcp.NewToolResultText(response.String())
 }
-

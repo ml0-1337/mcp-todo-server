@@ -3,10 +3,10 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
-	"testing"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	"strings"
+	"testing"
 )
 
 // Test 9: HandleTodoSections returns all sections with metadata
@@ -93,14 +93,14 @@ func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 				}
 
 				text := content.Text
-				
+
 				// Should include section information
 				expectedContent := []string{
 					"findings",
 					"Findings & Research",
 					"research",
 					"required: true",
-					"test_list", 
+					"test_list",
 					"Test List",
 					"checklist",
 					"completed: 4",

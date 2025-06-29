@@ -61,15 +61,15 @@ func TestBuildTodoHierarchy(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	// Build hierarchy
 	roots, orphans := BuildTodoHierarchy(todos)
-	
+
 	// Test roots
 	if len(roots) != 2 {
 		t.Errorf("Expected 2 root nodes, got %d", len(roots))
 	}
-	
+
 	// Find parent-1 in roots
 	var parent1Node *TodoNode
 	for _, root := range roots {
@@ -78,16 +78,16 @@ func TestBuildTodoHierarchy(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if parent1Node == nil {
 		t.Fatal("parent-1 should be a root node")
 	}
-	
+
 	// Test children of parent-1
 	if len(parent1Node.Children) != 2 {
 		t.Errorf("parent-1 should have 2 children, got %d", len(parent1Node.Children))
 	}
-	
+
 	// Find child-1-2 and check its children
 	var child12Node *TodoNode
 	for _, child := range parent1Node.Children {
@@ -96,24 +96,24 @@ func TestBuildTodoHierarchy(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if child12Node == nil {
 		t.Fatal("child-1-2 should be a child of parent-1")
 	}
-	
+
 	if len(child12Node.Children) != 1 {
 		t.Errorf("child-1-2 should have 1 child, got %d", len(child12Node.Children))
 	}
-	
+
 	if child12Node.Children[0].Todo.ID != "grandchild-1-2-1" {
 		t.Error("grandchild-1-2-1 should be a child of child-1-2")
 	}
-	
+
 	// Test orphans
 	if len(orphans) != 1 {
 		t.Errorf("Expected 1 orphan, got %d", len(orphans))
 	}
-	
+
 	if orphans[0].ID != "orphan-phase" {
 		t.Error("orphan-phase should be in orphans list")
 	}
@@ -150,16 +150,16 @@ func TestCircularReferenceDetection(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	// Build hierarchy
 	roots, orphans := BuildTodoHierarchy(todos)
-	
+
 	// All todos should be either roots or orphans due to circular reference
 	totalProcessed := len(roots) + len(orphans)
 	if totalProcessed != len(todos) {
 		t.Errorf("Not all todos were processed. Expected %d, got %d", len(todos), totalProcessed)
 	}
-	
+
 	// Verify no infinite loops occurred (test would hang if there was an issue)
 }
 
@@ -199,17 +199,17 @@ func TestSortNodes(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	// Build hierarchy (all should be roots)
 	roots, _ := BuildTodoHierarchy(todos)
-	
+
 	// Verify sort order
 	expectedOrder := []string{"progress-high", "progress-low", "blocked-medium", "completed-low"}
-	
+
 	if len(roots) != len(expectedOrder) {
 		t.Fatalf("Expected %d roots, got %d", len(expectedOrder), len(roots))
 	}
-	
+
 	for i, expectedID := range expectedOrder {
 		if roots[i].Todo.ID != expectedID {
 			t.Errorf("Position %d: expected %s, got %s", i, expectedID, roots[i].Todo.ID)
@@ -256,10 +256,10 @@ func TestGetHierarchyDepth(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	roots, _ := BuildTodoHierarchy(todos)
 	depth := GetHierarchyDepth(roots)
-	
+
 	if depth != 4 {
 		t.Errorf("Expected depth of 4, got %d", depth)
 	}
@@ -312,28 +312,28 @@ func TestGetOrphanedPhases(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	orphans := GetOrphanedPhases(todos)
-	
+
 	// Should only include phase/subtask types with missing parents
 	if len(orphans) != 2 {
 		t.Errorf("Expected 2 orphaned phases/subtasks, got %d", len(orphans))
 	}
-	
+
 	// Verify the correct todos are identified as orphans
 	orphanIDs := make(map[string]bool)
 	for _, orphan := range orphans {
 		orphanIDs[orphan.ID] = true
 	}
-	
+
 	if !orphanIDs["orphan-phase-1"] {
 		t.Error("orphan-phase-1 should be identified as orphan")
 	}
-	
+
 	if !orphanIDs["orphan-subtask"] {
 		t.Error("orphan-subtask should be identified as orphan")
 	}
-	
+
 	if orphanIDs["regular-with-missing-parent"] {
 		t.Error("regular todos should not be in orphaned phases list")
 	}
@@ -398,9 +398,9 @@ func TestValidateHierarchy(t *testing.T) {
 			Started:  time.Now(),
 		},
 	}
-	
+
 	issues := ValidateHierarchy(todos)
-	
+
 	// Should have at least 3 issues
 	if len(issues) < 3 {
 		t.Errorf("Expected at least 3 validation issues, got %d", len(issues))
@@ -408,12 +408,12 @@ func TestValidateHierarchy(t *testing.T) {
 			t.Logf("Issue: %s", issue)
 		}
 	}
-	
+
 	// Check for specific issues
 	hasPhaseWithoutParent := false
 	hasOrphanedPhase := false
 	hasCircularRef := false
-	
+
 	for _, issue := range issues {
 		if containsString(issue, "phase-without-parent") && containsString(issue, "should have a parent_id") {
 			hasPhaseWithoutParent = true
@@ -425,7 +425,7 @@ func TestValidateHierarchy(t *testing.T) {
 			hasCircularRef = true
 		}
 	}
-	
+
 	if !hasPhaseWithoutParent {
 		t.Error("Should detect phase without parent_id")
 	}

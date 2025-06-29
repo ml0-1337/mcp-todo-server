@@ -114,29 +114,29 @@ status: "in_progress"`,
 		t.Run(tt.name, func(t *testing.T) {
 			// Parse YAML to get sections
 			sections, err := ParseSectionDefinitions([]byte(tt.yaml))
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseSectionDefinitions() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if tt.wantErr {
 				return
 			}
-			
+
 			// Check if sections match expected
 			if len(sections) != len(tt.expected) {
 				t.Errorf("ParseSectionDefinitions() got %d sections, want %d", len(sections), len(tt.expected))
 				return
 			}
-			
+
 			for key, expectedDef := range tt.expected {
 				gotDef, exists := sections[key]
 				if !exists {
 					t.Errorf("ParseSectionDefinitions() missing section %s", key)
 					continue
 				}
-				
+
 				// Compare fields
 				if gotDef.Title != expectedDef.Title {
 					t.Errorf("Section %s: Title = %v, want %v", key, gotDef.Title, expectedDef.Title)
@@ -153,7 +153,7 @@ status: "in_progress"`,
 				if gotDef.Custom != expectedDef.Custom {
 					t.Errorf("Section %s: Custom = %v, want %v", key, gotDef.Custom, expectedDef.Custom)
 				}
-				
+
 				// Compare metadata if present
 				if expectedDef.Metadata != nil {
 					if gotDef.Metadata == nil {
@@ -270,13 +270,13 @@ func TestValidateSectionSchemaTypes(t *testing.T) {
 			if validator == nil {
 				t.Fatalf("GetValidator(%v) returned nil", tt.schema)
 			}
-			
+
 			err := validator.Validate(tt.content)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
 				t.Errorf("Validate() error = %v, want error containing %v", err.Error(), tt.errMsg)
 			}
@@ -353,16 +353,16 @@ func TestPreserveSectionOrder(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseSectionDefinitions() error = %v", err)
 			}
-			
+
 			// Get ordered sections
 			ordered := GetOrderedSections(sections)
-			
+
 			// Check order
 			if len(ordered) != len(tt.expectedOrder) {
 				t.Errorf("GetOrderedSections() returned %d sections, want %d", len(ordered), len(tt.expectedOrder))
 				return
 			}
-			
+
 			for i, expectedKey := range tt.expectedOrder {
 				if ordered[i].Key != expectedKey {
 					t.Errorf("GetOrderedSections() position %d = %v, want %v", i, ordered[i].Key, expectedKey)
@@ -514,13 +514,13 @@ todo_id: "empty-todo"
 		t.Run(tt.name, func(t *testing.T) {
 			// Infer sections from markdown content
 			sections := InferSectionsFromMarkdown(tt.markdownContent)
-			
+
 			// Check section count
 			if len(sections) != len(tt.expectedSections) {
 				t.Errorf("InferSectionsFromMarkdown() returned %d sections, want %d", len(sections), len(tt.expectedSections))
 				return
 			}
-			
+
 			// Check each section
 			for key, expectedDef := range tt.expectedSections {
 				gotDef, exists := sections[key]
@@ -528,7 +528,7 @@ todo_id: "empty-todo"
 					t.Errorf("InferSectionsFromMarkdown() missing section %s", key)
 					continue
 				}
-				
+
 				// Compare fields
 				if gotDef.Title != expectedDef.Title {
 					t.Errorf("Section %s: Title = %v, want %v", key, gotDef.Title, expectedDef.Title)
@@ -636,9 +636,9 @@ func TestCalculateSectionMetrics(t *testing.T) {
 			if validator == nil {
 				t.Fatalf("GetValidator(%v) returned nil", tt.schema)
 			}
-			
+
 			metrics := validator.GetMetrics(tt.content)
-			
+
 			// Check each expected metric
 			for key, expectedValue := range tt.expected {
 				gotValue, exists := metrics[key]
@@ -646,12 +646,12 @@ func TestCalculateSectionMetrics(t *testing.T) {
 					t.Errorf("GetMetrics() missing metric %s", key)
 					continue
 				}
-				
+
 				if gotValue != expectedValue {
 					t.Errorf("GetMetrics() metric %s = %v, want %v", key, gotValue, expectedValue)
 				}
 			}
-			
+
 			// Check for unexpected metrics
 			for key := range metrics {
 				if _, expected := tt.expected[key]; !expected {
@@ -786,12 +786,12 @@ Should not match due to case sensitivity.`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateRequiredSections(tt.sections, tt.markdownContent)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateRequiredSections() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
 				t.Errorf("ValidateRequiredSections() error = %v, want error %v", err.Error(), tt.errMsg)
 			}

@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"testing"
 	"path/filepath"
+	"testing"
 )
 
 // Test ExtractTodoArchiveParams functionality
@@ -66,7 +66,7 @@ func TestTodoArchiveParamsExtraction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Simulate the ExtractTodoArchiveParams logic
 			params := &TodoArchiveParams{}
-			
+
 			// Extract ID
 			id, ok := tt.args["id"].(string)
 			if !ok || id == "" {
@@ -79,21 +79,21 @@ func TestTodoArchiveParamsExtraction(t *testing.T) {
 				return
 			}
 			params.ID = id
-			
+
 			// Extract optional quarter
 			if quarter, ok := tt.args["quarter"].(string); ok {
 				params.Quarter = quarter
 			}
-			
+
 			// Verify results
 			if tt.expectError {
 				t.Fatal("Expected error but got valid params")
 			}
-			
+
 			if params.ID != tt.expected.ID {
 				t.Errorf("Expected ID '%s', got '%s'", tt.expected.ID, params.ID)
 			}
-			
+
 			if params.Quarter != tt.expected.Quarter {
 				t.Errorf("Expected Quarter '%s', got '%s'", tt.expected.Quarter, params.Quarter)
 			}
@@ -105,19 +105,19 @@ func TestTodoArchiveParamsExtraction(t *testing.T) {
 func TestFormatTodoArchiveResponse(t *testing.T) {
 	todoID := "test-archive-123"
 	archivePath := filepath.Join(".claude", "archive", "2025", "01", "15", "test-archive-123.md")
-	
+
 	result := FormatTodoArchiveResponse(todoID, archivePath)
-	
+
 	// Verify result is valid MCP response
 	if result == nil {
 		t.Fatal("FormatTodoArchiveResponse returned nil")
 	}
-	
+
 	// Extract and verify content
 	if len(result.Content) == 0 {
 		t.Fatal("Result content is empty")
 	}
-	
+
 	// The response should contain JSON text
 	// In actual implementation, we need to check how the response is structured
 	// For now, just verify the result is not nil
@@ -208,7 +208,7 @@ func TestTodoCreateParamsValidation(t *testing.T) {
 				Priority: "high",    // default
 				Type:     "feature", // default
 			}
-			
+
 			// Extract task (required)
 			task, ok := tt.args["task"].(string)
 			if !ok || task == "" {
@@ -221,7 +221,7 @@ func TestTodoCreateParamsValidation(t *testing.T) {
 				return
 			}
 			params.Task = task
-			
+
 			// Extract optional priority
 			if priority, ok := tt.args["priority"].(string); ok {
 				if !isValidPriority(priority) {
@@ -236,7 +236,7 @@ func TestTodoCreateParamsValidation(t *testing.T) {
 				}
 				params.Priority = priority
 			}
-			
+
 			// Extract optional type
 			if todoType, ok := tt.args["type"].(string); ok {
 				if !isValidTodoType(todoType) {
@@ -251,22 +251,22 @@ func TestTodoCreateParamsValidation(t *testing.T) {
 				}
 				params.Type = todoType
 			}
-			
+
 			// Extract optional parent_id
 			if parentID, ok := tt.args["parent_id"].(string); ok {
 				params.ParentID = parentID
 			}
-			
+
 			// Extract optional template
 			if template, ok := tt.args["template"].(string); ok {
 				params.Template = template
 			}
-			
+
 			// Verify results
 			if tt.expectError {
 				t.Fatal("Expected error but got valid params")
 			}
-			
+
 			if params.Task != tt.expected.Task {
 				t.Errorf("Task: expected '%s', got '%s'", tt.expected.Task, params.Task)
 			}
@@ -387,21 +387,21 @@ func TestResponseFormatting(t *testing.T) {
 		// Test that archive response has expected structure
 		todoID := "test-123"
 		archivePath := ".claude/archive/2025/01/15/test-123.md"
-		
+
 		// Create expected response structure
 		expected := map[string]interface{}{
 			"id":           todoID,
 			"archive_path": archivePath,
 			"message":      "Todo '" + todoID + "' archived successfully",
 		}
-		
+
 		// In real test, we would call FormatTodoArchiveResponse and verify
 		// For now, just verify the expected structure
 		expectedJSON, err := json.Marshal(expected)
 		if err != nil {
 			t.Fatalf("Failed to marshal expected response: %v", err)
 		}
-		
+
 		if len(expectedJSON) == 0 {
 			t.Error("Expected non-empty JSON response")
 		}

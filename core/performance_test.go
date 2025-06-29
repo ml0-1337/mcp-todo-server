@@ -1,14 +1,14 @@
 package core
 
 import (
-	"testing"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"fmt"
-	"time"
-	"sync"
 	"strings"
+	"sync"
+	"testing"
+	"time"
 )
 
 // BenchmarkSearchWithManyTodos benchmarks search performance with large todo sets
@@ -35,7 +35,7 @@ func BenchmarkSearchWithManyTodos(b *testing.B) {
 		task := fmt.Sprintf("Task %d: Implement feature %d with priority", i, i)
 		priority := []string{"high", "medium", "low"}[i%3]
 		todoType := []string{"feature", "bug", "refactor"}[i%3]
-		
+
 		todo, err := manager.CreateTodo(task, priority, todoType)
 		if err != nil {
 			b.Fatalf("Failed to create todo %d: %v", i, err)
@@ -94,7 +94,7 @@ func TestConcurrentTodoOperations(t *testing.T) {
 			for j := 0; j < todosPerGoroutine; j++ {
 				task := fmt.Sprintf("Routine %d Todo %d", routineID, j)
 				priority := []string{"high", "medium", "low"}[j%3]
-				
+
 				todo, err := manager.CreateTodo(task, priority, "concurrent")
 				if err != nil {
 					errors <- fmt.Errorf("routine %d: failed to create todo: %v", routineID, err)
@@ -109,7 +109,7 @@ func TestConcurrentTodoOperations(t *testing.T) {
 				}
 
 				if readTodo.Task != task {
-					errors <- fmt.Errorf("routine %d: task mismatch: got %s, want %s", 
+					errors <- fmt.Errorf("routine %d: task mismatch: got %s, want %s",
 						routineID, readTodo.Task, task)
 				}
 
@@ -172,7 +172,7 @@ func TestLargeTodoContent(t *testing.T) {
 
 	// Create todo with very large content
 	largeContent := strings.Repeat("This is a very long content line. ", 10000)
-	
+
 	todo, err := manager.CreateTodo("Large content todo", "high", "test")
 	if err != nil {
 		t.Fatalf("Failed to create todo: %v", err)
@@ -230,7 +230,7 @@ func TestArchivePerformance(t *testing.T) {
 
 	// Mark all as completed
 	parent.Completed = time.Now()
-	manager.UpdateTodo(parent.ID, "", "", "", 
+	manager.UpdateTodo(parent.ID, "", "", "",
 		map[string]string{"status": "completed"})
 
 	for _, child := range children {
@@ -240,10 +240,10 @@ func TestArchivePerformance(t *testing.T) {
 
 	// Time the cascade archive operation
 	start := time.Now()
-	
+
 	quarter := GetQuarter(time.Now())
 	err = archiveTodoWithCascadeWrapper(manager, parent.ID, quarter, true)
-	
+
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -291,7 +291,7 @@ func TestStatsWithManyTodos(t *testing.T) {
 		priority := []string{"high", "medium", "low"}[i%3]
 		todoType := []string{"feature", "bug", "refactor", "research"}[i%4]
 		status := []string{"pending", "in_progress", "completed"}[i%3]
-		
+
 		todo, err := manager.CreateTodo(task, priority, todoType)
 		if err != nil {
 			t.Fatalf("Failed to create todo %d: %v", i, err)
@@ -317,9 +317,9 @@ func TestStatsWithManyTodos(t *testing.T) {
 
 	// Time stats generation
 	start := time.Now()
-	
+
 	stats, err := statsEngine.GenerateTodoStats()
-	
+
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -353,7 +353,7 @@ func TestStatsWithManyTodos(t *testing.T) {
 func TestMemoryLeaks(t *testing.T) {
 	// This is a simplified memory leak test
 	// In production, you'd use runtime.MemStats for more accurate measurement
-	
+
 	// Create temp directory
 	tempDir, err := ioutil.TempDir("", "todo-memleak-*")
 	if err != nil {

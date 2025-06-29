@@ -90,13 +90,13 @@ Another line
 			},
 		},
 		{
-			name: "empty content",
-			content: "",
+			name:     "empty content",
+			content:  "",
 			expected: []ChecklistItem{},
 		},
 		{
-			name: "whitespace only",
-			content: "   \n\t\n   ",
+			name:     "whitespace only",
+			content:  "   \n\t\n   ",
 			expected: []ChecklistItem{},
 		},
 	}
@@ -104,12 +104,12 @@ Another line
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ParseChecklist(tt.content)
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("ParseChecklist() returned %d items, want %d", len(result), len(tt.expected))
 				return
 			}
-			
+
 			for i, item := range result {
 				if !reflect.DeepEqual(item, tt.expected[i]) {
 					t.Errorf("ParseChecklist() item[%d] = %+v, want %+v", i, item, tt.expected[i])
@@ -137,7 +137,7 @@ func TestParseChecklistEdgeCases(t *testing.T) {
 			},
 		},
 		{
-			name: "very long text",
+			name:    "very long text",
 			content: "- [ ] " + string(make([]byte, 1000, 1000)) + "very long text",
 			expected: []ChecklistItem{
 				{Text: string(make([]byte, 1000, 1000)) + "very long text", Status: "pending"},
@@ -148,12 +148,12 @@ func TestParseChecklistEdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ParseChecklist(tt.content)
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("ParseChecklist() returned %d items, want %d", len(result), len(tt.expected))
 				return
 			}
-			
+
 			// For very long text test, just check status and length
 			if tt.name == "very long text" && len(result) > 0 {
 				if result[0].Status != tt.expected[0].Status {

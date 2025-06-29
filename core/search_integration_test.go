@@ -1,13 +1,13 @@
 package core
 
 import (
-	"testing"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
-	"fmt"
 )
 
 // TestIndexAndDeleteTodo tests the IndexTodo and DeleteTodo functions

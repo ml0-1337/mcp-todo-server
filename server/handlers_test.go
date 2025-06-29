@@ -1,9 +1,9 @@
 package server
 
 import (
-	"testing"
 	"os"
 	"path/filepath"
+	"testing"
 )
 
 // TestNewTodoServer tests creating a new todo server
@@ -22,7 +22,7 @@ func TestNewTodoServer(t *testing.T) {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
 	}()
-	
+
 	// Create required directories
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
 	templatesDir := filepath.Join(tempDir, ".claude", "templates")
@@ -79,15 +79,15 @@ func TestListTools(t *testing.T) {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
 	}()
-	
+
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
 	templatesDir := filepath.Join(tempDir, ".claude", "templates")
 	os.MkdirAll(todosDir, 0755)
 	os.MkdirAll(templatesDir, 0755)
-	
+
 	os.Setenv("CLAUDE_TODO_PATH", todosDir)
 	os.Setenv("CLAUDE_TEMPLATE_PATH", templatesDir)
-	
+
 	ts, err := NewTodoServer()
 	if err != nil {
 		t.Fatalf("Failed to create todo server: %v", err)
@@ -95,7 +95,7 @@ func TestListTools(t *testing.T) {
 	defer ts.Close()
 
 	tools := ts.ListTools()
-	
+
 	// Check we have the expected number of tools
 	expectedTools := 10 // Including todo_create_multi
 	if len(tools) != expectedTools {

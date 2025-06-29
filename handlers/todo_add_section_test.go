@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	
+
 	"github.com/user/mcp-todo-server/core"
 )
 
@@ -46,10 +46,10 @@ func TestAddCustomSectionToExistingTodo(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Track added sections
 	addedSections := make(map[string]*core.SectionDefinition)
-	
+
 	// Setup mock to return our test todo
 	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 		if id == "test-add-section" {
@@ -62,77 +62,77 @@ func TestAddCustomSectionToExistingTodo(t *testing.T) {
 				Type:     testTodo.Type,
 				Sections: make(map[string]*core.SectionDefinition),
 			}
-			
+
 			// Copy existing sections
 			for k, v := range testTodo.Sections {
 				todoCopy.Sections[k] = v
 			}
-			
+
 			// Add any new sections
 			for k, v := range addedSections {
 				todoCopy.Sections[k] = v
 			}
-			
+
 			return todoCopy, nil
 		}
 		return nil, fmt.Errorf("todo not found: %s", id)
 	}
-	
+
 	// Mock the UpdateTodo to succeed
 	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
 		return nil
 	}
-	
+
 	todoID := "test-add-section"
 	ctx := context.Background()
 
 	testCases := []struct {
-		name           string
-		sectionKey     string
-		sectionTitle   string
-		sectionSchema  string
+		name            string
+		sectionKey      string
+		sectionTitle    string
+		sectionSchema   string
 		sectionRequired bool
-		expectedError  bool
+		expectedError   bool
 	}{
 		{
-			name:           "add implementation notes section",
-			sectionKey:     "implementation",
-			sectionTitle:   "## Implementation Notes",
-			sectionSchema:  "freeform",
+			name:            "add implementation notes section",
+			sectionKey:      "implementation",
+			sectionTitle:    "## Implementation Notes",
+			sectionSchema:   "freeform",
 			sectionRequired: false,
-			expectedError:  false,
+			expectedError:   false,
 		},
 		{
-			name:           "add risks section with freeform schema",
-			sectionKey:     "risks",
-			sectionTitle:   "## Risks & Mitigations",
-			sectionSchema:  "freeform",
+			name:            "add risks section with freeform schema",
+			sectionKey:      "risks",
+			sectionTitle:    "## Risks & Mitigations",
+			sectionSchema:   "freeform",
 			sectionRequired: true,
-			expectedError:  false,
+			expectedError:   false,
 		},
 		{
-			name:           "add api_design section",
-			sectionKey:     "api_design",
-			sectionTitle:   "## API Design",
-			sectionSchema:  "test_cases", // Requires code blocks
+			name:            "add api_design section",
+			sectionKey:      "api_design",
+			sectionTitle:    "## API Design",
+			sectionSchema:   "test_cases", // Requires code blocks
 			sectionRequired: false,
-			expectedError:  false,
+			expectedError:   false,
 		},
 		{
-			name:           "add duplicate section key",
-			sectionKey:     "findings", // Already exists
-			sectionTitle:   "## Research Findings",
-			sectionSchema:  "research",
+			name:            "add duplicate section key",
+			sectionKey:      "findings", // Already exists
+			sectionTitle:    "## Research Findings",
+			sectionSchema:   "research",
 			sectionRequired: false,
-			expectedError:  true,
+			expectedError:   true,
 		},
 		{
-			name:           "add section with invalid schema",
-			sectionKey:     "custom",
-			sectionTitle:   "## Custom Section",
-			sectionSchema:  "invalid_schema",
+			name:            "add section with invalid schema",
+			sectionKey:      "custom",
+			sectionTitle:    "## Custom Section",
+			sectionSchema:   "invalid_schema",
 			sectionRequired: false,
-			expectedError:  true,
+			expectedError:   true,
 		},
 	}
 
@@ -150,7 +150,7 @@ func TestAddCustomSectionToExistingTodo(t *testing.T) {
 			}
 
 			result, err := handlers.HandleTodoAddSection(ctx, request.ToCallToolRequest())
-			
+
 			if tc.expectedError {
 				// HandleError returns a result with IsError set to true, not a Go error
 				if err != nil {
@@ -175,7 +175,7 @@ func TestAddCustomSectionToExistingTodo(t *testing.T) {
 					Schema:   core.SectionSchema(tc.sectionSchema),
 					Required: tc.sectionRequired,
 				}
-				
+
 				// Verify section was added by reading todo
 				todo, err := handlers.manager.ReadTodo(todoID)
 				if err != nil {
@@ -210,4 +210,3 @@ func TestAddCustomSectionToExistingTodo(t *testing.T) {
 		})
 	}
 }
-

@@ -2,21 +2,21 @@ package core
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
-	"gopkg.in/yaml.v3"
 )
 
 // SectionSchema represents the validation schema for a section
 type SectionSchema string
 
 const (
-	SchemaResearch   SectionSchema = "research"    // Free text with citations
-	SchemaStrategy   SectionSchema = "strategy"    // Structured plan
-	SchemaChecklist  SectionSchema = "checklist"   // Checkbox items
-	SchemaTestCases  SectionSchema = "test_cases"  // Code blocks
-	SchemaResults    SectionSchema = "results"     // Timestamped logs
-	SchemaFreeform   SectionSchema = "freeform"    // No validation
+	SchemaResearch  SectionSchema = "research"   // Free text with citations
+	SchemaStrategy  SectionSchema = "strategy"   // Structured plan
+	SchemaChecklist SectionSchema = "checklist"  // Checkbox items
+	SchemaTestCases SectionSchema = "test_cases" // Code blocks
+	SchemaResults   SectionSchema = "results"    // Timestamped logs
+	SchemaFreeform  SectionSchema = "freeform"   // No validation
 )
 
 // SectionDefinition represents metadata for a todo section
@@ -50,19 +50,19 @@ func ParseSectionDefinitions(yamlData []byte) (map[string]*SectionDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
-	
+
 	// If no sections defined, return nil (backwards compatibility)
 	if frontmatter.Sections == nil {
 		return nil, nil
 	}
-	
+
 	// Validate schema types
 	for key, section := range frontmatter.Sections {
 		if !isValidSchema(section.Schema) {
 			return nil, fmt.Errorf("invalid schema type '%s' for section '%s'", section.Schema, key)
 		}
 	}
-	
+
 	return frontmatter.Sections, nil
 }
 
@@ -122,11 +122,11 @@ func (v *ChecklistValidator) Validate(content string) error {
 		}
 		// Must start with valid checkbox syntax
 		validPrefixes := []string{
-			"- [ ]",  // pending
-			"- [x]", "- [X]",  // completed
-			"- [>]", "- [-]", "- [~]",  // in_progress
+			"- [ ]",          // pending
+			"- [x]", "- [X]", // completed
+			"- [>]", "- [-]", "- [~]", // in_progress
 		}
-		
+
 		hasValidPrefix := false
 		for _, prefix := range validPrefixes {
 			if strings.HasPrefix(trimmed, prefix) {
@@ -134,7 +134,7 @@ func (v *ChecklistValidator) Validate(content string) error {
 				break
 			}
 		}
-		
+
 		if !hasValidPrefix {
 			if strings.HasPrefix(trimmed, "- []") || strings.HasPrefix(trimmed, "- [") {
 				return fmt.Errorf("invalid checkbox syntax")
@@ -149,7 +149,7 @@ func (v *ChecklistValidator) GetMetrics(content string) map[string]interface{} {
 	completed := 0
 	inProgress := 0
 	pending := 0
-	
+
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -161,7 +161,7 @@ func (v *ChecklistValidator) GetMetrics(content string) map[string]interface{} {
 			pending++
 		}
 	}
-	
+
 	total := completed + inProgress + pending
 	return map[string]interface{}{
 		"completed":   completed,
@@ -262,7 +262,7 @@ func GetOrderedSections(sections map[string]*SectionDefinition) []OrderedSection
 	if sections == nil {
 		return nil
 	}
-	
+
 	// Convert map to slice
 	ordered := make([]OrderedSection, 0, len(sections))
 	for key, def := range sections {
@@ -271,7 +271,7 @@ func GetOrderedSections(sections map[string]*SectionDefinition) []OrderedSection
 			Definition: def,
 		})
 	}
-	
+
 	// Sort by order field, then by key as tiebreaker
 	sort.Slice(ordered, func(i, j int) bool {
 		// Compare by order first
@@ -281,7 +281,7 @@ func GetOrderedSections(sections map[string]*SectionDefinition) []OrderedSection
 		// Use key as tiebreaker
 		return ordered[i].Key < ordered[j].Key
 	})
-	
+
 	return ordered
 }
 
@@ -290,32 +290,32 @@ var standardSectionMappings = map[string]struct {
 	Key    string
 	Schema SectionSchema
 }{
-	"## Findings & Research":    {Key: "findings", Schema: SchemaResearch},
-	"## Web Searches":           {Key: "web_searches", Schema: SchemaResearch},
-	"## Test Strategy":          {Key: "test_strategy", Schema: SchemaStrategy},
-	"## Test List":              {Key: "test_list", Schema: SchemaChecklist},
-	"## Test Cases":             {Key: "tests", Schema: SchemaTestCases},
+	"## Findings & Research":      {Key: "findings", Schema: SchemaResearch},
+	"## Web Searches":             {Key: "web_searches", Schema: SchemaResearch},
+	"## Test Strategy":            {Key: "test_strategy", Schema: SchemaStrategy},
+	"## Test List":                {Key: "test_list", Schema: SchemaChecklist},
+	"## Test Cases":               {Key: "tests", Schema: SchemaTestCases},
 	"## Maintainability Analysis": {Key: "maintainability", Schema: SchemaFreeform},
-	"## Test Results Log":       {Key: "test_results", Schema: SchemaResults},
-	"## Checklist":              {Key: "checklist", Schema: SchemaChecklist},
-	"## Working Scratchpad":     {Key: "scratchpad", Schema: SchemaFreeform},
+	"## Test Results Log":         {Key: "test_results", Schema: SchemaResults},
+	"## Checklist":                {Key: "checklist", Schema: SchemaChecklist},
+	"## Working Scratchpad":       {Key: "scratchpad", Schema: SchemaFreeform},
 }
 
 // InferSectionsFromMarkdown analyzes markdown content to infer section definitions
 func InferSectionsFromMarkdown(content string) map[string]*SectionDefinition {
 	sections := make(map[string]*SectionDefinition)
-	
+
 	// Split content into lines
 	lines := strings.Split(content, "\n")
 	order := 0
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Look for section headings (## Something)
 		if strings.HasPrefix(trimmed, "## ") {
 			order++
-			
+
 			// Check if it's a standard section
 			if mapping, exists := standardSectionMappings[trimmed]; exists {
 				sections[mapping.Key] = &SectionDefinition{
@@ -337,7 +337,7 @@ func InferSectionsFromMarkdown(content string) map[string]*SectionDefinition {
 			}
 		}
 	}
-	
+
 	return sections
 }
 
@@ -345,12 +345,12 @@ func InferSectionsFromMarkdown(content string) map[string]*SectionDefinition {
 func generateSectionKey(title string) string {
 	// Remove "## " prefix
 	clean := strings.TrimPrefix(title, "## ")
-	
+
 	// Convert to lowercase and replace spaces with underscores
 	key := strings.ToLower(clean)
 	key = strings.ReplaceAll(key, " ", "_")
 	key = strings.ReplaceAll(key, "&", "and")
-	
+
 	// Remove special characters
 	replacer := strings.NewReplacer(
 		"(", "",
@@ -372,15 +372,15 @@ func generateSectionKey(title string) string {
 		"-", "_",
 	)
 	key = replacer.Replace(key)
-	
+
 	// Remove duplicate underscores
 	for strings.Contains(key, "__") {
 		key = strings.ReplaceAll(key, "__", "_")
 	}
-	
+
 	// Trim underscores
 	key = strings.Trim(key, "_")
-	
+
 	return key
 }
 
@@ -394,18 +394,18 @@ func ValidateRequiredSections(sections map[string]*SectionDefinition, markdownCo
 			break
 		}
 	}
-	
+
 	// If no required sections, validation passes
 	if !hasRequired {
 		return nil
 	}
-	
+
 	// Check each required section
 	for _, def := range sections {
 		if !def.Required {
 			continue
 		}
-		
+
 		// Look for the section title in the markdown
 		if !strings.Contains(markdownContent, def.Title) {
 			// Extract just the section name from the title (remove "## " prefix)
@@ -413,6 +413,6 @@ func ValidateRequiredSections(sections map[string]*SectionDefinition, markdownCo
 			return fmt.Errorf("missing required section: %s", sectionName)
 		}
 	}
-	
+
 	return nil
 }

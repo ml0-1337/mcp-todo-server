@@ -56,26 +56,26 @@ func TestHandleError(t *testing.T) {
 			expectedInText: "Operation failed: failed to process: underlying issue",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := HandleError(tt.err)
-			
+
 			if tt.err == nil {
 				if result != nil {
 					t.Error("Expected nil result for nil error")
 				}
 				return
 			}
-			
+
 			if result == nil {
 				t.Fatal("Expected non-nil result for error")
 			}
-			
+
 			if !result.IsError {
 				t.Error("Expected IsError to be true")
 			}
-			
+
 			// We can't access the error message directly from CallToolResult,
 			// but we can verify the result is properly formatted as an error
 		})
@@ -109,15 +109,15 @@ func TestValidateRequiredParam(t *testing.T) {
 			wantErr:   false, // whitespace is not considered empty
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateRequiredParam(tt.param, tt.paramName)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateRequiredParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			
+
 			if err != nil && !strings.Contains(err.Error(), tt.paramName) {
 				t.Errorf("Error should mention parameter name '%s', got: %v", tt.paramName, err)
 			}
@@ -170,15 +170,15 @@ func TestValidateEnum(t *testing.T) {
 			wantErr:   false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateEnum(tt.value, tt.allowed, tt.paramName)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateEnum() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			
+
 			if err != nil {
 				// Check error message contains necessary information
 				errStr := err.Error()
@@ -212,12 +212,12 @@ func TestErrorConstants(t *testing.T) {
 		{"ErrArchiveFailed", ErrArchiveFailed},
 		{"ErrTemplateFailed", ErrTemplateFailed},
 	}
-	
+
 	for _, e := range errors {
 		if e.err == nil {
 			t.Errorf("%s should not be nil", e.name)
 		}
-		
+
 		// Verify error has appropriate message
 		if e.err.Error() == "" {
 			t.Errorf("%s should have non-empty error message", e.name)
@@ -230,34 +230,34 @@ func TestErrorHandlingPatterns(t *testing.T) {
 	t.Run("wrapped errors preserve context", func(t *testing.T) {
 		baseErr := errors.New("database connection failed")
 		wrappedErr := fmt.Errorf("failed to read todo: %w", baseErr)
-		
+
 		result := HandleError(wrappedErr)
 		if result == nil || !result.IsError {
 			t.Error("Expected error result for wrapped error")
 		}
 	})
-	
+
 	t.Run("multiple error keywords", func(t *testing.T) {
 		// Test that first matching pattern is used
 		err := errors.New("invalid search parameters not found")
 		result := HandleError(err)
-		
+
 		// Should match "invalid" before "not found"
 		if result == nil || !result.IsError {
 			t.Error("Expected error result")
 		}
 	})
-	
+
 	t.Run("nil safe operations", func(t *testing.T) {
 		// Ensure all error functions handle nil safely
 		if HandleError(nil) != nil {
 			t.Error("HandleError should return nil for nil error")
 		}
-		
+
 		if ValidateRequiredParam("", "test") == nil {
 			t.Error("ValidateRequiredParam should return error for empty param")
 		}
-		
+
 		if ValidateEnum("", []string{}, "test") == nil {
 			t.Error("ValidateEnum should return error for empty value")
 		}
@@ -271,19 +271,19 @@ func TestErrorMessageFormatting(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error")
 		}
-		
+
 		expected := "missing required parameter 'taskID'"
 		if err.Error() != expected {
 			t.Errorf("Expected error message '%s', got '%s'", expected, err.Error())
 		}
 	})
-	
+
 	t.Run("ValidateEnum message format", func(t *testing.T) {
 		err := ValidateEnum("urgent", []string{"high", "medium", "low"}, "priority")
 		if err == nil {
 			t.Fatal("Expected error")
 		}
-		
+
 		// Check message contains all required parts
 		msg := err.Error()
 		if !strings.Contains(msg, "invalid priority 'urgent'") {
