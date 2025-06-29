@@ -236,3 +236,39 @@ func FormatTodoLinkResponse(parentID, childID string, linkType string) *mcp.Call
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
 	return mcp.NewToolResultText(string(jsonData))
 }
+
+// FormatTodoSectionsResponse formats todo sections response
+func FormatTodoSectionsResponse(todo *core.Todo) *mcp.CallToolResult {
+	var response strings.Builder
+	
+	response.WriteString(fmt.Sprintf("Todo: %s\n\n", todo.ID))
+	response.WriteString("Sections:\n")
+	
+	if todo.Sections == nil || len(todo.Sections) == 0 {
+		response.WriteString("No section metadata defined (legacy todo)\n")
+	} else {
+		// Get sections in order
+		ordered := core.GetOrderedSections(todo.Sections)
+		
+		for _, section := range ordered {
+			response.WriteString(fmt.Sprintf("\n%s:\n", section.Key))
+			response.WriteString(fmt.Sprintf("  title: %s\n", section.Definition.Title))
+			response.WriteString(fmt.Sprintf("  order: %d\n", section.Definition.Order))
+			response.WriteString(fmt.Sprintf("  schema: %s\n", section.Definition.Schema))
+			response.WriteString(fmt.Sprintf("  required: %v\n", section.Definition.Required))
+			
+			if section.Definition.Custom {
+				response.WriteString("  custom: true\n")
+			}
+			
+			if section.Definition.Metadata != nil && len(section.Definition.Metadata) > 0 {
+				response.WriteString("  metadata:\n")
+				for k, v := range section.Definition.Metadata {
+					response.WriteString(fmt.Sprintf("    %s: %v\n", k, v))
+				}
+			}
+		}
+	}
+	
+	return mcp.NewToolResultText(response.String())
+}

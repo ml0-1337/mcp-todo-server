@@ -22,6 +22,9 @@ type Todo struct {
 	Type      string    `yaml:"type"`
 	ParentID  string    `yaml:"parent_id,omitempty"`
 	Tags      []string  `yaml:"tags,omitempty"`
+	
+	// Section metadata (new)
+	Sections  map[string]*SectionDefinition `yaml:"sections,omitempty"`
 }
 
 // TodoManager handles todo operations
@@ -183,18 +186,33 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 		"type":      todo.Type,
 	}
 	
+	// Add sections if defined
+	if todo.Sections != nil && len(todo.Sections) > 0 {
+		frontmatter["sections"] = todo.Sections
+	}
+	
 	yamlData, err := yaml.Marshal(frontmatter)
 	if err != nil {
 		return fmt.Errorf("failed to marshal YAML: %w", err)
 	}
 	
 	// Build markdown content
-	content := fmt.Sprintf(`---
-%s---
-
-# Task: %s
-
-## Findings & Research
+	var contentBuilder strings.Builder
+	contentBuilder.WriteString("---\n")
+	contentBuilder.Write(yamlData)
+	contentBuilder.WriteString("---\n\n")
+	contentBuilder.WriteString(fmt.Sprintf("# Task: %s\n\n", todo.Task))
+	
+	// Generate sections based on metadata or use defaults
+	if todo.Sections != nil && len(todo.Sections) > 0 {
+		// Use defined sections in order
+		ordered := GetOrderedSections(todo.Sections)
+		for _, section := range ordered {
+			contentBuilder.WriteString(section.Definition.Title + "\n\n")
+		}
+	} else {
+		// Use default sections for new todos
+		contentBuilder.WriteString(`## Findings & Research
 
 ## Test Strategy
 
@@ -209,7 +227,10 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 ## Checklist
 
 ## Working Scratchpad
-`, string(yamlData), todo.Task)
+`)
+	}
+	
+	content := contentBuilder.String()
 	
 	// Write to temp file first (atomic write)
 	tempFile := filePath + ".tmp"
@@ -272,6 +293,7 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 		Type      string   `yaml:"type"`
 		ParentID  string   `yaml:"parent_id"`
 		Tags      []string `yaml:"tags"`
+		Sections  map[string]*SectionDefinition `yaml:"sections"`
 	}
 	
 	err := yaml.Unmarshal([]byte(yamlContent), &frontmatter)
@@ -287,6 +309,7 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 		Type:     frontmatter.Type,
 		ParentID: frontmatter.ParentID,
 		Tags:     frontmatter.Tags,
+		Sections: frontmatter.Sections,
 	}
 	
 	// Parse timestamps with multiple format support
@@ -309,6 +332,11 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 	// Extract task from markdown content
 	markdownContent := parts[2]
 	todo.Task = extractTask(markdownContent)
+	
+	// Handle section metadata - if not defined, infer from markdown
+	if todo.Sections == nil {
+		todo.Sections = InferSectionsFromMarkdown(markdownContent)
+	}
 	
 	return todo, nil
 }

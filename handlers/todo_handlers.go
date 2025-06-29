@@ -395,3 +395,21 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 		return HandleError(fmt.Errorf("unknown operation: %s", operation)), nil
 	}
 }
+
+// HandleTodoSections returns all sections with metadata for a todo
+func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Extract ID parameter
+	id, err := request.RequireString("id")
+	if err != nil {
+		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
+	}
+	
+	// Read todo
+	todo, err := h.manager.ReadTodo(id)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Format sections response
+	return FormatTodoSectionsResponse(todo), nil
+}
