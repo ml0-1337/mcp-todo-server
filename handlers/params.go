@@ -14,6 +14,19 @@ type TodoCreateParams struct {
 	ParentID string
 }
 
+// TodoCreateMultiParams represents parameters for todo_create_multi
+type TodoCreateMultiParams struct {
+	Parent   TodoCreateInfo   `json:"parent"`
+	Children []TodoCreateInfo `json:"children"`
+}
+
+// TodoCreateInfo represents information for creating a todo in bulk operations
+type TodoCreateInfo struct {
+	Task     string `json:"task"`
+	Priority string `json:"priority,omitempty"`
+	Type     string `json:"type,omitempty"`
+}
+
 // TodoReadParams represents parameters for todo_read
 type TodoReadParams struct {
 	ID     string
@@ -271,6 +284,99 @@ func ExtractTodoArchiveParams(request mcp.CallToolRequest) (*TodoArchiveParams, 
 	// Optional quarter
 	if quarter, ok := args["quarter"].(string); ok {
 		params.Quarter = quarter
+	}
+	
+	return params, nil
+}
+
+// ExtractTodoCreateMultiParams extracts and validates todo_create_multi parameters
+func ExtractTodoCreateMultiParams(request mcp.CallToolRequest) (*TodoCreateMultiParams, error) {
+	params := &TodoCreateMultiParams{}
+	
+	// Get arguments map
+	args := request.GetArguments()
+	
+	// Extract parent todo info
+	if parentObj, ok := args["parent"].(map[string]interface{}); ok {
+		if task, ok := parentObj["task"].(string); ok && task != "" {
+			params.Parent.Task = task
+		} else {
+			return nil, fmt.Errorf("parent.task is required")
+		}
+		
+		// Optional parent priority (default: high)
+		params.Parent.Priority = "high"
+		if priority, ok := parentObj["priority"].(string); ok && priority != "" {
+			params.Parent.Priority = priority
+		}
+		
+		// Optional parent type (default: multi-phase)
+		params.Parent.Type = "multi-phase"
+		if todoType, ok := parentObj["type"].(string); ok && todoType != "" {
+			params.Parent.Type = todoType
+		}
+	} else {
+		return nil, fmt.Errorf("parent is required")
+	}
+	
+	// Extract children
+	if childrenArr, ok := args["children"].([]interface{}); ok {
+		if len(childrenArr) == 0 {
+			return nil, fmt.Errorf("at least one child is required")
+		}
+		
+		for i, childItem := range childrenArr {
+			if childObj, ok := childItem.(map[string]interface{}); ok {
+				child := TodoCreateInfo{}
+				
+				// Task is required
+				if task, ok := childObj["task"].(string); ok && task != "" {
+					child.Task = task
+				} else {
+					return nil, fmt.Errorf("children[%d].task is required", i)
+				}
+				
+				// Optional priority (default: medium)
+				child.Priority = "medium"
+				if priority, ok := childObj["priority"].(string); ok && priority != "" {
+					child.Priority = priority
+				}
+				
+				// Optional type (default: phase)
+				child.Type = "phase"
+				if todoType, ok := childObj["type"].(string); ok && todoType != "" {
+					child.Type = todoType
+				}
+				
+				params.Children = append(params.Children, child)
+			} else {
+				return nil, fmt.Errorf("children[%d] must be an object", i)
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("children array is required")
+	}
+	
+	// Validate all priorities and types
+	if !isValidPriority(params.Parent.Priority) {
+		return nil, fmt.Errorf("invalid parent priority '%s'", params.Parent.Priority)
+	}
+	if !isValidTodoType(params.Parent.Type) {
+		return nil, fmt.Errorf("invalid parent type '%s'", params.Parent.Type)
+	}
+	
+	for i, child := range params.Children {
+		if !isValidPriority(child.Priority) {
+			return nil, fmt.Errorf("invalid priority '%s' for child %d", child.Priority, i)
+		}
+		if !isValidTodoType(child.Type) {
+			return nil, fmt.Errorf("invalid type '%s' for child %d", child.Type, i)
+		}
+		
+		// Validate that phase/subtask children are appropriate
+		if child.Type == "multi-phase" {
+			return nil, fmt.Errorf("child %d cannot be of type 'multi-phase'", i)
+		}
 	}
 	
 	return params, nil

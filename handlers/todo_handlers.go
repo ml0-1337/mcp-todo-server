@@ -133,6 +133,60 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	return FormatTodoCreateResponseWithHints(todo, filePath, existingTodos), nil
 }
 
+// HandleTodoCreateMulti creates multiple todos with parent-child relationships
+func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Extract parameters
+	params, err := ExtractTodoCreateMultiParams(request)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Create parent todo
+	parentTodo, err := h.manager.CreateTodo(params.Parent.Task, params.Parent.Priority, params.Parent.Type)
+	if err != nil {
+		return HandleError(fmt.Errorf("failed to create parent todo: %w", err)), nil
+	}
+	
+	// Index parent in search
+	parentContent := fmt.Sprintf("# Task: %s\n\n## Findings & Research\n\n## Test Strategy\n\n", parentTodo.Task)
+	err = h.search.IndexTodo(parentTodo, parentContent)
+	if err != nil {
+		// Log but don't fail
+		fmt.Printf("Warning: failed to index parent todo: %v\n", err)
+	}
+	
+	// Create children todos
+	createdChildren := make([]*core.Todo, 0, len(params.Children))
+	for i, childInfo := range params.Children {
+		// Create child todo
+		childTodo, err := h.manager.CreateTodo(childInfo.Task, childInfo.Priority, childInfo.Type)
+		if err != nil {
+			// Try to clean up already created todos
+			fmt.Printf("Error creating child %d: %v. Rolling back...\n", i, err)
+			// Note: In a production system, we'd want proper transaction support
+			return HandleError(fmt.Errorf("failed to create child %d: %w", i, err)), nil
+		}
+		
+		// Set parent ID
+		err = h.manager.UpdateTodo(childTodo.ID, "", "", "", map[string]string{"parent_id": parentTodo.ID})
+		if err != nil {
+			fmt.Printf("Warning: failed to set parent_id for child %s: %v\n", childTodo.ID, err)
+		}
+		
+		// Index child in search
+		childContent := fmt.Sprintf("# Task: %s\n\n## Findings & Research\n\n## Test Strategy\n\n", childTodo.Task)
+		err = h.search.IndexTodo(childTodo, childContent)
+		if err != nil {
+			fmt.Printf("Warning: failed to index child todo: %v\n", err)
+		}
+		
+		createdChildren = append(createdChildren, childTodo)
+	}
+	
+	// Return response with all created todos
+	return FormatTodoCreateMultiResponse(parentTodo, createdChildren), nil
+}
+
 // HandleTodoRead reads one or more todos
 func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Extract parameters

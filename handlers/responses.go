@@ -50,6 +50,34 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 	return mcp.NewToolResultText(string(jsonData))
 }
 
+// FormatTodoCreateMultiResponse formats the response for todo_create_multi
+func FormatTodoCreateMultiResponse(parent *core.Todo, children []*core.Todo) *mcp.CallToolResult {
+	// Build hierarchy visualization
+	var result strings.Builder
+	
+	result.WriteString(fmt.Sprintf("Created multi-phase project: %s\n\n", parent.ID))
+	
+	// Show tree structure
+	result.WriteString("📋 Project Structure:\n")
+	result.WriteString(fmt.Sprintf("[→] %s: %s [%s] [%s]\n", parent.ID, parent.Task, strings.ToUpper(parent.Priority), parent.Type))
+	
+	for i, child := range children {
+		isLast := i == len(children)-1
+		prefix := "├── "
+		if isLast {
+			prefix = "└── "
+		}
+		result.WriteString(fmt.Sprintf("%s[→] %s: %s [%s]\n", prefix, child.ID, child.Task, child.Type))
+	}
+	
+	result.WriteString(fmt.Sprintf("\n✅ Successfully created %d todos (%d parent, %d children)\n", len(children)+1, 1, len(children)))
+	
+	// Add tip
+	result.WriteString("\n💡 TIP: Use `todo_read` to see the full hierarchy or `todo_update` to modify individual todos.")
+	
+	return mcp.NewToolResultText(result.String())
+}
+
 // FormatTodoReadResponse formats the response for todo_read based on format
 func FormatTodoReadResponse(todos []*core.Todo, format string, singleTodo bool) *mcp.CallToolResult {
 	if singleTodo && len(todos) > 0 {

@@ -82,6 +82,7 @@ func (ts *TodoServer) ListTools() []mcp.Tool {
 	// so we'll maintain our own list for testing
 	tools := []mcp.Tool{
 		mcp.NewTool("todo_create", mcp.WithDescription("Create a new todo")),
+		mcp.NewTool("todo_create_multi", mcp.WithDescription("Create multiple todos with parent-child relationships")),
 		mcp.NewTool("todo_read", mcp.WithDescription("Read todo(s)")), 
 		mcp.NewTool("todo_update", mcp.WithDescription("Update a todo")),
 		mcp.NewTool("todo_search", mcp.WithDescription("Search todos")),
@@ -115,6 +116,56 @@ func (ts *TodoServer) registerTools() {
 				mcp.Description("Parent todo ID (required for phase/subtask types)")),
 		),
 		ts.handlers.HandleTodoCreate,
+	)
+	
+	// Register todo_create_multi
+	ts.mcpServer.AddTool(
+		mcp.NewTool("todo_create_multi",
+			mcp.WithDescription("Create multiple todos with parent-child relationships in one operation. Perfect for multi-phase projects."),
+			mcp.WithObject("parent",
+				mcp.Required(),
+				mcp.Description("Parent todo information"),
+				mcp.Properties(map[string]any{
+					"task": map[string]any{
+						"type":        "string",
+						"description": "Parent task description",
+					},
+					"priority": map[string]any{
+						"type":        "string",
+						"description": "Priority (high, medium, low)",
+						"default":     "high",
+					},
+					"type": map[string]any{
+						"type":        "string",
+						"description": "Todo type (defaults to multi-phase)",
+						"default":     "multi-phase",
+					},
+				})),
+			mcp.WithArray("children",
+				mcp.Required(),
+				mcp.Description("Array of child todos"),
+				mcp.Items(map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"task": map[string]any{
+							"type":        "string",
+							"description": "Child task description",
+						},
+						"priority": map[string]any{
+							"type":        "string",
+							"description": "Priority (high, medium, low)",
+							"default":     "medium",
+						},
+						"type": map[string]any{
+							"type":        "string",
+							"description": "Todo type (defaults to phase)",
+							"default":     "phase",
+						},
+					},
+					"required": []string{"task"},
+				})),
+		),
+		ts.handlers.HandleTodoCreateMulti,
 	)
 	
 	// Register todo_read
