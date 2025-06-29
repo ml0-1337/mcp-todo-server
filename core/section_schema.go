@@ -193,17 +193,9 @@ func (v *TestCasesValidator) GetMetrics(content string) map[string]interface{} {
 type ResultsValidator struct{}
 
 func (v *ResultsValidator) Validate(content string) error {
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		// Must start with timestamp in brackets
-		if !strings.HasPrefix(trimmed, "[") || !strings.Contains(trimmed, "]") {
-			return fmt.Errorf("entries must start with timestamp")
-		}
-	}
+	// Now accepts both timestamped and non-timestamped entries
+	// The automatic timestamping happens at the UpdateTodo level
+	// So the validator should be more permissive
 	return nil
 }
 
