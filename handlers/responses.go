@@ -225,7 +225,40 @@ func formatTodosList(todos []*core.Todo) *mcp.CallToolResult {
 
 // formatTodosSummary formats todos in summary format
 func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
-	var lines []string
+	if len(todos) == 0 {
+		return mcp.NewToolResultText("No todos found")
+	}
+	
+	var result strings.Builder
+	
+	// Check if we have any parent-child relationships
+	hasHierarchy := false
+	for _, todo := range todos {
+		if todo.ParentID != "" || todo.Type == "multi-phase" || todo.Type == "phase" || todo.Type == "subtask" {
+			hasHierarchy = true
+			break
+		}
+	}
+	
+	// If we have hierarchical relationships, show tree view first
+	if hasHierarchy {
+		roots, orphans := core.BuildTodoHierarchy(todos)
+		
+		// Only show tree if we have actual hierarchy
+		if len(roots) > 0 || len(orphans) > 0 {
+			formatter := core.NewTreeFormatter()
+			treeView := formatter.FormatHierarchy(roots, orphans)
+			
+			if treeView != "" {
+				result.WriteString("HIERARCHICAL VIEW:\n")
+				result.WriteString(treeView)
+				result.WriteString("\n")
+			}
+		}
+	}
+	
+	// Then show traditional grouped view
+	result.WriteString("\nGROUPED BY STATUS:")
 	
 	// Group by status
 	statusGroups := make(map[string][]*core.Todo)
@@ -236,18 +269,14 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 	// Format by status
 	for _, status := range []string{"in_progress", "blocked", "completed"} {
 		if todos, ok := statusGroups[status]; ok && len(todos) > 0 {
-			lines = append(lines, fmt.Sprintf("\n%s (%d):", strings.ToUpper(status), len(todos)))
+			result.WriteString(fmt.Sprintf("\n\n%s (%d):\n", strings.ToUpper(status), len(todos)))
 			for _, todo := range todos {
-				lines = append(lines, formatTodoSummaryLine(todo))
+				result.WriteString(formatTodoSummaryLine(todo) + "\n")
 			}
 		}
 	}
 	
-	if len(lines) == 0 {
-		return mcp.NewToolResultText("No todos found")
-	}
-	
-	return mcp.NewToolResultText(strings.Join(lines, "\n"))
+	return mcp.NewToolResultText(result.String())
 }
 
 // formatTodoSummaryLine formats a single todo as a summary line
