@@ -104,7 +104,12 @@ func ExtractTodoCreateParams(request mcp.CallToolRequest) (*TodoCreateParams, er
 	}
 	
 	if !isValidTodoType(params.Type) {
-		return nil, fmt.Errorf("invalid type '%s', must be one of: feature, bug, refactor, research, multi-phase", params.Type)
+		return nil, fmt.Errorf("invalid type '%s', must be one of: feature, bug, refactor, research, multi-phase, phase, subtask", params.Type)
+	}
+	
+	// Validate that phase and subtask types require parent_id
+	if (params.Type == "phase" || params.Type == "subtask") && params.ParentID == "" {
+		return nil, fmt.Errorf("type '%s' requires parent_id to be specified", params.Type)
 	}
 	
 	return params, nil
@@ -277,7 +282,7 @@ func isValidPriority(p string) bool {
 }
 
 func isValidTodoType(t string) bool {
-	return t == "feature" || t == "bug" || t == "refactor" || t == "research" || t == "multi-phase"
+	return t == "feature" || t == "bug" || t == "refactor" || t == "research" || t == "multi-phase" || t == "phase" || t == "subtask"
 }
 
 func isValidFormat(f string) bool {
