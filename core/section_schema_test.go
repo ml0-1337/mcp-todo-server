@@ -170,3 +170,116 @@ status: "in_progress"`,
 		})
 	}
 }
+
+// Test 2: Validate section schema types
+func TestValidateSectionSchemaTypes(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  SectionSchema
+		content string
+		wantErr bool
+		errMsg  string
+	}{
+		// Research schema tests
+		{
+			name:    "research schema accepts any text",
+			schema:  SchemaResearch,
+			content: "Some research findings with references [1] and citations.",
+			wantErr: false,
+		},
+		{
+			name:    "research schema accepts empty content",
+			schema:  SchemaResearch,
+			content: "",
+			wantErr: false,
+		},
+		// Checklist schema tests
+		{
+			name:    "checklist schema accepts valid checkboxes",
+			schema:  SchemaChecklist,
+			content: "- [ ] Task 1\n- [x] Task 2\n- [ ] Task 3",
+			wantErr: false,
+		},
+		{
+			name:    "checklist schema rejects invalid checkbox syntax",
+			schema:  SchemaChecklist,
+			content: "- [] Missing space\n- [x] Valid\n- [y] Invalid marker",
+			wantErr: true,
+			errMsg:  "invalid checkbox syntax",
+		},
+		{
+			name:    "checklist schema rejects non-list items",
+			schema:  SchemaChecklist,
+			content: "This is not a checklist\n- [x] Mixed content",
+			wantErr: true,
+			errMsg:  "non-checklist content found",
+		},
+		// Test cases schema tests
+		{
+			name:    "test_cases schema accepts code blocks",
+			schema:  SchemaTestCases,
+			content: "```go\nfunc TestExample(t *testing.T) {\n\t// test code\n}\n```",
+			wantErr: false,
+		},
+		{
+			name:    "test_cases schema accepts multiple languages",
+			schema:  SchemaTestCases,
+			content: "```python\ndef test_example():\n    pass\n```\n\n```javascript\ntest('example', () => {});\n```",
+			wantErr: false,
+		},
+		{
+			name:    "test_cases schema warns on missing code blocks",
+			schema:  SchemaTestCases,
+			content: "Just some text without code blocks",
+			wantErr: true,
+			errMsg:  "no code blocks found",
+		},
+		// Results schema tests
+		{
+			name:    "results schema accepts timestamped entries",
+			schema:  SchemaResults,
+			content: "[2025-01-01 10:00:00] Test started\n[2025-01-01 10:01:00] Test passed",
+			wantErr: false,
+		},
+		{
+			name:    "results schema rejects entries without timestamps",
+			schema:  SchemaResults,
+			content: "Test started\n[2025-01-01 10:01:00] Test passed",
+			wantErr: true,
+			errMsg:  "entries must start with timestamp",
+		},
+		// Strategy schema tests
+		{
+			name:    "strategy schema accepts structured content",
+			schema:  SchemaStrategy,
+			content: "### Approach\n- Step 1\n- Step 2\n\n### Risks\n- Risk 1",
+			wantErr: false,
+		},
+		// Freeform schema tests
+		{
+			name:    "freeform schema accepts anything",
+			schema:  SchemaFreeform,
+			content: "Any content\n```\ncode\n```\n- [ ] checkbox\n[timestamp] log",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validator := GetValidator(tt.schema)
+			if validator == nil {
+				t.Fatalf("GetValidator(%v) returned nil", tt.schema)
+			}
+			
+			err := validator.Validate(tt.content)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			
+			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
+				t.Errorf("Validate() error = %v, want error containing %v", err.Error(), tt.errMsg)
+			}
+		})
+	}
+}
