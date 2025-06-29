@@ -291,6 +291,7 @@ var standardSectionMappings = map[string]struct {
 	Schema SectionSchema
 }{
 	"## Findings & Research":    {Key: "findings", Schema: SchemaResearch},
+	"## Web Searches":           {Key: "web_searches", Schema: SchemaResearch},
 	"## Test Strategy":          {Key: "test_strategy", Schema: SchemaStrategy},
 	"## Test List":              {Key: "test_list", Schema: SchemaChecklist},
 	"## Test Cases":             {Key: "tests", Schema: SchemaTestCases},
