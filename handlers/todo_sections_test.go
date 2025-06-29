@@ -245,9 +245,9 @@ func TestHandleTodoSectionsWorksWithLegacyTodos(t *testing.T) {
 
 	text := content.Text
 
-	// Should indicate no section metadata
-	if !contains(text, "No section metadata defined (legacy todo)") {
-		t.Errorf("Expected legacy todo message, got: %s", text)
+	// Should indicate no sections found (legacy todo with no identifiable sections)
+	if !contains(text, "No sections found") {
+		t.Errorf("Expected 'No sections found' message, got: %s", text)
 	}
 
 	// Should still show todo ID
