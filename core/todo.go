@@ -623,11 +623,21 @@ func formatWithTimestamp(content string) string {
 	var timestampedLines []string
 	
 	for _, line := range lines {
-		// Only add timestamp to non-empty lines
-		if strings.TrimSpace(line) != "" {
-			timestampedLines = append(timestampedLines, fmt.Sprintf("[%s] %s", timestamp, line))
-		} else {
+		trimmedLine := strings.TrimSpace(line)
+		
+		// Skip empty lines
+		if trimmedLine == "" {
 			timestampedLines = append(timestampedLines, line)
+			continue
+		}
+		
+		// Check if line already has a timestamp
+		if strings.HasPrefix(trimmedLine, "[") && strings.Contains(trimmedLine, "]") {
+			// Line already has timestamp, preserve it
+			timestampedLines = append(timestampedLines, line)
+		} else {
+			// Add timestamp to lines without one
+			timestampedLines = append(timestampedLines, fmt.Sprintf("[%s] %s", timestamp, line))
 		}
 	}
 	

@@ -77,3 +77,34 @@ func TestFormatWithTimestamp_MultiLine(t *testing.T) {
 		}
 	}
 }
+
+// Test 3: formatWithTimestamp() preserves existing timestamps
+func TestFormatWithTimestamp_PreservesExisting(t *testing.T) {
+	// Test input with existing timestamps
+	content := "[2025-01-01 10:00:00] Already timestamped entry\nNew entry without timestamp\n[2025-01-01 11:00:00] Another timestamped entry"
+	
+	// Format with timestamp
+	result := formatWithTimestamp(content)
+	
+	// Split result into lines
+	lines := strings.Split(result, "\n")
+	
+	if len(lines) != 3 {
+		t.Fatalf("Expected 3 lines, got %d", len(lines))
+	}
+	
+	// First line should keep original timestamp
+	if !strings.HasPrefix(lines[0], "[2025-01-01 10:00:00]") {
+		t.Error("First line should preserve original timestamp")
+	}
+	
+	// Second line should get new timestamp
+	if !strings.HasPrefix(lines[1], "[") || strings.HasPrefix(lines[1], "[2025-01-01") {
+		t.Error("Second line should have a new timestamp")
+	}
+	
+	// Third line should keep original timestamp
+	if !strings.HasPrefix(lines[2], "[2025-01-01 11:00:00]") {
+		t.Error("Third line should preserve original timestamp")
+	}
+}
