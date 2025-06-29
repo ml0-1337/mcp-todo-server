@@ -437,7 +437,7 @@ Notes and scratch work.`,
 					Schema:   SchemaChecklist,
 					Required: false,
 				},
-				"test_cases": {
+				"tests": {
 					Title:    "## Test Cases",
 					Order:    4,
 					Schema:   SchemaTestCases,
