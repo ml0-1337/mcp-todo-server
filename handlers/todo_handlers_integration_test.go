@@ -340,11 +340,19 @@ func TestHandleTodoUpdate(t *testing.T) {
 				},
 			},
 			setupMocks: func(tm *MockTodoManager, se *MockSearchEngine) {
+				tm.ReadTodoFunc = func(id string) (*core.Todo, error) {
+					return &core.Todo{
+						ID: id,
+						Sections: map[string]*core.SectionDefinition{
+							"findings": {
+								Title:  "## Findings & Research",
+								Schema: core.SchemaResearch,
+							},
+						},
+					}, nil
+				}
 				tm.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
 					return nil
-				}
-				tm.ReadTodoFunc = func(id string) (*core.Todo, error) {
-					return &core.Todo{ID: id}, nil
 				}
 				tm.ReadTodoContentFunc = func(id string) (string, error) {
 					return "Todo content", nil
@@ -402,7 +410,18 @@ func TestHandleTodoUpdate(t *testing.T) {
 				Arguments: map[string]interface{}{
 					"id":      "test-123",
 					"section": "invalid",
+					"content": "Some content",
 				},
+			},
+			setupMocks: func(tm *MockTodoManager, se *MockSearchEngine) {
+				// Mock reading todo to check sections
+				tm.ReadTodoFunc = func(id string) (*core.Todo, error) {
+					return &core.Todo{
+						ID:       id,
+						Task:     "Test todo",
+						Sections: nil, // No sections defined, so any section is invalid
+					}, nil
+				}
 			},
 			expectError: true,
 		},

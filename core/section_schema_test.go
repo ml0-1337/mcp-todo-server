@@ -579,8 +579,10 @@ func TestCalculateSectionMetrics(t *testing.T) {
 			schema:  SchemaChecklist,
 			content: "- [x] Completed task\n- [ ] Pending task\n- [x] Another done\n- [ ] Not done",
 			expected: map[string]interface{}{
-				"completed": 2,
-				"total":     4,
+				"completed":   2,
+				"in_progress": 0,
+				"pending":     2,
+				"total":       4,
 			},
 		},
 		{
@@ -588,8 +590,10 @@ func TestCalculateSectionMetrics(t *testing.T) {
 			schema:  SchemaChecklist,
 			content: "",
 			expected: map[string]interface{}{
-				"completed": 0,
-				"total":     0,
+				"completed":   0,
+				"in_progress": 0,
+				"pending":     0,
+				"total":       0,
 			},
 		},
 		{

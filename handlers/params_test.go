@@ -299,12 +299,17 @@ func TestExtractUpdateParams_FromMap(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid section",
+			name: "valid section parameter",
 			args: map[string]interface{}{
 				"id":      "todo-123",
-				"section": "invalid",
+				"section": "findings",
 			},
-			wantErr: true,
+			expect: TodoUpdateParams{
+				ID:        "todo-123",
+				Section:   "findings",
+				Operation: "append", // default
+			},
+			wantErr: false,
 		},
 		{
 			name: "invalid operation",

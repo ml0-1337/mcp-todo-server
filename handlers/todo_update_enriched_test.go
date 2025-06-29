@@ -19,6 +19,20 @@ func TestHandleTodoUpdateEnrichedResponse(t *testing.T) {
 		Status:   "in_progress",
 		Priority: "high",
 		Type:     "feature",
+		Sections: map[string]*core.SectionDefinition{
+			"findings": {
+				Title:  "## Findings & Research",
+				Schema: core.SchemaResearch,
+			},
+			"checklist": {
+				Title:  "## Checklist",
+				Schema: core.SchemaChecklist,
+			},
+			"scratchpad": {
+				Title:  "## Working Scratchpad", 
+				Schema: core.SchemaFreeform,
+			},
+		},
 	}
 	
 	testContent := `---
