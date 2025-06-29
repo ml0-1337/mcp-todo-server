@@ -99,7 +99,7 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_create
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_create",
-			mcp.WithDescription("Create a new todo with full metadata"),
+			mcp.WithDescription("Create a new todo with full metadata. TIP: Use parent_id for phases and subtasks. Types 'phase' and 'subtask' require parent_id."),
 			mcp.WithString("task", 
 				mcp.Required(),
 				mcp.Description("Task description")),
@@ -107,12 +107,12 @@ func (ts *TodoServer) registerTools() {
 				mcp.Description("Task priority (high, medium, low)"),
 				mcp.DefaultString("high")),
 			mcp.WithString("type",
-				mcp.Description("Todo type (feature, bug, refactor, research, multi-phase)"),
+				mcp.Description("Todo type (feature, bug, refactor, research, multi-phase, phase, subtask)"),
 				mcp.DefaultString("feature")),
 			mcp.WithString("template",
 				mcp.Description("Optional template name")),
 			mcp.WithString("parent_id",
-				mcp.Description("Parent todo for multi-phase projects")),
+				mcp.Description("Parent todo ID (required for phase/subtask types)")),
 		),
 		ts.handlers.HandleTodoCreate,
 	)
