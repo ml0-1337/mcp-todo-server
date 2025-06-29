@@ -614,6 +614,12 @@ func ParseChecklist(content string) []ChecklistItem {
 	return items
 }
 
+// formatWithTimestamp adds a timestamp prefix to content for results sections
+func formatWithTimestamp(content string) string {
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	return fmt.Sprintf("[%s] %s", timestamp, content)
+}
+
 // SaveTodo writes the entire todo including sections to disk
 func (tm *TodoManager) SaveTodo(todo *Todo) error {
 	tm.mu.Lock()
