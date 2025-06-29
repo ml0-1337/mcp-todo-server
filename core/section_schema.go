@@ -361,3 +361,36 @@ func generateSectionKey(title string) string {
 	
 	return key
 }
+
+// ValidateRequiredSections checks if all required sections are present in the markdown content
+func ValidateRequiredSections(sections map[string]*SectionDefinition, markdownContent string) error {
+	// First, check if there are any required sections
+	hasRequired := false
+	for _, def := range sections {
+		if def.Required {
+			hasRequired = true
+			break
+		}
+	}
+	
+	// If no required sections, validation passes
+	if !hasRequired {
+		return nil
+	}
+	
+	// Check each required section
+	for _, def := range sections {
+		if !def.Required {
+			continue
+		}
+		
+		// Look for the section title in the markdown
+		if !strings.Contains(markdownContent, def.Title) {
+			// Extract just the section name from the title (remove "## " prefix)
+			sectionName := strings.TrimPrefix(def.Title, "## ")
+			return fmt.Errorf("missing required section: %s", sectionName)
+		}
+	}
+	
+	return nil
+}

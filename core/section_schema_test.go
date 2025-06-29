@@ -657,3 +657,140 @@ func TestCalculateSectionMetrics(t *testing.T) {
 		})
 	}
 }
+
+// Test 7: Validate required sections are present
+func TestValidateRequiredSections(t *testing.T) {
+	tests := []struct {
+		name            string
+		sections        map[string]*SectionDefinition
+		markdownContent string
+		wantErr         bool
+		errMsg          string
+	}{
+		{
+			name: "all required sections present",
+			sections: map[string]*SectionDefinition{
+				"findings": {
+					Title:    "## Findings & Research",
+					Required: true,
+					Schema:   SchemaResearch,
+				},
+				"test_list": {
+					Title:    "## Test List",
+					Required: true,
+					Schema:   SchemaChecklist,
+				},
+				"optional": {
+					Title:    "## Optional Section",
+					Required: false,
+					Schema:   SchemaFreeform,
+				},
+			},
+			markdownContent: `# Task: Test Todo
+
+## Findings & Research
+
+Research content here.
+
+## Test List
+
+- [ ] Test 1
+- [ ] Test 2
+
+## Some Other Section
+
+This section is not tracked.`,
+			wantErr: false,
+		},
+		{
+			name: "missing required section",
+			sections: map[string]*SectionDefinition{
+				"findings": {
+					Title:    "## Findings & Research",
+					Required: true,
+					Schema:   SchemaResearch,
+				},
+				"test_list": {
+					Title:    "## Test List",
+					Required: true,
+					Schema:   SchemaChecklist,
+				},
+			},
+			markdownContent: `# Task: Test Todo
+
+## Findings & Research
+
+Research content here.
+
+## Some Other Section
+
+Missing the required Test List section.`,
+			wantErr: true,
+			errMsg:  "missing required section: Test List",
+		},
+		{
+			name: "empty content with required sections",
+			sections: map[string]*SectionDefinition{
+				"findings": {
+					Title:    "## Findings & Research",
+					Required: true,
+					Schema:   SchemaResearch,
+				},
+			},
+			markdownContent: `# Task: Empty Todo`,
+			wantErr:         true,
+			errMsg:          "missing required section: Findings & Research",
+		},
+		{
+			name: "no required sections",
+			sections: map[string]*SectionDefinition{
+				"optional1": {
+					Title:    "## Optional 1",
+					Required: false,
+					Schema:   SchemaFreeform,
+				},
+				"optional2": {
+					Title:    "## Optional 2",
+					Required: false,
+					Schema:   SchemaFreeform,
+				},
+			},
+			markdownContent: `# Task: Test Todo
+
+Some content without any sections.`,
+			wantErr: false,
+		},
+		{
+			name: "required section with different case",
+			sections: map[string]*SectionDefinition{
+				"findings": {
+					Title:    "## Findings & Research",
+					Required: true,
+					Schema:   SchemaResearch,
+				},
+			},
+			markdownContent: `# Task: Test Todo
+
+## findings & research
+
+Should not match due to case sensitivity.`,
+			wantErr: true,
+			errMsg:  "missing required section: Findings & Research",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateRequiredSections(tt.sections, tt.markdownContent)
+			
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateRequiredSections() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			
+			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
+				t.Errorf("ValidateRequiredSections() error = %v, want error %v", err.Error(), tt.errMsg)
+			}
+		})
+	}
+}
