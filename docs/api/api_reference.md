@@ -304,12 +304,58 @@ Updates todo content or metadata with atomic operations.
 |-----------|------|----------|---------|-------------|
 | id | string | Yes | - | Todo ID to update |
 | section | string | No | - | Section: findings, tests, checklist, scratchpad |
-| operation | string | No | "append" | Operation: append, replace, prepend |
+| operation | string | No | "append" | Operation: append, replace, prepend, toggle |
 | content | string | No | - | Content to add/update |
 | metadata | object | No | - | Metadata updates |
 | metadata.status | string | No | - | New status |
 | metadata.priority | string | No | - | New priority |
 | metadata.current_test | string | No | - | Current test being worked on |
+
+### Output Schema
+
+**Simple Response (metadata updates or sections without content):**
+```json
+{
+  "message": "Todo '{id}' updated successfully"
+}
+```
+
+**Enriched Response (section updates with content):**
+```json
+{
+  "message": "Todo '{id}' {section} section updated ({operation})",
+  "todo": {
+    "id": "string",
+    "task": "string",
+    "status": "string",
+    "priority": "string",
+    "type": "string",
+    "checklist": [
+      {
+        "text": "string",
+        "status": "pending|in_progress|completed"
+      }
+    ],
+    "sections": {
+      "{section_name}": {
+        "title": "string",
+        "hasContent": "boolean",
+        "wordCount": "number"
+      }
+    }
+  },
+  "progress": {
+    "checklist": "string (e.g., '2/4 completed (50%)')",
+    "checklist_breakdown": {
+      "completed": "number",
+      "in_progress": "number",
+      "pending": "number",
+      "total": "number"
+    },
+    "sections": "string (e.g., '1/8 sections have content')"
+  }
+}
+```
 
 ### Section Names
 
@@ -376,6 +422,75 @@ Updates todo content or metadata with atomic operations.
 }
 ```
 
+**Toggle Checklist Item:**
+```json
+// Input
+{
+  "id": "implement-feature",
+  "section": "checklist",
+  "operation": "toggle",
+  "content": "Add authentication"
+}
+
+// Output (Enriched Response)
+{
+  "message": "Todo 'implement-feature' checklist section updated (toggle)",
+  "todo": {
+    "id": "implement-feature",
+    "task": "Implement user authentication",
+    "status": "in_progress",
+    "priority": "high",
+    "type": "feature",
+    "checklist": [
+      {
+        "text": "Design API schema",
+        "status": "completed"
+      },
+      {
+        "text": "Implement endpoints",
+        "status": "completed"
+      },
+      {
+        "text": "Add authentication",
+        "status": "in_progress"
+      },
+      {
+        "text": "Write documentation",
+        "status": "pending"
+      }
+    ],
+    "sections": {
+      "checklist": {
+        "title": "## Checklist",
+        "hasContent": true,
+        "wordCount": 20
+      }
+    }
+  },
+  "progress": {
+    "checklist": "2/4 completed (50%)",
+    "checklist_breakdown": {
+      "completed": 2,
+      "in_progress": 1,
+      "pending": 1,
+      "total": 4
+    },
+    "sections": "1/8 sections have content"
+  }
+}
+```
+
+### Enriched Response Format
+
+When updating sections with content (especially checklists), the response includes full todo data:
+
+- **todo**: Complete todo information including parsed checklist items
+- **checklist**: Array of items with text and status (pending, in_progress, completed)
+- **sections**: Summary of all sections with content status and word count
+- **progress**: Checklist completion metrics with status breakdown
+
+This eliminates the need for a separate read call after updates.
+
 ### Operation Behaviors
 
 | Operation | Behavior |
@@ -383,6 +498,16 @@ Updates todo content or metadata with atomic operations.
 | append | Adds content to end of section |
 | replace | Replaces entire section content |
 | prepend | Adds content to beginning of section |
+| toggle | Toggles checklist item status (checklist sections only) |
+
+### Toggle Operation
+
+The toggle operation cycles checklist items through three states:
+- `[ ]` pending → `[>]` in_progress → `[x]` completed → `[ ]` pending
+
+Supported in-progress markers: `[>]`, `[-]`, `[~]`
+
+To toggle an item, use the item's text as the content parameter.
 
 ### Error Cases
 
