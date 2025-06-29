@@ -79,6 +79,18 @@ func (h *TodoHandlers) Close() error {
 	return nil
 }
 
+// GetBasePathForContext returns the appropriate base path for the context
+func (h *TodoHandlers) GetBasePathForContext(ctx context.Context) string {
+	// Check if we have a contextual manager wrapper
+	if ctxWrapper, ok := h.manager.(*ContextualTodoManagerWrapper); ok {
+		manager := ctxWrapper.GetManagerForContext(ctx)
+		return manager.GetBasePath()
+	}
+	
+	// Fall back to default manager
+	return h.manager.GetBasePath()
+}
+
 // HandleTodoCreate creates a new todo
 func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Extract parameters
@@ -95,13 +107,16 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 			return HandleError(fmt.Errorf("template error: %w", err)), nil
 		}
 
+		// Get the appropriate base path for this context
+		basePath := h.GetBasePathForContext(ctx)
+		
 		// Write todo file
-		filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
+		filePath := filepath.Join(basePath, todo.ID+".md")
 		return FormatTodoTemplateResponse(todo, filePath), nil
 	}
 
-	// Create todo
-	todo, err := h.manager.CreateTodo(params.Task, params.Priority, params.Type)
+	// Create todo using context if available
+	todo, err := h.CreateTodoWithContext(ctx, params.Task, params.Priority, params.Type)
 	if err != nil {
 		return HandleError(err), nil
 	}

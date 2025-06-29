@@ -93,6 +93,20 @@ func ResolveTodoPath() (string, error) {
 	return todoPath, nil
 }
 
+// ResolveTodoPathFromWorkingDir resolves todo path from a specific working directory
+func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
+	// Build todo path from provided working directory
+	todoPath := filepath.Join(workingDir, ".claude", "todos")
+	
+	// Ensure directory exists
+	if err := os.MkdirAll(todoPath, 0755); err != nil {
+		return "", fmt.Errorf("failed to create todo directory: %w", err)
+	}
+	
+	log.Printf("Using todo directory from working dir: %s", todoPath)
+	return todoPath, nil
+}
+
 // ResolveTemplatePath finds the template directory based on configured mode
 func ResolveTemplatePath() (string, error) {
 	// 1. Check for explicit override

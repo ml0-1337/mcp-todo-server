@@ -197,7 +197,21 @@ Each test cycle is tracked in `.claude/todos/implement-mcp-todo-server.md`.
 
 ### MCP Server Configuration
 
-Will be configured in Claude Code's `settings.json`:
+#### HTTP Transport with Custom Headers (Recommended)
+
+Use HTTP transport with custom headers to specify the working directory:
+
+```bash
+# Add server with working directory header
+claude mcp add --transport http todo-server http://localhost:8080/mcp \
+  --header "X-Working-Directory: /path/to/your/project"
+```
+
+This ensures todos are created in your project directory, not the server's location.
+
+#### STDIO Transport
+
+Configure in Claude Code's `settings.json`:
 
 ```json
 {
@@ -242,6 +256,7 @@ This project follows TDD principles. To contribute:
 ## Documentation
 
 - **[Product Requirements Document](docs/overview/PRD.md)** - Full specification
+- **[HTTP Headers Working Directory](docs/http-headers-working-directory.md)** - Using headers for project context
 - **[Testing Guide](docs/testing.md)** - How to run tests effectively
 - **[Implementation Todo](.claude/archive/2025/06/28/implement-mcp-todo-server.md)** - Original implementation (archived)
 - **[MCP Research](docs/analysis/go_mcp_server_research.md)** - Protocol documentation

@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
@@ -11,10 +13,11 @@ import (
 
 // TodoServer represents the MCP server for todo management
 type TodoServer struct {
-	mcpServer  *server.MCPServer
-	handlers   *handlers.TodoHandlers
-	transport  string
-	httpServer *server.StreamableHTTPServer
+	mcpServer     *server.MCPServer
+	handlers      *handlers.TodoHandlers
+	transport     string
+	httpServer    *server.StreamableHTTPServer
+	httpWrapper   *StreamableHTTPServerWrapper
 }
 
 // ServerOption is a function that configures a TodoServer
@@ -71,6 +74,8 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	// Create HTTP server if needed
 	if ts.transport == "http" {
 		ts.httpServer = server.NewStreamableHTTPServer(s)
+		// Wrap with middleware for header extraction
+		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.httpServer)
 	}
 
 	return ts, nil
@@ -365,8 +370,13 @@ func (ts *TodoServer) StartStdio() error {
 
 // StartHTTP starts the MCP server in HTTP mode
 func (ts *TodoServer) StartHTTP(addr string) error {
-	if ts.httpServer == nil {
+	if ts.httpWrapper == nil {
 		return fmt.Errorf("HTTP server not initialized")
 	}
-	return ts.httpServer.Start(addr)
+	
+	// Use custom HTTP server with middleware
+	http.Handle("/mcp", ts.httpWrapper)
+	
+	log.Printf("Starting HTTP server with middleware on %s", addr)
+	return http.ListenAndServe(addr, nil)
 }
