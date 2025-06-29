@@ -384,11 +384,6 @@ func extractUpdateParamsFromMap(args map[string]interface{}) (*TodoUpdateParams,
 		}
 	}
 	
-	// Validate section if provided
-	if params.Section != "" && !isValidSection(params.Section) {
-		return nil, fmt.Errorf("invalid section '%s'", params.Section)
-	}
-	
 	// Validate operation
 	if !isValidOperation(params.Operation) {
 		return nil, fmt.Errorf("invalid operation '%s'", params.Operation)
@@ -481,24 +476,4 @@ func TestIsValidFormat(t *testing.T) {
 	}
 }
 
-func TestIsValidSection(t *testing.T) {
-	tests := []struct {
-		section string
-		valid   bool
-	}{
-		{"status", true},
-		{"findings", true},
-		{"tests", true},
-		{"checklist", true},
-		{"scratchpad", true},
-		{"notes", false},
-		{"", false},
-	}
-	
-	for _, tt := range tests {
-		result := isValidSection(tt.section)
-		if result != tt.valid {
-			t.Errorf("isValidSection(%q) = %v, want %v", tt.section, result, tt.valid)
-		}
-	}
-}
+// TestIsValidSection removed - section validation is now dynamic based on todo content

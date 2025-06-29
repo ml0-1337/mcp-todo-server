@@ -90,6 +90,96 @@ func formatTodosFull(todos []*core.Todo) *mcp.CallToolResult {
 	return mcp.NewToolResultText(string(jsonData))
 }
 
+// formatTodosFullWithContent formats multiple todos with full content
+func formatTodosFullWithContent(todos []*core.Todo, contents map[string]string) *mcp.CallToolResult {
+	var results []map[string]interface{}
+	
+	for _, todo := range todos {
+		data := map[string]interface{}{
+			"id":       todo.ID,
+			"task":     todo.Task,
+			"status":   todo.Status,
+			"priority": todo.Priority,
+			"type":     todo.Type,
+			"started":  todo.Started.Format(time.RFC3339),
+			"tags":     todo.Tags,
+		}
+		if !todo.Completed.IsZero() {
+			data["completed"] = todo.Completed.Format(time.RFC3339)
+		}
+		if todo.ParentID != "" {
+			data["parent_id"] = todo.ParentID
+		}
+		
+		// Add sections with content
+		if content, exists := contents[todo.ID]; exists {
+			sections := extractSectionContents(content)
+			sectionData := make(map[string]interface{})
+			
+			for key, sectionContent := range sections {
+				if key == "checklist" {
+					// Parse checklist items
+					sectionData[key] = core.ParseChecklist(sectionContent)
+				} else {
+					// Raw content for other sections
+					sectionData[key] = sectionContent
+				}
+			}
+			
+			data["sections"] = sectionData
+		}
+		
+		results = append(results, data)
+	}
+	
+	jsonData, _ := json.MarshalIndent(results, "", "  ")
+	return mcp.NewToolResultText(string(jsonData))
+}
+
+// formatSingleTodoWithContent formats a single todo with full content
+func formatSingleTodoWithContent(todo *core.Todo, content string, format string) *mcp.CallToolResult {
+	if format != "full" {
+		// Use existing formatSingleTodo for other formats
+		return formatSingleTodo(todo, format)
+	}
+	
+	// Full format with content
+	data := map[string]interface{}{
+		"id":       todo.ID,
+		"task":     todo.Task,
+		"status":   todo.Status,
+		"priority": todo.Priority,
+		"type":     todo.Type,
+		"started":  todo.Started.Format(time.RFC3339),
+		"tags":     todo.Tags,
+	}
+	if !todo.Completed.IsZero() {
+		data["completed"] = todo.Completed.Format(time.RFC3339)
+	}
+	if todo.ParentID != "" {
+		data["parent_id"] = todo.ParentID
+	}
+	
+	// Add sections with content
+	sections := extractSectionContents(content)
+	sectionData := make(map[string]interface{})
+	
+	for key, sectionContent := range sections {
+		if key == "checklist" {
+			// Parse checklist items
+			sectionData[key] = core.ParseChecklist(sectionContent)
+		} else {
+			// Raw content for other sections
+			sectionData[key] = sectionContent
+		}
+	}
+	
+	data["sections"] = sectionData
+	
+	jsonData, _ := json.MarshalIndent(data, "", "  ")
+	return mcp.NewToolResultText(string(jsonData))
+}
+
 // formatTodosList formats todos as a simple list
 func formatTodosList(todos []*core.Todo) *mcp.CallToolResult {
 	var lines []string
