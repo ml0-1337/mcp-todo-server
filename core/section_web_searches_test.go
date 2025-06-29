@@ -1,6 +1,9 @@
 package core
 
 import (
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -101,5 +104,49 @@ Test strategy content
 	}
 	if sections["web_searches"].Order >= sections["test_strategy"].Order {
 		t.Error("web_searches should come before test_strategy")
+	}
+}
+
+// Test 4: New todos include web_searches section by default
+func TestNewTodosIncludeWebSearchesSection(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir := t.TempDir()
+	
+	// Create a TodoManager
+	tm := NewTodoManager(tempDir)
+	
+	// Create a new todo
+	todo, err := tm.CreateTodo("Test task with web searches", "high", "feature")
+	if err != nil {
+		t.Fatalf("Failed to create todo: %v", err)
+	}
+	
+	// Read the todo file
+	filePath := filepath.Join(tempDir, todo.ID + ".md")
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to read todo file: %v", err)
+	}
+	
+	// Check that web searches section is included
+	if !strings.Contains(string(content), "## Web Searches") {
+		t.Error("New todo should include ## Web Searches section")
+	}
+	
+	// Verify order: should be after Findings and before Test Strategy
+	contentStr := string(content)
+	findingsIdx := strings.Index(contentStr, "## Findings & Research")
+	webSearchesIdx := strings.Index(contentStr, "## Web Searches")
+	testStrategyIdx := strings.Index(contentStr, "## Test Strategy")
+	
+	if findingsIdx == -1 || webSearchesIdx == -1 || testStrategyIdx == -1 {
+		t.Fatal("Expected sections not found")
+	}
+	
+	if webSearchesIdx <= findingsIdx {
+		t.Error("Web Searches should come after Findings & Research")
+	}
+	if webSearchesIdx >= testStrategyIdx {
+		t.Error("Web Searches should come before Test Strategy")
 	}
 }

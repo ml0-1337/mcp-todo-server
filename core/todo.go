@@ -220,6 +220,8 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 		// Use default sections for new todos
 		contentBuilder.WriteString(`## Findings & Research
 
+## Web Searches
+
 ## Test Strategy
 
 ## Test List
