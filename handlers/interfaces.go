@@ -43,3 +43,8 @@ type TemplateManagerInterface interface {
 	CreateFromTemplate(templateName, task, priority, todoType string) (*core.Todo, error)
 	ExecuteTemplate(tmpl *core.Template, vars map[string]interface{}) (string, error)
 }
+
+// TodoLinkerInterface defines the interface for linking operations
+type TodoLinkerInterface interface {
+	LinkTodos(parentID, childID, linkType string) error
+}

@@ -11,10 +11,12 @@ import (
 
 // TodoHandlers contains handlers for all todo operations
 type TodoHandlers struct {
-	manager   *core.TodoManager
-	search    *core.SearchEngine
-	stats     *core.StatsEngine
-	templates *core.TemplateManager
+	manager   TodoManagerInterface
+	search    SearchEngineInterface
+	stats     StatsEngineInterface
+	templates TemplateManagerInterface
+	// Factory function for creating TodoLinker (to avoid type assertion)
+	createLinker func(TodoManagerInterface) TodoLinkerInterface
 }
 
 // NewTodoHandlers creates new todo handlers with dependencies
@@ -40,7 +42,33 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 		search:    search,
 		stats:     stats,
 		templates: templates,
+		createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			// Type assert to concrete type for core.NewTodoLinker
+			if tm, ok := m.(*core.TodoManager); ok {
+				return core.NewTodoLinker(tm)
+			}
+			return nil
+		},
 	}, nil
+}
+
+// NewTodoHandlersWithDependencies creates new todo handlers with explicit dependencies (for testing)
+func NewTodoHandlersWithDependencies(
+	manager TodoManagerInterface,
+	search SearchEngineInterface,
+	stats StatsEngineInterface,
+	templates TemplateManagerInterface,
+) *TodoHandlers {
+	return &TodoHandlers{
+		manager:   manager,
+		search:    search,
+		stats:     stats,
+		templates: templates,
+		createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			// For testing, we'll need a mock linker
+			return nil
+		},
+	}
 }
 
 // Close cleans up resources
@@ -293,7 +321,13 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 	linkType := request.GetString("link_type", "parent-child")
 	
 	// Create link
-	linker := core.NewTodoLinker(h.manager)
+	if h.createLinker == nil {
+		return HandleError(fmt.Errorf("linker not available")), nil
+	}
+	linker := h.createLinker(h.manager)
+	if linker == nil {
+		return HandleError(fmt.Errorf("failed to create linker")), nil
+	}
 	err = linker.LinkTodos(parentID, childID, linkType)
 	if err != nil {
 		return HandleError(err), nil

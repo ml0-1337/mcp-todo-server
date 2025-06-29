@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
 
@@ -339,4 +340,19 @@ func (m *MockTemplateManager) ExecuteTemplate(tmpl *core.Template, vars map[stri
 		return m.ExecuteTemplateFunc(tmpl, vars)
 	}
 	return "Executed template content", nil
+}
+
+// MockCallToolRequest wraps arguments for testing
+type MockCallToolRequest struct {
+	Arguments map[string]interface{}
+}
+
+// ToCallToolRequest converts MockCallToolRequest to mcp.CallToolRequest
+func (m *MockCallToolRequest) ToCallToolRequest() mcp.CallToolRequest {
+	// Create a minimal CallToolRequest with our arguments
+	return mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: m.Arguments,
+		},
+	}
 }
