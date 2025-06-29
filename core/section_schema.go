@@ -263,3 +263,101 @@ func GetOrderedSections(sections map[string]*SectionDefinition) []OrderedSection
 	
 	return ordered
 }
+
+// Standard section mappings for backwards compatibility
+var standardSectionMappings = map[string]struct {
+	Key    string
+	Schema SectionSchema
+}{
+	"## Findings & Research":    {Key: "findings", Schema: SchemaResearch},
+	"## Test Strategy":          {Key: "test_strategy", Schema: SchemaStrategy},
+	"## Test List":              {Key: "test_list", Schema: SchemaChecklist},
+	"## Test Cases":             {Key: "test_cases", Schema: SchemaTestCases},
+	"## Maintainability Analysis": {Key: "maintainability", Schema: SchemaFreeform},
+	"## Test Results Log":       {Key: "test_results", Schema: SchemaResults},
+	"## Checklist":              {Key: "checklist", Schema: SchemaChecklist},
+	"## Working Scratchpad":     {Key: "scratchpad", Schema: SchemaFreeform},
+}
+
+// InferSectionsFromMarkdown analyzes markdown content to infer section definitions
+func InferSectionsFromMarkdown(content string) map[string]*SectionDefinition {
+	sections := make(map[string]*SectionDefinition)
+	
+	// Split content into lines
+	lines := strings.Split(content, "\n")
+	order := 0
+	
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		
+		// Look for section headings (## Something)
+		if strings.HasPrefix(trimmed, "## ") {
+			order++
+			
+			// Check if it's a standard section
+			if mapping, exists := standardSectionMappings[trimmed]; exists {
+				sections[mapping.Key] = &SectionDefinition{
+					Title:    trimmed,
+					Order:    order,
+					Schema:   mapping.Schema,
+					Required: false, // Legacy sections not required
+				}
+			} else {
+				// Custom section - generate key from title
+				key := generateSectionKey(trimmed)
+				sections[key] = &SectionDefinition{
+					Title:    trimmed,
+					Order:    order,
+					Schema:   SchemaFreeform,
+					Required: false,
+					Custom:   true,
+				}
+			}
+		}
+	}
+	
+	return sections
+}
+
+// generateSectionKey converts a section title to a key
+func generateSectionKey(title string) string {
+	// Remove "## " prefix
+	clean := strings.TrimPrefix(title, "## ")
+	
+	// Convert to lowercase and replace spaces with underscores
+	key := strings.ToLower(clean)
+	key = strings.ReplaceAll(key, " ", "_")
+	key = strings.ReplaceAll(key, "&", "and")
+	
+	// Remove special characters
+	replacer := strings.NewReplacer(
+		"(", "",
+		")", "",
+		"[", "",
+		"]", "",
+		"{", "",
+		"}", "",
+		":", "",
+		";", "",
+		",", "",
+		".", "",
+		"!", "",
+		"?", "",
+		"'", "",
+		"\"", "",
+		"/", "_",
+		"\\", "_",
+		"-", "_",
+	)
+	key = replacer.Replace(key)
+	
+	// Remove duplicate underscores
+	for strings.Contains(key, "__") {
+		key = strings.ReplaceAll(key, "__", "_")
+	}
+	
+	// Trim underscores
+	key = strings.Trim(key, "_")
+	
+	return key
+}

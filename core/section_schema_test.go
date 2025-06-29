@@ -371,3 +371,181 @@ func TestPreserveSectionOrder(t *testing.T) {
 		})
 	}
 }
+
+// Test 4: Handle missing section metadata (backwards compatibility)
+func TestBackwardsCompatibilityForLegacyTodos(t *testing.T) {
+	tests := []struct {
+		name             string
+		markdownContent  string
+		expectedSections map[string]*SectionDefinition
+	}{
+		{
+			name: "infer sections from standard todo format",
+			markdownContent: `---
+todo_id: "legacy-todo"
+started: "2025-06-29 15:00:00"
+status: "in_progress"
+priority: "high"
+type: "feature"
+---
+
+# Task: Legacy todo without section metadata
+
+## Findings & Research
+
+Some research content here.
+
+## Test Strategy
+
+Testing approach documented.
+
+## Test List
+
+- [ ] Test 1
+- [x] Test 2
+
+## Test Cases
+
+` + "```go" + `
+func TestExample(t *testing.T) {}
+` + "```" + `
+
+## Checklist
+
+- [x] Item 1
+- [ ] Item 2
+
+## Working Scratchpad
+
+Notes and scratch work.`,
+			expectedSections: map[string]*SectionDefinition{
+				"findings": {
+					Title:    "## Findings & Research",
+					Order:    1,
+					Schema:   SchemaResearch,
+					Required: false,
+				},
+				"test_strategy": {
+					Title:    "## Test Strategy",
+					Order:    2,
+					Schema:   SchemaStrategy,
+					Required: false,
+				},
+				"test_list": {
+					Title:    "## Test List",
+					Order:    3,
+					Schema:   SchemaChecklist,
+					Required: false,
+				},
+				"test_cases": {
+					Title:    "## Test Cases",
+					Order:    4,
+					Schema:   SchemaTestCases,
+					Required: false,
+				},
+				"checklist": {
+					Title:    "## Checklist",
+					Order:    5,
+					Schema:   SchemaChecklist,
+					Required: false,
+				},
+				"scratchpad": {
+					Title:    "## Working Scratchpad",
+					Order:    6,
+					Schema:   SchemaFreeform,
+					Required: false,
+				},
+			},
+		},
+		{
+			name: "handle non-standard sections",
+			markdownContent: `---
+todo_id: "custom-todo"
+---
+
+# Task: Todo with custom sections
+
+## Custom Analysis
+
+Some custom content.
+
+## Performance Metrics
+
+Performance data here.
+
+## Findings & Research
+
+Standard section mixed with custom.`,
+			expectedSections: map[string]*SectionDefinition{
+				"custom_analysis": {
+					Title:    "## Custom Analysis",
+					Order:    1,
+					Schema:   SchemaFreeform,
+					Required: false,
+					Custom:   true,
+				},
+				"performance_metrics": {
+					Title:    "## Performance Metrics",
+					Order:    2,
+					Schema:   SchemaFreeform,
+					Required: false,
+					Custom:   true,
+				},
+				"findings": {
+					Title:    "## Findings & Research",
+					Order:    3,
+					Schema:   SchemaResearch,
+					Required: false,
+				},
+			},
+		},
+		{
+			name: "empty todo with no sections",
+			markdownContent: `---
+todo_id: "empty-todo"
+---
+
+# Task: Empty todo`,
+			expectedSections: map[string]*SectionDefinition{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Infer sections from markdown content
+			sections := InferSectionsFromMarkdown(tt.markdownContent)
+			
+			// Check section count
+			if len(sections) != len(tt.expectedSections) {
+				t.Errorf("InferSectionsFromMarkdown() returned %d sections, want %d", len(sections), len(tt.expectedSections))
+				return
+			}
+			
+			// Check each section
+			for key, expectedDef := range tt.expectedSections {
+				gotDef, exists := sections[key]
+				if !exists {
+					t.Errorf("InferSectionsFromMarkdown() missing section %s", key)
+					continue
+				}
+				
+				// Compare fields
+				if gotDef.Title != expectedDef.Title {
+					t.Errorf("Section %s: Title = %v, want %v", key, gotDef.Title, expectedDef.Title)
+				}
+				if gotDef.Order != expectedDef.Order {
+					t.Errorf("Section %s: Order = %v, want %v", key, gotDef.Order, expectedDef.Order)
+				}
+				if gotDef.Schema != expectedDef.Schema {
+					t.Errorf("Section %s: Schema = %v, want %v", key, gotDef.Schema, expectedDef.Schema)
+				}
+				if gotDef.Required != expectedDef.Required {
+					t.Errorf("Section %s: Required = %v, want %v", key, gotDef.Required, expectedDef.Required)
+				}
+				if gotDef.Custom != expectedDef.Custom {
+					t.Errorf("Section %s: Custom = %v, want %v", key, gotDef.Custom, expectedDef.Custom)
+				}
+			}
+		})
+	}
+}
