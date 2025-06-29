@@ -22,6 +22,7 @@ type MockTodoManager struct {
 	// Configurable responses
 	CreateTodoFunc        func(task, priority, todoType string) (*core.Todo, error)
 	ReadTodoFunc          func(id string) (*core.Todo, error)
+	ReadTodoWithContentFunc func(id string) (*core.Todo, string, error)
 	UpdateTodoFunc        func(id, section, operation, content string, metadata map[string]string) error
 	SaveTodoFunc          func(todo *core.Todo) error
 	ListTodosFunc         func(status, priority string, days int) ([]*core.Todo, error)
@@ -72,6 +73,17 @@ func (m *MockTodoManager) ReadTodo(id string) (*core.Todo, error) {
 		return m.ReadTodoFunc(id)
 	}
 	return &core.Todo{ID: id, Task: "Test Todo", Status: "in_progress"}, nil
+}
+
+func (m *MockTodoManager) ReadTodoWithContent(id string) (*core.Todo, string, error) {
+	m.recordCall("ReadTodoWithContent", id)
+	if m.ReadTodoWithContentFunc != nil {
+		return m.ReadTodoWithContentFunc(id)
+	}
+	// Return default todo and content
+	todo := &core.Todo{ID: id, Task: "Test Todo", Status: "in_progress"}
+	content := "# Test Todo\n\n## Checklist\n- [ ] Item 1"
+	return todo, content, nil
 }
 
 func (m *MockTodoManager) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
@@ -354,6 +366,11 @@ func (m *MockTemplateManager) ExecuteTemplate(tmpl *core.Template, vars map[stri
 // MockCallToolRequest wraps arguments for testing
 type MockCallToolRequest struct {
 	Arguments map[string]interface{}
+}
+
+// GetArguments implements mcp.CallToolRequest interface
+func (m *MockCallToolRequest) GetArguments() map[string]interface{} {
+	return m.Arguments
 }
 
 // ToCallToolRequest converts MockCallToolRequest to mcp.CallToolRequest

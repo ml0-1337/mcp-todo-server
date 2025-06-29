@@ -140,17 +140,39 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	
 	// Single todo read
 	if params.ID != "" {
-		todo, err := h.manager.ReadTodo(params.ID)
-		if err != nil {
-			return HandleError(err), nil
+		if params.Format == "full" {
+			// For full format, read both todo and content
+			todo, content, err := h.manager.ReadTodoWithContent(params.ID)
+			if err != nil {
+				return HandleError(err), nil
+			}
+			return formatSingleTodoWithContent(todo, content, params.Format), nil
+		} else {
+			// For other formats, just read todo metadata
+			todo, err := h.manager.ReadTodo(params.ID)
+			if err != nil {
+				return HandleError(err), nil
+			}
+			return FormatTodoReadResponse([]*core.Todo{todo}, params.Format, true), nil
 		}
-		return FormatTodoReadResponse([]*core.Todo{todo}, params.Format, true), nil
 	}
 	
 	// List todos with filters
 	todos, err := h.manager.ListTodos(params.Filter.Status, params.Filter.Priority, params.Filter.Days)
 	if err != nil {
 		return HandleError(err), nil
+	}
+	
+	// For full format with multiple todos, read content for each
+	if params.Format == "full" {
+		contents := make(map[string]string)
+		for _, todo := range todos {
+			content, err := h.manager.ReadTodoContent(todo.ID)
+			if err == nil {
+				contents[todo.ID] = content
+			}
+		}
+		return formatTodosFullWithContent(todos, contents), nil
 	}
 	
 	return FormatTodoReadResponse(todos, params.Format, false), nil
