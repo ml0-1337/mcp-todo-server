@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"time"
 	
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
@@ -203,6 +202,9 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		return HandleError(err), nil
 	}
 	
+	// Read todo BEFORE archiving to get its metadata
+	todo, readErr := h.manager.ReadTodo(params.ID)
+	
 	// Archive todo
 	err = h.manager.ArchiveTodo(params.ID, params.Quarter)
 	if err != nil {
@@ -210,24 +212,19 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	}
 	
 	// Construct archive path
-	todo, _ := h.manager.ReadTodo(params.ID)
 	var archivePath string
-	if todo != nil {
+	if readErr == nil && todo != nil {
 		quarter := params.Quarter
 		if quarter == "" {
-			// Use completion time or current time for quarter
-			completionTime := todo.Completed
-			if completionTime.IsZero() {
-				completionTime = time.Now()
-			}
-			// Use daily path format
-			dayPath := core.GetDailyPath(completionTime)
+			// Use the todo's started date for archive path (matches ArchiveTodo behavior)
+			dayPath := core.GetDailyPath(todo.Started)
 			archivePath = filepath.Join(".claude", "archive", dayPath, params.ID+".md")
 		} else {
 			archivePath = filepath.Join(".claude", "archive", quarter, params.ID+".md")
 		}
 	} else {
-		// Fallback path
+		// Fallback path when we couldn't read the todo
+		// This might happen with timestamp parsing errors
 		archivePath = filepath.Join(".claude", "archive", params.ID+".md")
 	}
 	
