@@ -549,3 +549,111 @@ todo_id: "empty-todo"
 		})
 	}
 }
+
+// Test 6: Calculate section metrics (word count, checkbox completion)
+func TestCalculateSectionMetrics(t *testing.T) {
+	tests := []struct {
+		name     string
+		schema   SectionSchema
+		content  string
+		expected map[string]interface{}
+	}{
+		{
+			name:    "research section word count",
+			schema:  SchemaResearch,
+			content: "This is a research section with some findings and analysis.",
+			expected: map[string]interface{}{
+				"word_count": 10,
+			},
+		},
+		{
+			name:    "empty research section",
+			schema:  SchemaResearch,
+			content: "",
+			expected: map[string]interface{}{
+				"word_count": 0,
+			},
+		},
+		{
+			name:    "checklist completion metrics",
+			schema:  SchemaChecklist,
+			content: "- [x] Completed task\n- [ ] Pending task\n- [x] Another done\n- [ ] Not done",
+			expected: map[string]interface{}{
+				"completed": 2,
+				"total":     4,
+			},
+		},
+		{
+			name:    "empty checklist",
+			schema:  SchemaChecklist,
+			content: "",
+			expected: map[string]interface{}{
+				"completed": 0,
+				"total":     0,
+			},
+		},
+		{
+			name:    "test cases code block count",
+			schema:  SchemaTestCases,
+			content: "```go\nfunc Test1() {}\n```\n\nSome text\n\n```python\ndef test2():\n    pass\n```",
+			expected: map[string]interface{}{
+				"code_blocks": 2,
+			},
+		},
+		{
+			name:    "results log entry count",
+			schema:  SchemaResults,
+			content: "[2025-01-01 10:00:00] Test started\n[2025-01-01 10:01:00] Test passed\n\nSome notes\n\n[2025-01-01 10:02:00] All done",
+			expected: map[string]interface{}{
+				"entries": 3,
+			},
+		},
+		{
+			name:    "strategy section count",
+			schema:  SchemaStrategy,
+			content: "### Approach\nDetails\n\n### Implementation\nMore details\n\n### Testing Strategy\nTest plan",
+			expected: map[string]interface{}{
+				"sections": 3,
+			},
+		},
+		{
+			name:    "freeform content length",
+			schema:  SchemaFreeform,
+			content: "This is some freeform content.",
+			expected: map[string]interface{}{
+				"length": 30,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validator := GetValidator(tt.schema)
+			if validator == nil {
+				t.Fatalf("GetValidator(%v) returned nil", tt.schema)
+			}
+			
+			metrics := validator.GetMetrics(tt.content)
+			
+			// Check each expected metric
+			for key, expectedValue := range tt.expected {
+				gotValue, exists := metrics[key]
+				if !exists {
+					t.Errorf("GetMetrics() missing metric %s", key)
+					continue
+				}
+				
+				if gotValue != expectedValue {
+					t.Errorf("GetMetrics() metric %s = %v, want %v", key, gotValue, expectedValue)
+				}
+			}
+			
+			// Check for unexpected metrics
+			for key := range metrics {
+				if _, expected := tt.expected[key]; !expected {
+					t.Errorf("GetMetrics() has unexpected metric %s", key)
+				}
+			}
+		})
+	}
+}
