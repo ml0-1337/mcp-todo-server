@@ -113,6 +113,7 @@ Some notes here.`
 				var response TodoUpdateResponse
 				err := json.Unmarshal([]byte(textContent.Text), &response)
 				if err != nil {
+					t.Logf("Response text: %s", textContent.Text)
 					t.Fatalf("Failed to parse response JSON: %v", err)
 				}
 				

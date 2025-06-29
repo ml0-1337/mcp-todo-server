@@ -315,6 +315,29 @@ docker-push: docker-build ## Push Docker image to registry
 	@echo "$(YELLOW)Note: You need to tag with your registry URL first$(NC)"
 	@echo "Example: docker tag mcp-todo-server:latest your-registry/mcp-todo-server:latest"
 
+# Workflow testing
+.PHONY: workflow-test
+workflow-test: ## Test GitHub workflows locally with act
+	@if command -v act > /dev/null; then \
+		echo "$(GREEN)Testing CI workflow...$(NC)"; \
+		echo "$(YELLOW)Note: Make sure Docker is running and you've selected a container image in act$(NC)"; \
+		act push -j lint --container-architecture linux/amd64 || true; \
+		act push -j test --container-architecture linux/amd64 -P ubuntu-latest=catthehacker/ubuntu:act-latest || true; \
+		act push -j build --container-architecture linux/amd64 || true; \
+	else \
+		echo "$(YELLOW)act not installed. Install with: brew install act$(NC)"; \
+		echo "Then run: act -l to list workflows"; \
+	fi
+
+.PHONY: workflow-lint
+workflow-lint: ## Lint GitHub workflow files
+	@if command -v actionlint > /dev/null; then \
+		echo "$(GREEN)Linting workflow files...$(NC)"; \
+		actionlint .github/workflows/*.yml; \
+	else \
+		echo "$(YELLOW)actionlint not installed. Install with: brew install actionlint$(NC)"; \
+	fi
+
 # Shortcuts
 .PHONY: b
 b: build ## Shortcut for build
