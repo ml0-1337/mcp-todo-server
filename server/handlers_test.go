@@ -15,12 +15,29 @@ func TestNewTodoServer(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
+	// Set environment variables to use temp directory
+	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
+	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
+	defer func() {
+		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
+		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
+	}()
+	
 	// Create required directories
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	templatesDir := filepath.Join(tempDir, ".claude", "templates")
 	err = os.MkdirAll(todosDir, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create todos dir: %v", err)
 	}
+	err = os.MkdirAll(templatesDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create templates dir: %v", err)
+	}
+
+	// Set environment to use temp directories
+	os.Setenv("CLAUDE_TODO_PATH", todosDir)
+	os.Setenv("CLAUDE_TEMPLATE_PATH", templatesDir)
 
 	// Create server
 	ts, err := NewTodoServer()
@@ -48,6 +65,29 @@ func TestNewTodoServer(t *testing.T) {
 
 // TestListTools tests listing available tools
 func TestListTools(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "mcp-todo-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Set environment variables to use temp directory
+	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
+	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
+	defer func() {
+		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
+		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
+	}()
+	
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	templatesDir := filepath.Join(tempDir, ".claude", "templates")
+	os.MkdirAll(todosDir, 0755)
+	os.MkdirAll(templatesDir, 0755)
+	
+	os.Setenv("CLAUDE_TODO_PATH", todosDir)
+	os.Setenv("CLAUDE_TEMPLATE_PATH", templatesDir)
+	
 	ts, err := NewTodoServer()
 	if err != nil {
 		t.Fatalf("Failed to create todo server: %v", err)
@@ -57,22 +97,23 @@ func TestListTools(t *testing.T) {
 	tools := ts.ListTools()
 	
 	// Check we have the expected number of tools
-	expectedTools := 9
+	expectedTools := 10 // Including todo_create_multi
 	if len(tools) != expectedTools {
 		t.Errorf("Expected %d tools, got %d", expectedTools, len(tools))
 	}
 
 	// Check specific tools exist
 	toolNames := map[string]bool{
-		"todo_create":   false,
-		"todo_read":     false,
-		"todo_update":   false,
-		"todo_search":   false,
-		"todo_archive":  false,
-		"todo_template": false,
-		"todo_link":     false,
-		"todo_stats":    false,
-		"todo_clean":    false,
+		"todo_create":       false,
+		"todo_create_multi": false,
+		"todo_read":         false,
+		"todo_update":       false,
+		"todo_search":       false,
+		"todo_archive":      false,
+		"todo_template":     false,
+		"todo_link":         false,
+		"todo_stats":        false,
+		"todo_clean":        false,
 	}
 
 	for _, tool := range tools {

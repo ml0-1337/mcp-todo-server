@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -9,6 +11,29 @@ import (
 
 // Test 3: Server should validate tool parameters against JSON schema
 func TestParameterValidation(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "mcp-todo-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Set environment variables to use temp directory
+	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
+	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
+	defer func() {
+		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
+		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
+	}()
+	
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	templatesDir := filepath.Join(tempDir, ".claude", "templates")
+	os.MkdirAll(todosDir, 0755)
+	os.MkdirAll(templatesDir, 0755)
+	
+	os.Setenv("CLAUDE_TODO_PATH", todosDir)
+	os.Setenv("CLAUDE_TEMPLATE_PATH", templatesDir)
+	
 	// Create server
 	server, err := NewTodoServer()
 	if err != nil {

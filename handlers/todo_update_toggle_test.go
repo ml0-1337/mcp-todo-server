@@ -147,6 +147,25 @@ sections:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Reset content for each test to ensure isolation
+			currentContent = `---
+todo_id: test-todo
+status: in_progress
+priority: high
+type: feature
+sections:
+  checklist:
+    title: "## Checklist"
+    schema: checklist
+---
+
+# Task: Test todo with checklist
+
+## Checklist
+
+- [ ] First task
+- [>] Second task
+- [x] Third task`
 			request := &MockCallToolRequest{
 				Arguments: map[string]interface{}{
 					"id":        "test-todo",
