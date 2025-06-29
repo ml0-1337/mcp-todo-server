@@ -680,6 +680,23 @@ func (tm *TodoManager) ReadTodoContent(id string) (string, error) {
 	return string(content), nil
 }
 
+// ReadTodoWithContent reads a todo and returns both the parsed Todo and raw content
+func (tm *TodoManager) ReadTodoWithContent(id string) (*Todo, string, error) {
+	// First read and parse the todo
+	todo, err := tm.ReadTodo(id)
+	if err != nil {
+		return nil, "", err
+	}
+	
+	// Then read the raw content
+	content, err := tm.ReadTodoContent(id)
+	if err != nil {
+		return nil, "", err
+	}
+	
+	return todo, content, nil
+}
+
 // ArchiveOldTodos archives todos older than specified days
 func (tm *TodoManager) ArchiveOldTodos(days int) (int, error) {
 	todos, err := tm.ListTodos("completed", "", days)

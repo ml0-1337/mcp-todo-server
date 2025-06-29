@@ -188,11 +188,6 @@ func ExtractTodoUpdateParams(request mcp.CallToolRequest) (*TodoUpdateParams, er
 		}
 	}
 	
-	// Validate section if provided
-	if params.Section != "" && !isValidSection(params.Section) {
-		return nil, fmt.Errorf("invalid section '%s'", params.Section)
-	}
-	
 	// Validate operation
 	if !isValidOperation(params.Operation) {
 		return nil, fmt.Errorf("invalid operation '%s'", params.Operation)
@@ -287,10 +282,6 @@ func isValidTodoType(t string) bool {
 
 func isValidFormat(f string) bool {
 	return f == "full" || f == "summary" || f == "list"
-}
-
-func isValidSection(s string) bool {
-	return s == "status" || s == "findings" || s == "tests" || s == "checklist" || s == "scratchpad"
 }
 
 func isValidOperation(o string) bool {

@@ -188,8 +188,10 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		// Check if todo has section metadata
 		if todo.Sections != nil {
 			// Find the section definition
+			sectionFound := false
 			for key, sectionDef := range todo.Sections {
 				if key == params.Section {
+					sectionFound = true
 					// Get validator for the schema
 					validator := core.GetValidator(sectionDef.Schema)
 					if validator != nil {
@@ -201,6 +203,15 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 					break
 				}
 			}
+			
+			// If section not found in metadata, check if it's a valid section name
+			if !sectionFound {
+				// The section doesn't exist in this todo
+				return HandleError(fmt.Errorf("section '%s' does not exist in this todo", params.Section)), nil
+			}
+		} else {
+			// No section metadata, so section doesn't exist
+			return HandleError(fmt.Errorf("section '%s' does not exist in this todo", params.Section)), nil
 		}
 	}
 	
