@@ -617,7 +617,21 @@ func ParseChecklist(content string) []ChecklistItem {
 // formatWithTimestamp adds a timestamp prefix to content for results sections
 func formatWithTimestamp(content string) string {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	return fmt.Sprintf("[%s] %s", timestamp, content)
+	
+	// Handle multi-line content
+	lines := strings.Split(content, "\n")
+	var timestampedLines []string
+	
+	for _, line := range lines {
+		// Only add timestamp to non-empty lines
+		if strings.TrimSpace(line) != "" {
+			timestampedLines = append(timestampedLines, fmt.Sprintf("[%s] %s", timestamp, line))
+		} else {
+			timestampedLines = append(timestampedLines, line)
+		}
+	}
+	
+	return strings.Join(timestampedLines, "\n")
 }
 
 // SaveTodo writes the entire todo including sections to disk

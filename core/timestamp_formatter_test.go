@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -39,5 +40,40 @@ func TestFormatWithTimestamp_SingleLine(t *testing.T) {
 	_, err := time.Parse("2006-01-02 15:04:05", timestampPart)
 	if err != nil {
 		t.Errorf("Timestamp format invalid: %v", err)
+	}
+}
+
+// Test 2: formatWithTimestamp() handles multi-line content
+func TestFormatWithTimestamp_MultiLine(t *testing.T) {
+	// Test input with multiple lines
+	content := "Line 1: Test started\nLine 2: Test in progress\nLine 3: Test completed"
+	
+	// Format with timestamp
+	result := formatWithTimestamp(content)
+	
+	// Split result into lines
+	lines := strings.Split(result, "\n")
+	
+	// Each line should have a timestamp
+	if len(lines) != 3 {
+		t.Fatalf("Expected 3 lines, got %d", len(lines))
+	}
+	
+	for i, line := range lines {
+		// Check that each line starts with timestamp
+		if !strings.HasPrefix(line, "[") {
+			t.Errorf("Line %d should start with timestamp bracket", i+1)
+		}
+		
+		// Check that timestamp is followed by content
+		if !strings.Contains(line, "] ") {
+			t.Errorf("Line %d should contain closing bracket followed by space", i+1)
+		}
+		
+		// Verify original content is preserved
+		expectedContent := fmt.Sprintf("Line %d:", i+1)
+		if !strings.Contains(line, expectedContent) {
+			t.Errorf("Line %d content not preserved", i+1)
+		}
 	}
 }
