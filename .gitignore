@@ -12,6 +12,15 @@
 *.out
 coverage.html
 coverage.out
+coverage/
+*.coverprofile
+
+# Specific coverage files
+handlers.test
+timestamp_coverage.out
+core_coverage.out
+handlers_coverage.out
+coverage_full.out
 
 # Dependency directories
 vendor/
@@ -21,6 +30,10 @@ go.work
 
 # Binary
 mcp-todo-server
+
+# Build directory
+build/
+release/
 
 # IDE specific files
 .idea/
@@ -46,6 +59,18 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+server.log
+/tmp/
+test-todos/
+
+# Debug files
+debug
+__debug_bin
+
+# Profiling data
+*.prof
+*.mem
+*.cpu
 
 # Claude specific temporary files
 .claude/.DS_Store

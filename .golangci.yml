@@ -1,0 +1,217 @@
+# golangci-lint configuration for MCP Todo Server
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+  
+  # Include test files
+  tests: true
+  
+  # Skip directories
+  skip-dirs:
+    - vendor
+    - build
+    - docs
+    - templates
+  
+  # Skip files
+  skip-files:
+    - ".*_test\\.go$"
+    - "mock_.*\\.go$"
+
+linters:
+  enable:
+    # Default linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet examiner
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced static analysis
+    - typecheck     # Type checking
+    - unused        # Find unused code
+    
+    # Additional linters
+    - bodyclose     # Check HTTP response body is closed
+    - dogsled       # Check for blank identifier assignments
+    - dupl          # Code duplication detector
+    - exportloopref # Check for exported loop variables
+    - gocognit      # Cognitive complexity checker
+    - goconst       # Find repeated strings that could be constants
+    - gocritic      # Opinionated linter
+    - gocyclo       # Cyclomatic complexity checker
+    - gofmt         # Check whether code was gofmt-ed
+    - goimports     # Check import statements are formatted
+    - goprintffuncname # Check that printf-like functions end with 'f'
+    - gosec         # Security problems scanner
+    - misspell      # Find commonly misspelled English words
+    - nakedret      # Find naked returns in large functions
+    - noctx         # Find sending HTTP request without context.Context
+    - nolintlint    # Report ill-formed or insufficient nolint directives
+    - prealloc      # Find slice declarations that could be preallocated
+    - revive        # Fast, configurable linter
+    - stylecheck    # Stylecheck is a replacement for golint
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Find unused function parameters
+    - whitespace    # Detects leading and trailing whitespace
+
+  disable:
+    - depguard      # Dependency guard
+    - exhaustive    # Check exhaustiveness of enum switch statements
+    - funlen        # Limit function length
+    - gochecknoglobals # Check no global variables exist
+    - gochecknoinits   # Check no init functions exist
+    - godot         # Check comments end with period
+    - godox         # Detect TODO/FIXME comments
+    - goerr113      # Error wrapping
+    - gomnd         # Magic number detector
+    - gomodguard    # Check for blocked module dependencies
+    - lll           # Line length limit
+    - nlreturn      # Newline before return
+    - testpackage   # Separate test packages
+    - wsl           # Whitespace linter
+
+linters-settings:
+  # errcheck settings
+  errcheck:
+    # Report about not checking of errors in type assertions
+    check-type-assertions: true
+    # Report about not checking errors in defer statements
+    check-blank: true
+
+  # govet settings
+  govet:
+    check-shadowing: true
+    enable-all: true
+
+  # gocyclo settings
+  gocyclo:
+    min-complexity: 15
+
+  # gocognit settings
+  gocognit:
+    min-complexity: 20
+
+  # dupl settings
+  dupl:
+    threshold: 100
+
+  # goconst settings
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  # misspell settings
+  misspell:
+    locale: US
+
+  # unused settings
+  unused:
+    # Report exported fields as unused
+    check-exported: false
+
+  # gosimple settings
+  gosimple:
+    go: "1.23"
+
+  # staticcheck settings
+  staticcheck:
+    go: "1.23"
+
+  # stylecheck settings
+  stylecheck:
+    go: "1.23"
+
+  # gosec settings
+  gosec:
+    excludes:
+      - G104  # Unhandled errors (handled by errcheck)
+    confidence: medium
+
+  # gocritic settings
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - commentedOutCode
+      - whyNoLint
+
+  # revive settings
+  revive:
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+issues:
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+
+  # Maximum count of issues with the same text
+  max-same-issues: 10
+
+  # Exclude some linters from running on tests files
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goconst
+
+    # Exclude some specific issues
+    - text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print(f|ln)?|os\\.(Un)?Setenv). is not checked"
+      linters:
+        - errcheck
+
+    # Exclude issues for TODO/FIXME comments
+    - text: "TODO|FIXME"
+      linters:
+        - godox
+
+  # Independently from option `exclude` we use default exclude patterns
+  exclude-use-default: false
+
+  # Show only new issues created after git revision
+  new: false
+
+  # Fix found issues (if it's supported by the linter)
+  fix: false
+
+severity:
+  # Set default severity
+  default-severity: error
+
+  # Set specific severity for specific linters
+  rules:
+    - linters:
+        - dupl
+      severity: info
