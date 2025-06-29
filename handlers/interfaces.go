@@ -10,6 +10,7 @@ type TodoManagerInterface interface {
 	CreateTodo(task, priority, todoType string) (*core.Todo, error)
 	ReadTodo(id string) (*core.Todo, error)
 	UpdateTodo(id, section, operation, content string, metadata map[string]string) error
+	SaveTodo(todo *core.Todo) error
 	ListTodos(status, priority string, days int) ([]*core.Todo, error)
 	ReadTodoContent(id string) (string, error)
 	ArchiveTodo(id, quarter string) error

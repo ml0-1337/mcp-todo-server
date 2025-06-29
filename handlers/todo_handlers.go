@@ -440,3 +440,73 @@ func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallT
 	// Format sections response
 	return FormatTodoSectionsResponse(todo), nil
 }
+
+// HandleTodoAddSection adds a custom section to an existing todo
+func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Extract parameters
+	id, err := request.RequireString("id")
+	if err != nil {
+		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
+	}
+	
+	key, err := request.RequireString("key")
+	if err != nil {
+		return HandleError(fmt.Errorf("missing required parameter 'key'")), nil
+	}
+	
+	title, err := request.RequireString("title")
+	if err != nil {
+		return HandleError(fmt.Errorf("missing required parameter 'title'")), nil
+	}
+	
+	schema := request.GetString("schema", "freeform")
+	required := request.GetBool("required", false)
+	order := request.GetInt("order", 100) // Default to high order (end of sections)
+	
+	// Validate schema
+	validSchemas := map[string]bool{
+		"freeform":   true,
+		"checklist":  true,
+		"test_cases": true,
+		"research":   true,
+		"strategy":   true,
+		"results":    true,
+	}
+	
+	if !validSchemas[schema] {
+		return HandleError(fmt.Errorf("invalid schema: %s", schema)), nil
+	}
+	
+	// Read the todo
+	todo, err := h.manager.ReadTodo(id)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Check if section already exists
+	if todo.Sections != nil {
+		if _, exists := todo.Sections[key]; exists {
+			return HandleError(fmt.Errorf("section '%s' already exists", key)), nil
+		}
+	} else {
+		// Initialize sections map if it doesn't exist
+		todo.Sections = make(map[string]*core.SectionDefinition)
+	}
+	
+	// Add the new section
+	todo.Sections[key] = &core.SectionDefinition{
+		Title:    title,
+		Order:    order,
+		Schema:   core.SectionSchema(schema),
+		Required: required,
+	}
+	
+	// Save the todo with the new section
+	err = h.manager.SaveTodo(todo)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Return success response
+	return mcp.NewToolResultText(fmt.Sprintf("Section '%s' added successfully to todo '%s'", key, id)), nil
+}

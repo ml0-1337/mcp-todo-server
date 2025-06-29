@@ -525,6 +525,14 @@ func (tm *TodoManager) GetBasePath() string {
 	return tm.basePath
 }
 
+// SaveTodo writes the entire todo including sections to disk
+func (tm *TodoManager) SaveTodo(todo *Todo) error {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	
+	return tm.writeTodo(todo)
+}
+
 // ListTodos returns todos filtered by status, priority, and/or days
 func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, error) {
 	tm.mu.Lock()

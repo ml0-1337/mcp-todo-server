@@ -23,6 +23,7 @@ type MockTodoManager struct {
 	CreateTodoFunc        func(task, priority, todoType string) (*core.Todo, error)
 	ReadTodoFunc          func(id string) (*core.Todo, error)
 	UpdateTodoFunc        func(id, section, operation, content string, metadata map[string]string) error
+	SaveTodoFunc          func(todo *core.Todo) error
 	ListTodosFunc         func(status, priority string, days int) ([]*core.Todo, error)
 	ReadTodoContentFunc   func(id string) (string, error)
 	ArchiveTodoFunc       func(id, quarter string) error
@@ -77,6 +78,14 @@ func (m *MockTodoManager) UpdateTodo(id, section, operation, content string, met
 	m.recordCall("UpdateTodo", id, section, operation, content, metadata)
 	if m.UpdateTodoFunc != nil {
 		return m.UpdateTodoFunc(id, section, operation, content, metadata)
+	}
+	return nil
+}
+
+func (m *MockTodoManager) SaveTodo(todo *core.Todo) error {
+	m.recordCall("SaveTodo", todo)
+	if m.SaveTodoFunc != nil {
+		return m.SaveTodoFunc(todo)
 	}
 	return nil
 }
