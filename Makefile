@@ -83,28 +83,28 @@ clean: ## Remove build artifacts and coverage files
 .PHONY: test
 test: ## Run all unit tests
 	@echo "$(GREEN)Running tests...$(NC)"
-	$(GOTEST) $(TEST_FLAGS) $(SRC_DIRS)
+	$(GOTEST) $(TEST_FLAGS) -timeout 30s $(SRC_DIRS)
 
 .PHONY: test-verbose
 test-verbose: ## Run tests with verbose output
 	@echo "$(GREEN)Running tests (verbose)...$(NC)"
-	$(GOTEST) $(TEST_FLAGS) -v $(SRC_DIRS)
+	$(GOTEST) $(TEST_FLAGS) -v -timeout 30s $(SRC_DIRS)
 
 .PHONY: test-race
 test-race: ## Run tests with race detector
 	@echo "$(GREEN)Running tests with race detector...$(NC)"
-	$(GOTEST) -race $(SRC_DIRS)
+	$(GOTEST) -race -timeout 60s $(SRC_DIRS)
 
 .PHONY: test-integration
 test-integration: ## Run integration tests only
 	@echo "$(GREEN)Running integration tests...$(NC)"
-	$(GOTEST) $(TEST_FLAGS) -tags=integration $(SRC_DIRS)
+	$(GOTEST) $(TEST_FLAGS) -tags=integration -timeout 60s $(SRC_DIRS)
 
 .PHONY: test-coverage
 test-coverage: ## Generate coverage report and open HTML
 	@echo "$(GREEN)Running tests with coverage...$(NC)"
 	@mkdir -p $(COVERAGE_DIR)
-	$(GOTEST) $(TEST_FLAGS) $(COVERAGE_FLAGS) $(SRC_DIRS)
+	$(GOTEST) $(TEST_FLAGS) $(COVERAGE_FLAGS) -timeout 30s $(SRC_DIRS)
 	@$(GOCMD) tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
 	@echo "$(GREEN)Coverage report generated: $(COVERAGE_DIR)/coverage.html$(NC)"
 	@if command -v open > /dev/null; then \
@@ -121,7 +121,24 @@ test-bench: ## Run benchmark tests
 .PHONY: test-short
 test-short: ## Run short tests (exclude integration)
 	@echo "$(GREEN)Running short tests...$(NC)"
-	$(GOTEST) -short $(TEST_FLAGS) $(SRC_DIRS)
+	$(GOTEST) -short $(TEST_FLAGS) -timeout 20s $(SRC_DIRS)
+
+.PHONY: test-quick
+test-quick: ## Quick test run for CI/Claude Code (no race detector, 20s timeout)
+	@echo "$(GREEN)Running quick tests...$(NC)"
+	$(GOTEST) -v -timeout 20s $(SRC_DIRS)
+
+.PHONY: test-claude
+test-claude: ## Test run optimized for Claude Code (exits cleanly, clear output)
+	@echo "$(GREEN)Running tests for Claude Code...$(NC)"
+	@if $(GOTEST) -timeout 20s $(SRC_DIRS) > /tmp/test.log 2>&1; then \
+		echo "$(GREEN)✓ All tests passed!$(NC)"; \
+		exit 0; \
+	else \
+		echo "$(RED)✗ Tests failed! Output:$(NC)"; \
+		cat /tmp/test.log | grep -E "FAIL|Error:|panic:" | head -20; \
+		exit 1; \
+	fi
 
 # Development targets
 .PHONY: run
@@ -344,6 +361,12 @@ b: build ## Shortcut for build
 
 .PHONY: t
 t: test ## Shortcut for test
+
+.PHONY: tc
+tc: test-claude ## Shortcut for test-claude (AI-friendly)
+
+.PHONY: tq
+tq: test-quick ## Shortcut for test-quick
 
 .PHONY: r
 r: run ## Shortcut for run

@@ -107,14 +107,16 @@ claude mcp add todo /Users/macbook/Programming/go_projects/mcp-todo-server/mcp-t
 ### Running Tests
 
 ```bash
-# Run all tests with verbose output
-go test ./... -v
+# Best for Claude Code - clean output, fast execution
+make test-claude
 
-# Run specific test
-go test ./server -v -run TestServerInitialization
+# Standard test suite with race detector
+make test
 
-# Check test coverage
-go test ./... -cover
+# Quick tests without race detector
+make test-quick
+
+# See docs/testing.md for more options
 ```
 
 ## MCP Tools
@@ -240,6 +242,7 @@ This project follows TDD principles. To contribute:
 ## Documentation
 
 - **[Product Requirements Document](docs/overview/PRD.md)** - Full specification
+- **[Testing Guide](docs/testing.md)** - How to run tests effectively
 - **[Implementation Todo](.claude/archive/2025/06/28/implement-mcp-todo-server.md)** - Original implementation (archived)
 - **[MCP Research](docs/analysis/go_mcp_server_research.md)** - Protocol documentation
 
