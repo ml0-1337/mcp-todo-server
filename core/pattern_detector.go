@@ -99,13 +99,24 @@ func FindSimilarTodos(todos []*Todo, title string) []string {
 		return similar
 	}
 	
+	// Normalize the prefix for comparison
+	normalizedPrefix := strings.ToLower(strings.TrimSpace(prefix))
+	
 	for _, todo := range todos {
 		if todo.ID == "" {
 			continue
 		}
 		
 		todoPrefix := extractPrefix(todo.Task)
-		if todoPrefix != "" && strings.HasPrefix(todoPrefix, prefix) {
+		if todoPrefix == "" {
+			continue
+		}
+		
+		// Normalize todo prefix
+		normalizedTodoPrefix := strings.ToLower(strings.TrimSpace(todoPrefix))
+		
+		// Check if they have the same pattern type (Phase, Step, Part, etc.)
+		if normalizedPrefix == normalizedTodoPrefix {
 			similar = append(similar, todo.ID)
 		}
 	}
@@ -115,16 +126,7 @@ func FindSimilarTodos(todos []*Todo, title string) []string {
 
 // extractPrefix extracts a common prefix from a title
 func extractPrefix(title string) string {
-	// Look for common separators
-	separators := []string{":", " - ", " — "}
-	
-	for _, sep := range separators {
-		if idx := strings.Index(title, sep); idx > 0 {
-			return strings.TrimSpace(title[:idx])
-		}
-	}
-	
-	// For phase/part/step patterns, extract the pattern part
+	// For phase/part/step patterns, extract just the pattern type
 	if matches := phasePattern.FindStringSubmatch(title); matches != nil {
 		return "Phase"
 	}
@@ -133,6 +135,24 @@ func extractPrefix(title string) string {
 	}
 	if matches := stepPattern.FindStringSubmatch(title); matches != nil {
 		return "Step"
+	}
+	
+	// For numbered patterns, group them together
+	if bracketPattern.MatchString(title) || numberDotPattern.MatchString(title) || numberParenPattern.MatchString(title) {
+		return "Numbered"
+	}
+	
+	// For other patterns, look for common prefixes before separators
+	separators := []string{":", " - ", " — "}
+	
+	for _, sep := range separators {
+		if idx := strings.Index(title, sep); idx > 0 {
+			prefix := strings.TrimSpace(title[:idx])
+			// Only return if it's a meaningful prefix (not too long)
+			if len(prefix) < 30 {
+				return prefix
+			}
+		}
 	}
 	
 	return ""

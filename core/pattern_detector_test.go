@@ -244,3 +244,59 @@ func TestDetectPattern_HintMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestFindSimilarTodos(t *testing.T) {
+	existingTodos := []*Todo{
+		{ID: "phase-1-planning", Task: "Phase 1: Planning"},
+		{ID: "phase-2-implementation", Task: "Phase 2: Implementation"},
+		{ID: "unrelated-todo", Task: "Fix bug in login"},
+		{ID: "another-phase", Task: "Phase 3: Testing"},
+		{ID: "step-1", Task: "Step 1: Setup"},
+	}
+	
+	tests := []struct {
+		name     string
+		title    string
+		wantIDs  []string
+	}{
+		{
+			name:    "Find similar phase todos",
+			title:   "Phase 4: Deployment",
+			wantIDs: []string{"phase-1-planning", "phase-2-implementation", "another-phase"},
+		},
+		{
+			name:    "Find similar step todos",
+			title:   "Step 2: Configuration",
+			wantIDs: []string{"step-1"},
+		},
+		{
+			name:    "No similar todos",
+			title:   "Implement new feature",
+			wantIDs: []string{},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			similar := FindSimilarTodos(existingTodos, tt.title)
+			
+			if len(similar) != len(tt.wantIDs) {
+				t.Errorf("Expected %d similar todos, got %d: %v", len(tt.wantIDs), len(similar), similar)
+			}
+			
+			// Check that all expected IDs are present
+			for _, wantID := range tt.wantIDs {
+				found := false
+				for _, id := range similar {
+					if id == wantID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected to find %q in similar todos", wantID)
+				}
+			}
+		})
+	}
+}

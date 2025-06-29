@@ -21,6 +21,35 @@ func FormatTodoCreateResponse(todo *core.Todo, filePath string) *mcp.CallToolRes
 	return mcp.NewToolResultText(string(jsonData))
 }
 
+// FormatTodoCreateResponseWithHints formats the response with pattern hints
+func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existingTodos []*core.Todo) *mcp.CallToolResult {
+	response := map[string]interface{}{
+		"id":      todo.ID,
+		"path":    filePath,
+		"message": fmt.Sprintf("Todo created successfully: %s", todo.ID),
+	}
+	
+	// Detect patterns in the title
+	if hint := core.DetectPattern(todo.Task); hint != nil {
+		response["hint"] = map[string]interface{}{
+			"pattern":       hint.Pattern,
+			"suggestedType": hint.SuggestedType,
+			"message":       hint.Message,
+		}
+	}
+	
+	// Find similar todos
+	if existingTodos != nil && len(existingTodos) > 0 {
+		similar := core.FindSimilarTodos(existingTodos, todo.Task)
+		if len(similar) > 0 {
+			response["similar_todos"] = similar
+		}
+	}
+	
+	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	return mcp.NewToolResultText(string(jsonData))
+}
+
 // FormatTodoReadResponse formats the response for todo_read based on format
 func FormatTodoReadResponse(todos []*core.Todo, format string, singleTodo bool) *mcp.CallToolResult {
 	if singleTodo && len(todos) > 0 {

@@ -125,9 +125,12 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		fmt.Printf("Warning: failed to index todo: %v\n", err)
 	}
 	
-	// Return response
+	// Get existing todos for similarity detection
+	existingTodos, _ := h.manager.ListTodos("", "", 0)
+	
+	// Return enhanced response with hints
 	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
-	return FormatTodoCreateResponse(todo, filePath), nil
+	return FormatTodoCreateResponseWithHints(todo, filePath, existingTodos), nil
 }
 
 // HandleTodoRead reads one or more todos
