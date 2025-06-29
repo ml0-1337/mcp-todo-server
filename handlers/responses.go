@@ -272,3 +272,112 @@ func FormatTodoSectionsResponse(todo *core.Todo) *mcp.CallToolResult {
 	
 	return mcp.NewToolResultText(response.String())
 }
+
+// FormatTodoSectionsResponseWithContent formats todo sections response with content status
+func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp.CallToolResult {
+	var response strings.Builder
+	
+	response.WriteString(fmt.Sprintf("Todo: %s\n\n", todo.ID))
+	response.WriteString("Sections:\n")
+	
+	// Parse content to extract sections
+	sectionContents := extractSectionContents(content)
+	
+	if todo.Sections == nil || len(todo.Sections) == 0 {
+		// Legacy todo - infer sections from markdown
+		todo.Sections = core.InferSectionsFromMarkdown(content)
+	}
+	
+	if todo.Sections == nil || len(todo.Sections) == 0 {
+		response.WriteString("No sections found\n")
+	} else {
+		// Get sections in order
+		ordered := core.GetOrderedSections(todo.Sections)
+		
+		for _, section := range ordered {
+			response.WriteString(fmt.Sprintf("\n%s:\n", section.Key))
+			response.WriteString(fmt.Sprintf("  title: %s\n", section.Definition.Title))
+			response.WriteString(fmt.Sprintf("  order: %d\n", section.Definition.Order))
+			response.WriteString(fmt.Sprintf("  schema: %s\n", section.Definition.Schema))
+			response.WriteString(fmt.Sprintf("  required: %v\n", section.Definition.Required))
+			
+			// Add content status
+			sectionContent, exists := sectionContents[section.Definition.Title]
+			if exists {
+				// Check if content is not just whitespace
+				trimmed := strings.TrimSpace(sectionContent)
+				hasContent := len(trimmed) > 0
+				response.WriteString(fmt.Sprintf("  hasContent: %v\n", hasContent))
+				response.WriteString(fmt.Sprintf("  contentLength: %d\n", len(trimmed)))
+			} else {
+				response.WriteString("  hasContent: false\n")
+				response.WriteString("  contentLength: 0\n")
+			}
+			
+			if section.Definition.Custom {
+				response.WriteString("  custom: true\n")
+			}
+			
+			if section.Definition.Metadata != nil && len(section.Definition.Metadata) > 0 {
+				response.WriteString("  metadata:\n")
+				for k, v := range section.Definition.Metadata {
+					response.WriteString(fmt.Sprintf("    %s: %v\n", k, v))
+				}
+			}
+		}
+	}
+	
+	return mcp.NewToolResultText(response.String())
+}
+
+// extractSectionContents parses markdown content and extracts section contents
+func extractSectionContents(content string) map[string]string {
+	sections := make(map[string]string)
+	
+	// Split content into lines
+	lines := strings.Split(content, "\n")
+	
+	currentSection := ""
+	var sectionContent strings.Builder
+	inFrontmatter := false
+	
+	for _, line := range lines {
+		// Handle frontmatter
+		if line == "---" {
+			if !inFrontmatter && currentSection == "" {
+				inFrontmatter = true
+				continue
+			} else if inFrontmatter {
+				inFrontmatter = false
+				continue
+			}
+		}
+		
+		if inFrontmatter {
+			continue
+		}
+		
+		// Check for section header (## Title)
+		if strings.HasPrefix(line, "## ") {
+			// Save previous section if any
+			if currentSection != "" {
+				sections[currentSection] = sectionContent.String()
+			}
+			
+			// Start new section
+			currentSection = line
+			sectionContent.Reset()
+		} else if currentSection != "" {
+			// Add line to current section
+			sectionContent.WriteString(line)
+			sectionContent.WriteString("\n")
+		}
+	}
+	
+	// Save last section
+	if currentSection != "" {
+		sections[currentSection] = sectionContent.String()
+	}
+	
+	return sections
+}

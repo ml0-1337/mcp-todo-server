@@ -437,8 +437,14 @@ func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallT
 		return HandleError(err), nil
 	}
 	
-	// Format sections response
-	return FormatTodoSectionsResponse(todo), nil
+	// Read todo content to analyze sections
+	content, err := h.manager.ReadTodoContent(id)
+	if err != nil {
+		return HandleError(err), nil
+	}
+	
+	// Format sections response with content status
+	return FormatTodoSectionsResponseWithContent(todo, content), nil
 }
 
 // HandleTodoAddSection adds a custom section to an existing todo
