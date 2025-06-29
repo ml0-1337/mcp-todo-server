@@ -187,6 +187,75 @@ func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 	}
 }
 
+// Test 10: HandleTodoSections works with legacy todos (no metadata)
+func TestHandleTodoSectionsWorksWithLegacyTodos(t *testing.T) {
+	// Create mock managers
+	mockManager := NewMockTodoManager()
+	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
+		if id == "legacy-todo" {
+			return &core.Todo{
+				ID:       "legacy-todo",
+				Task:     "Legacy todo without section metadata",
+				Status:   "in_progress",
+				Priority: "high",
+				Type:     "feature",
+				// No Sections field - nil
+			}, nil
+		}
+		return nil, fmt.Errorf("todo not found: %s", id)
+	}
+
+	mockSearch := &MockSearchEngine{}
+	mockStats := &MockStatsEngine{}
+	mockTemplates := &MockTemplateManager{}
+
+	// Create handlers with mocks
+	handlers := NewTodoHandlersWithDependencies(
+		mockManager,
+		mockSearch,
+		mockStats,
+		mockTemplates,
+	)
+
+	// Test case
+	request := &MockCallToolRequest{
+		Arguments: map[string]interface{}{
+			"id": "legacy-todo",
+		},
+	}
+
+	// Call handler
+	result, err := handlers.HandleTodoSections(context.Background(), request.ToCallToolRequest())
+	if err != nil {
+		t.Fatalf("HandleTodoSections() error = %v", err)
+	}
+
+	// Should not be an error
+	if result.IsError {
+		t.Errorf("Expected success, got error: %v", result.Content)
+		return
+	}
+
+	// Parse response content
+	content, ok := result.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Errorf("Expected TextContent, got %T", result.Content[0])
+		return
+	}
+
+	text := content.Text
+
+	// Should indicate no section metadata
+	if !contains(text, "No section metadata defined (legacy todo)") {
+		t.Errorf("Expected legacy todo message, got: %s", text)
+	}
+
+	// Should still show todo ID
+	if !contains(text, "legacy-todo") {
+		t.Errorf("Response missing todo ID")
+	}
+}
+
 // Helper function to check if string contains substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))

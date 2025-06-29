@@ -176,6 +176,33 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		metadata["current_test"] = params.Metadata.CurrentTest
 	}
 	
+	// If updating a section, validate content against schema
+	if params.Section != "" && params.Content != "" {
+		// Read todo to get section metadata
+		todo, err := h.manager.ReadTodo(params.ID)
+		if err != nil {
+			return HandleError(err), nil
+		}
+		
+		// Check if todo has section metadata
+		if todo.Sections != nil {
+			// Find the section definition
+			for key, sectionDef := range todo.Sections {
+				if key == params.Section {
+					// Get validator for the schema
+					validator := core.GetValidator(sectionDef.Schema)
+					if validator != nil {
+						// Validate the content
+						if err := validator.Validate(params.Content); err != nil {
+							return HandleError(fmt.Errorf("validation error: %w", err)), nil
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+	
 	// Update todo
 	err = h.manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, metadata)
 	if err != nil {

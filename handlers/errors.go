@@ -32,6 +32,10 @@ func HandleError(err error) *mcp.CallToolResult {
 	case strings.Contains(errStr, "not found"):
 		return mcp.NewToolResultError("Todo not found")
 		
+	case strings.Contains(errStr, "validation error:"):
+		// Preserve validation errors with their specific messages
+		return mcp.NewToolResultError(errStr)
+		
 	case strings.Contains(errStr, "invalid"):
 		return mcp.NewToolResultError("Invalid parameter or ID format")
 		
