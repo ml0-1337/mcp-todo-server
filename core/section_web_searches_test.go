@@ -23,3 +23,83 @@ func TestWebSearchesSectionInStandardMappings(t *testing.T) {
 		t.Errorf("Expected schema SchemaResearch, got '%s'", mapping.Schema)
 	}
 }
+
+// Test 2: web_searches section uses SchemaResearch validation
+func TestWebSearchesUsesResearchValidation(t *testing.T) {
+	// Get validator for research schema
+	validator := GetValidator(SchemaResearch)
+	
+	// Test that it accepts any text content
+	testContent := `[2025-06-29] Query: "test driven development best practices"
+Results: TDD involves writing tests first...
+	
+[2025-06-29] Query: "golang testing patterns"
+Key findings:
+- Table-driven tests are idiomatic
+- Use subtests for better organization`
+	
+	err := validator.Validate(testContent)
+	if err != nil {
+		t.Errorf("Research validator should accept any content, got error: %v", err)
+	}
+	
+	// Check metrics
+	metrics := validator.GetMetrics(testContent)
+	wordCount, ok := metrics["word_count"].(int)
+	if !ok {
+		t.Fatal("Expected word_count metric")
+	}
+	if wordCount == 0 {
+		t.Error("Expected non-zero word count")
+	}
+}
+
+// Test 3: web_searches section has correct order (after findings, before test_strategy)
+func TestWebSearchesSectionOrder(t *testing.T) {
+	// Create markdown content with sections in expected order
+	content := `---
+todo_id: test-todo
+---
+# Test Todo
+
+## Findings & Research
+Some findings here
+
+## Web Searches
+[2025-06-29] Query: "test"
+Results: test results
+
+## Test Strategy
+Test strategy content
+
+## Test List
+- [ ] Test 1
+`
+	
+	// Infer sections from markdown
+	sections := InferSectionsFromMarkdown(content)
+	
+	// Get ordered sections
+	ordered := GetOrderedSections(sections)
+	
+	// Verify we have the expected sections
+	if len(ordered) != 4 {
+		t.Fatalf("Expected 4 sections, got %d", len(ordered))
+	}
+	
+	// Check the order
+	expectedOrder := []string{"findings", "web_searches", "test_strategy", "test_list"}
+	for i, expected := range expectedOrder {
+		if ordered[i].Key != expected {
+			t.Errorf("Position %d: expected '%s', got '%s'", i, expected, ordered[i].Key)
+		}
+	}
+	
+	// Verify specific orders
+	if sections["findings"].Order >= sections["web_searches"].Order {
+		t.Error("web_searches should come after findings")
+	}
+	if sections["web_searches"].Order >= sections["test_strategy"].Order {
+		t.Error("web_searches should come before test_strategy")
+	}
+}
