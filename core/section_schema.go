@@ -272,7 +272,7 @@ var standardSectionMappings = map[string]struct {
 	"## Findings & Research":    {Key: "findings", Schema: SchemaResearch},
 	"## Test Strategy":          {Key: "test_strategy", Schema: SchemaStrategy},
 	"## Test List":              {Key: "test_list", Schema: SchemaChecklist},
-	"## Test Cases":             {Key: "test_cases", Schema: SchemaTestCases},
+	"## Test Cases":             {Key: "tests", Schema: SchemaTestCases},
 	"## Maintainability Analysis": {Key: "maintainability", Schema: SchemaFreeform},
 	"## Test Results Log":       {Key: "test_results", Schema: SchemaResults},
 	"## Checklist":              {Key: "checklist", Schema: SchemaChecklist},

@@ -424,17 +424,36 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 	if section != "" && operation != "" && content != "" {
 		markdownContent := parts[2]
 		
-		// Map section names to headings
-		sectionMap := map[string]string{
-			"findings":    "## Findings & Research",
-			"tests":       "## Test Cases",
-			"checklist":   "## Checklist",
-			"scratchpad":  "## Working Scratchpad",
+		// First, read the todo to get section metadata
+		todo, err := tm.ReadTodo(id)
+		if err != nil {
+			return fmt.Errorf("failed to read todo: %w", err)
 		}
 		
-		sectionHeading, ok := sectionMap[section]
-		if !ok {
-			return fmt.Errorf("invalid section: %s", section)
+		// Get section heading from metadata
+		var sectionHeading string
+		
+		if todo.Sections != nil && len(todo.Sections) > 0 {
+			// Use section metadata if available
+			sectionDef, ok := todo.Sections[section]
+			if !ok {
+				return fmt.Errorf("invalid section: %s", section)
+			}
+			sectionHeading = sectionDef.Title
+		} else {
+			// Fall back to hardcoded map for backwards compatibility
+			sectionMap := map[string]string{
+				"findings":    "## Findings & Research",
+				"tests":       "## Test Cases",
+				"checklist":   "## Checklist",
+				"scratchpad":  "## Working Scratchpad",
+			}
+			
+			var ok bool
+			sectionHeading, ok = sectionMap[section]
+			if !ok {
+				return fmt.Errorf("invalid section: %s", section)
+			}
 		}
 		
 		// Find section boundaries
@@ -462,7 +481,7 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		// Apply operation
 		switch operation {
 		case "append":
-			sectionContent = strings.TrimRight(sectionContent, "\n") + content
+			sectionContent = strings.TrimRight(sectionContent, "\n") + "\n" + content
 		case "prepend":
 			sectionContent = content + "\n" + strings.TrimLeft(sectionContent, "\n")
 		case "replace":
