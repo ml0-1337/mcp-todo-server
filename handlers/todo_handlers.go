@@ -164,6 +164,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		return HandleError(err), nil
 	}
 	
+	
 	// Prepare metadata map
 	metadata := make(map[string]string)
 	if params.Metadata.Status != "" {
@@ -176,8 +177,8 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		metadata["current_test"] = params.Metadata.CurrentTest
 	}
 	
-	// If updating a section, validate content against schema
-	if params.Section != "" && params.Content != "" {
+	// If updating a section, validate content against schema (skip for toggle operation)
+	if params.Section != "" && params.Content != "" && params.Operation != "toggle" {
 		// Read todo to get section metadata
 		todo, err := h.manager.ReadTodo(params.ID)
 		if err != nil {
@@ -209,14 +210,18 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		return HandleError(err), nil
 	}
 	
-	// Re-index after update
+	// Re-index after update and prepare enriched response
 	todo, err := h.manager.ReadTodo(params.ID)
 	if err == nil {
-		// Read full content for indexing
+		// Read full content for indexing and response
 		content, _ := h.manager.ReadTodoContent(params.ID)
 		h.search.IndexTodo(todo, content)
+		
+		// Return enriched response with full todo data
+		return FormatEnrichedTodoUpdateResponse(todo, content, params.Section, params.Operation), nil
 	}
 	
+	// Fallback to simple response if we couldn't read the todo
 	return FormatTodoUpdateResponse(params.ID, params.Section, params.Operation), nil
 }
 

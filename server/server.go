@@ -156,7 +156,7 @@ func (ts *TodoServer) registerTools() {
 			mcp.WithString("section",
 				mcp.Description("Section to update (status, findings, tests, checklist, scratchpad)")),
 			mcp.WithString("operation",
-				mcp.Description("Update operation (append, replace, prepend)"),
+				mcp.Description("Update operation (append, replace, prepend, toggle)"),
 				mcp.DefaultString("append")),
 			mcp.WithString("content",
 				mcp.Description("Content to add/update")),

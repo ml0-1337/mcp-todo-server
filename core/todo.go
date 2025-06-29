@@ -11,6 +11,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ChecklistItem represents a single checklist item with status
+type ChecklistItem struct {
+	Text   string `json:"text"`
+	Status string `json:"status"` // "pending", "in_progress", "completed"
+}
+
 // Todo represents a todo item
 type Todo struct {
 	ID        string    `yaml:"todo_id"`
@@ -380,6 +386,7 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 	
+	
 	// Read existing todo file
 	filePath := filepath.Join(tm.basePath, id + ".md")
 	existingContent, err := ioutil.ReadFile(filePath)
@@ -486,6 +493,13 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 			sectionContent = content + "\n" + strings.TrimLeft(sectionContent, "\n")
 		case "replace":
 			sectionContent = content
+		case "toggle":
+			// Toggle checklist item status
+			if section == "checklist" || section == "test_list" {
+				sectionContent = toggleChecklistItem(sectionContent, content)
+			} else {
+				return fmt.Errorf("toggle operation only supported for checklist sections")
+			}
 		default:
 			return fmt.Errorf("invalid operation: %s", operation)
 		}
@@ -523,6 +537,80 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 // GetBasePath returns the base path for todos
 func (tm *TodoManager) GetBasePath() string {
 	return tm.basePath
+}
+
+// toggleChecklistItem toggles the status of a checklist item by its text
+func toggleChecklistItem(content string, itemText string) string {
+	lines := strings.Split(content, "\n")
+	itemText = strings.TrimSpace(itemText)
+	
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		
+		// Check if this line is a checklist item
+		if strings.HasPrefix(trimmed, "- [") && len(trimmed) > 5 {
+			// Extract the text part (everything after the checkbox)
+			text := strings.TrimSpace(trimmed[5:])
+			
+			// Check if this is the item we're looking for
+			if text == itemText {
+				// Determine current state and toggle
+				if strings.HasPrefix(trimmed, "- [ ]") {
+					// Pending -> In Progress
+					lines[i] = strings.Replace(line, "- [ ]", "- [>]", 1)
+				} else if strings.HasPrefix(trimmed, "- [>]") || strings.HasPrefix(trimmed, "- [-]") || strings.HasPrefix(trimmed, "- [~]") {
+					// In Progress -> Completed
+					lines[i] = strings.Replace(line, trimmed[:5], "- [x]", 1)
+				} else if strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
+					// Completed -> Pending
+					lines[i] = strings.Replace(line, trimmed[:5], "- [ ]", 1)
+				}
+				break
+			}
+		}
+	}
+	
+	return strings.Join(lines, "\n")
+}
+
+// ParseChecklist extracts checklist items from markdown content with status
+func ParseChecklist(content string) []ChecklistItem {
+	var items []ChecklistItem
+	lines := strings.Split(content, "\n")
+	
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		
+		// Check for different checkbox states
+		var status string
+		var text string
+		
+		// Completed: - [x] or - [X]
+		if strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
+			status = "completed"
+			text = strings.TrimSpace(trimmed[5:]) // Skip "- [x]"
+		} else if strings.HasPrefix(trimmed, "- [>]") || strings.HasPrefix(trimmed, "- [-]") || strings.HasPrefix(trimmed, "- [~]") {
+			// In progress: - [>], - [-], or - [~]
+			status = "in_progress"
+			text = strings.TrimSpace(trimmed[5:]) // Skip "- [>]"
+		} else if strings.HasPrefix(trimmed, "- [ ]") {
+			// Pending: - [ ]
+			status = "pending"
+			text = strings.TrimSpace(trimmed[5:]) // Skip "- [ ]"
+		} else {
+			// Not a checklist item
+			continue
+		}
+		
+		if text != "" {
+			items = append(items, ChecklistItem{
+				Text:   text,
+				Status: status,
+			})
+		}
+	}
+	
+	return items
 }
 
 // SaveTodo writes the entire todo including sections to disk

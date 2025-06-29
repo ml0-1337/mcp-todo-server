@@ -294,5 +294,5 @@ func isValidSection(s string) bool {
 }
 
 func isValidOperation(o string) bool {
-	return o == "append" || o == "replace" || o == "prepend"
+	return o == "append" || o == "replace" || o == "prepend" || o == "toggle"
 }

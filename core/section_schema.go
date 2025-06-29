@@ -120,8 +120,22 @@ func (v *ChecklistValidator) Validate(content string) error {
 		if trimmed == "" {
 			continue
 		}
-		// Must start with "- [ ]" or "- [x]"
-		if !strings.HasPrefix(trimmed, "- [ ]") && !strings.HasPrefix(trimmed, "- [x]") {
+		// Must start with valid checkbox syntax
+		validPrefixes := []string{
+			"- [ ]",  // pending
+			"- [x]", "- [X]",  // completed
+			"- [>]", "- [-]", "- [~]",  // in_progress
+		}
+		
+		hasValidPrefix := false
+		for _, prefix := range validPrefixes {
+			if strings.HasPrefix(trimmed, prefix) {
+				hasValidPrefix = true
+				break
+			}
+		}
+		
+		if !hasValidPrefix {
 			if strings.HasPrefix(trimmed, "- []") || strings.HasPrefix(trimmed, "- [") {
 				return fmt.Errorf("invalid checkbox syntax")
 			}
@@ -133,20 +147,27 @@ func (v *ChecklistValidator) Validate(content string) error {
 
 func (v *ChecklistValidator) GetMetrics(content string) map[string]interface{} {
 	completed := 0
-	total := 0
+	inProgress := 0
+	pending := 0
+	
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "- [x]") {
+		if strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
 			completed++
-			total++
+		} else if strings.HasPrefix(trimmed, "- [>]") || strings.HasPrefix(trimmed, "- [-]") || strings.HasPrefix(trimmed, "- [~]") {
+			inProgress++
 		} else if strings.HasPrefix(trimmed, "- [ ]") {
-			total++
+			pending++
 		}
 	}
+	
+	total := completed + inProgress + pending
 	return map[string]interface{}{
-		"completed": completed,
-		"total":     total,
+		"completed":   completed,
+		"in_progress": inProgress,
+		"pending":     pending,
+		"total":       total,
 	}
 }
 

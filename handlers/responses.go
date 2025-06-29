@@ -152,6 +152,32 @@ func formatTodoSummaryLine(todo *core.Todo) string {
 	return fmt.Sprintf("%s %s: %s%s", status, todo.ID, todo.Task, priority)
 }
 
+// TodoUpdateResponse represents the enriched response after updating a todo
+type TodoUpdateResponse struct {
+	Message  string                 `json:"message"`
+	Todo     *TodoSummary          `json:"todo"`
+	Progress map[string]interface{} `json:"progress,omitempty"`
+}
+
+// TodoSummary represents a summary of a todo with parsed content
+type TodoSummary struct {
+	ID        string                    `json:"id"`
+	Task      string                    `json:"task"`
+	Status    string                    `json:"status"`
+	Priority  string                    `json:"priority"`
+	Type      string                    `json:"type"`
+	ParentID  string                    `json:"parent_id,omitempty"`
+	Checklist []core.ChecklistItem      `json:"checklist,omitempty"`
+	Sections  map[string]SectionSummary `json:"sections,omitempty"`
+}
+
+// SectionSummary represents a summary of a section
+type SectionSummary struct {
+	Title      string `json:"title"`
+	HasContent bool   `json:"hasContent"`
+	WordCount  int    `json:"wordCount,omitempty"`
+}
+
 // FormatTodoUpdateResponse formats the response for todo_update
 func FormatTodoUpdateResponse(todoID string, section string, operation string) *mcp.CallToolResult {
 	message := fmt.Sprintf("Todo '%s' updated successfully", todoID)
@@ -160,6 +186,154 @@ func FormatTodoUpdateResponse(todoID string, section string, operation string) *
 	}
 	
 	return mcp.NewToolResultText(message)
+}
+
+// FormatEnrichedTodoUpdateResponse formats an enriched response with full todo data
+func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section string, operation string) *mcp.CallToolResult {
+	message := fmt.Sprintf("Todo '%s' updated successfully", todo.ID)
+	if section != "" {
+		message = fmt.Sprintf("Todo '%s' %s section updated (%s)", todo.ID, section, operation)
+	}
+	
+	summary := &TodoSummary{
+		ID:       todo.ID,
+		Task:     todo.Task,
+		Status:   todo.Status,
+		Priority: todo.Priority,
+		Type:     todo.Type,
+		ParentID: todo.ParentID,
+	}
+	
+	// Parse sections from content
+	sections := make(map[string]SectionSummary)
+	sectionContents := extractSectionContents(content)
+	
+	// Check for checklist content
+	if checklistContent, exists := sectionContents["checklist"]; exists {
+		summary.Checklist = core.ParseChecklist(checklistContent)
+	}
+	
+	// Add section summaries
+	for key, sectionContent := range sectionContents {
+		sections[key] = SectionSummary{
+			Title:      fmt.Sprintf("## %s", strings.Title(strings.ReplaceAll(key, "_", " "))),
+			HasContent: len(strings.TrimSpace(sectionContent)) > 0,
+			WordCount:  len(strings.Fields(sectionContent)),
+		}
+	}
+	summary.Sections = sections
+	
+	// Calculate progress
+	progress := make(map[string]interface{})
+	if len(summary.Checklist) > 0 {
+		completed := 0
+		inProgress := 0
+		pending := 0
+		
+		for _, item := range summary.Checklist {
+			switch item.Status {
+			case "completed":
+				completed++
+			case "in_progress":
+				inProgress++
+			case "pending":
+				pending++
+			}
+		}
+		
+		total := len(summary.Checklist)
+		completionPercentage := 0
+		if total > 0 {
+			completionPercentage = (completed * 100) / total
+		}
+		
+		progress["checklist"] = fmt.Sprintf("%d/%d completed (%d%%)", completed, total, completionPercentage)
+		progress["checklist_breakdown"] = map[string]int{
+			"pending":     pending,
+			"in_progress": inProgress,
+			"completed":   completed,
+			"total":       total,
+		}
+	}
+	
+	// Count sections with content
+	sectionsWithContent := 0
+	totalSections := len(sections)
+	for _, section := range sections {
+		if section.HasContent {
+			sectionsWithContent++
+		}
+	}
+	if totalSections > 0 {
+		progress["sections"] = fmt.Sprintf("%d/%d sections have content", sectionsWithContent, totalSections)
+	}
+	
+	response := TodoUpdateResponse{
+		Message:  message,
+		Todo:     summary,
+		Progress: progress,
+	}
+	
+	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	return mcp.NewToolResultText(string(jsonData))
+}
+
+// extractSectionContents extracts content for each section from the full todo content
+func extractSectionContents(content string) map[string]string {
+	sections := make(map[string]string)
+	lines := strings.Split(content, "\n")
+	
+	currentSection := ""
+	currentContent := []string{}
+	
+	for _, line := range lines {
+		if strings.HasPrefix(line, "## ") {
+			// Save previous section
+			if currentSection != "" {
+				sections[currentSection] = strings.Join(currentContent, "\n")
+			}
+			
+			// Start new section
+			title := strings.TrimPrefix(line, "## ")
+			currentSection = normalizeKey(title)
+			currentContent = []string{}
+		} else if currentSection != "" {
+			currentContent = append(currentContent, line)
+		}
+	}
+	
+	// Save last section
+	if currentSection != "" {
+		sections[currentSection] = strings.Join(currentContent, "\n")
+	}
+	
+	return sections
+}
+
+// normalizeKey converts a section title to a normalized key
+func normalizeKey(title string) string {
+	// Handle common mappings
+	switch title {
+	case "Findings & Research":
+		return "findings"
+	case "Test Strategy":
+		return "test_strategy"
+	case "Test List":
+		return "test_list"
+	case "Test Cases":
+		return "tests"
+	case "Maintainability Analysis":
+		return "maintainability"
+	case "Test Results Log":
+		return "test_results"
+	case "Checklist":
+		return "checklist"
+	case "Working Scratchpad":
+		return "scratchpad"
+	default:
+		// Generic normalization
+		return strings.ToLower(strings.ReplaceAll(title, " ", "_"))
+	}
 }
 
 // FormatSearchResult represents a search result
@@ -330,54 +504,3 @@ func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp
 	return mcp.NewToolResultText(response.String())
 }
 
-// extractSectionContents parses markdown content and extracts section contents
-func extractSectionContents(content string) map[string]string {
-	sections := make(map[string]string)
-	
-	// Split content into lines
-	lines := strings.Split(content, "\n")
-	
-	currentSection := ""
-	var sectionContent strings.Builder
-	inFrontmatter := false
-	
-	for _, line := range lines {
-		// Handle frontmatter
-		if line == "---" {
-			if !inFrontmatter && currentSection == "" {
-				inFrontmatter = true
-				continue
-			} else if inFrontmatter {
-				inFrontmatter = false
-				continue
-			}
-		}
-		
-		if inFrontmatter {
-			continue
-		}
-		
-		// Check for section header (## Title)
-		if strings.HasPrefix(line, "## ") {
-			// Save previous section if any
-			if currentSection != "" {
-				sections[currentSection] = sectionContent.String()
-			}
-			
-			// Start new section
-			currentSection = line
-			sectionContent.Reset()
-		} else if currentSection != "" {
-			// Add line to current section
-			sectionContent.WriteString(line)
-			sectionContent.WriteString("\n")
-		}
-	}
-	
-	// Save last section
-	if currentSection != "" {
-		sections[currentSection] = sectionContent.String()
-	}
-	
-	return sections
-}
