@@ -191,6 +191,20 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 		"priority":  todo.Priority,
 		"type":      todo.Type,
 	}
+	
+	// Add completed timestamp if set
+	if !todo.Completed.IsZero() {
+		frontmatter["completed"] = todo.Completed.Format("2006-01-02 15:04:05")
+	}
+	
+	// Add optional fields if present
+	if todo.ParentID != "" {
+		frontmatter["parent_id"] = todo.ParentID
+	}
+	
+	if len(todo.Tags) > 0 {
+		frontmatter["tags"] = todo.Tags
+	}
 
 	// Add sections if defined
 	if todo.Sections != nil && len(todo.Sections) > 0 {

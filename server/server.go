@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
@@ -18,6 +19,9 @@ type TodoServer struct {
 	transport     string
 	httpServer    *server.StreamableHTTPServer
 	httpWrapper   *StreamableHTTPServerWrapper
+	
+	closeMu       sync.Mutex
+	closed        bool
 }
 
 // ServerOption is a function that configures a TodoServer
@@ -346,15 +350,30 @@ func (ts *TodoServer) registerTools() {
 
 // Close cleans up server resources
 func (ts *TodoServer) Close() error {
+	ts.closeMu.Lock()
+	defer ts.closeMu.Unlock()
+	
+	// Check if already closed
+	if ts.closed {
+		return nil
+	}
+	
+	// Mark as closed
+	ts.closed = true
+	
+	// Shutdown HTTP server if present
 	if ts.httpServer != nil {
 		ctx := context.Background()
 		if err := ts.httpServer.Shutdown(ctx); err != nil {
 			return err
 		}
 	}
+	
+	// Close handlers
 	if ts.handlers != nil {
 		return ts.handlers.Close()
 	}
+	
 	return nil
 }
 

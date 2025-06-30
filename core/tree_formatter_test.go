@@ -361,3 +361,262 @@ func TestPriorityIndicators(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatFlatWithIndication(t *testing.T) {
+	todos := []*Todo{
+		{
+			ID:       "parent1",
+			Task:     "Parent Task 1",
+			Status:   "in_progress",
+			Priority: "high",
+			Type:     "multi-phase",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "parent2",
+			Task:     "Parent Task 2",
+			Status:   "completed",
+			Priority: "medium",
+			Type:     "feature",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "child1",
+			Task:     "Child of Parent 1",
+			Status:   "in_progress",
+			Priority: "medium",
+			Type:     "phase",
+			ParentID: "parent1",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "child2",
+			Task:     "Another Child of Parent 1",
+			Status:   "completed",
+			Priority: "low",
+			Type:     "phase",
+			ParentID: "parent1",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "standalone",
+			Task:     "Standalone Task",
+			Status:   "blocked",
+			Priority: "high",
+			Type:     "bug",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "grandchild",
+			Task:     "Grandchild",
+			Status:   "pending",
+			Priority: "low",
+			Type:     "subtask",
+			ParentID: "child1",
+			Started:  time.Now(),
+		},
+	}
+
+	formatter := NewTreeFormatter()
+	output := formatter.FormatFlatWithIndication(todos)
+
+	// Test that output has status sections
+	if !strings.Contains(output, "IN_PROGRESS") {
+		t.Error("Output should contain IN_PROGRESS section")
+	}
+	if !strings.Contains(output, "BLOCKED") {
+		t.Error("Output should contain BLOCKED section")
+	}
+	if !strings.Contains(output, "COMPLETED") {
+		t.Error("Output should contain COMPLETED section")
+	}
+
+	// Test parent indications
+	if !strings.Contains(output, "[parent: parent1]") {
+		t.Error("child1 should show parent indication")
+	}
+
+	// Test children counts - note: countChildren only counts within same status group
+	lines := strings.Split(output, "\n")
+	parent1Found := false
+	child1Found := false
+	
+	for _, line := range lines {
+		if strings.Contains(line, "parent1: Parent Task 1") {
+			parent1Found = true
+			// parent1 has 1 child in in_progress status (child1)
+			if !strings.Contains(line, "[1 children]") {
+				t.Errorf("parent1 line should show [1 children] (within in_progress), but got: %s", line)
+			}
+		}
+		if strings.Contains(line, "child1: Child of Parent 1") {
+			child1Found = true
+			// child1 has no children in in_progress status
+			if strings.Contains(line, "children]") {
+				t.Errorf("child1 line should not show children count, but got: %s", line)
+			}
+		}
+	}
+	
+	if !parent1Found {
+		t.Error("Could not find parent1 in output")
+	}
+	if !child1Found {
+		t.Error("Could not find child1 in output")
+	}
+
+	// Verify parent2 has no children
+	for _, line := range lines {
+		if strings.Contains(line, "parent2: Parent Task 2") && strings.Contains(line, "children]") {
+			t.Error("parent2 should not show children count")
+		}
+	}
+
+	// Verify standalone has no parent indication
+	for _, line := range lines {
+		if strings.Contains(line, "standalone: Standalone Task") && strings.Contains(line, "[parent:") {
+			t.Error("standalone should not have parent indication")
+		}
+	}
+}
+
+func TestCountChildrenIndirect(t *testing.T) {
+	// Test countChildren indirectly through FormatFlatWithIndication
+	// Note: countChildren only counts within the same status group
+	todos := []*Todo{
+		{
+			ID:       "root",
+			Task:     "Root",
+			Status:   "in_progress",
+			Priority: "high",
+			Type:     "multi-phase",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "child1",
+			Task:     "Child 1",
+			Status:   "in_progress",
+			Priority: "medium",
+			Type:     "phase",
+			ParentID: "root",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "child2",
+			Task:     "Child 2",
+			Status:   "in_progress",
+			Priority: "low",
+			Type:     "phase",
+			ParentID: "root",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "child3",
+			Task:     "Child 3",
+			Status:   "completed",
+			Priority: "medium",
+			Type:     "phase",
+			ParentID: "root",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "grandchild1",
+			Task:     "Grandchild 1",
+			Status:   "in_progress",
+			Priority: "low",
+			Type:     "subtask",
+			ParentID: "child1",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "grandchild2",
+			Task:     "Grandchild 2",
+			Status:   "completed",
+			Priority: "low",
+			Type:     "subtask",
+			ParentID: "child1",
+			Started:  time.Now(),
+		},
+	}
+
+	formatter := NewTreeFormatter()
+	output := formatter.FormatFlatWithIndication(todos)
+
+	// Check that root shows 2 children in in_progress (child1 and child2)
+	lines := strings.Split(output, "\n")
+	rootFound := false
+	child1Found := false
+	
+	for _, line := range lines {
+		if strings.Contains(line, "root: Root") {
+			rootFound = true
+			// root has 2 children in in_progress status
+			if !strings.Contains(line, "[2 children]") {
+				t.Errorf("Root line should show [2 children] (within in_progress), but got: %s", line)
+			}
+		}
+		if strings.Contains(line, "child1: Child 1") {
+			child1Found = true
+			// child1 has 1 child in in_progress status
+			if !strings.Contains(line, "[1 children]") {
+				t.Errorf("Child1 line should show [1 children] (within in_progress), but got: %s", line)
+			}
+		}
+	}
+	
+	if !rootFound {
+		t.Error("Could not find root in output")
+	}
+	if !child1Found {
+		t.Error("Could not find child1 in output")
+	}
+
+	// Check that child2 doesn't show children count
+	for _, line := range lines {
+		if strings.Contains(line, "child2: Child 2") && strings.Contains(line, "children]") {
+			t.Error("Child2 should not show children count")
+		}
+	}
+
+	// Check completed section
+	completedSectionFound := false
+	for _, line := range lines {
+		if strings.Contains(line, "child3: Child 3") {
+			completedSectionFound = true
+			// child3 should not have children in completed status
+			if strings.Contains(line, "children]") {
+				t.Error("Child3 should not show children count")
+			}
+		}
+	}
+	if !completedSectionFound {
+		t.Error("Could not find child3 in completed section")
+	}
+
+	// Test with single child - all same status
+	singleChildTodos := []*Todo{
+		{
+			ID:       "parent",
+			Task:     "Parent",
+			Status:   "in_progress",
+			Priority: "high",
+			Type:     "feature",
+			Started:  time.Now(),
+		},
+		{
+			ID:       "onlychild",
+			Task:     "Only Child",
+			Status:   "in_progress",
+			Priority: "medium",
+			Type:     "subtask",
+			ParentID: "parent",
+			Started:  time.Now(),
+		},
+	}
+
+	output2 := formatter.FormatFlatWithIndication(singleChildTodos)
+	if !strings.Contains(output2, "[1 children]") {
+		t.Error("Parent with single child should show [1 children]")
+	}
+}
+

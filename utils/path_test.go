@@ -633,3 +633,125 @@ func TestResolveTemplatePath_EnvironmentOverride(t *testing.T) {
 		t.Errorf("ResolveTemplatePath() = %s; want %s", templatePath, customPath)
 	}
 }
+
+// Test 21: ResolveTodoPathFromWorkingDir creates todo directory
+func TestResolveTodoPathFromWorkingDir(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+
+	// Create temp directory to use as working directory
+	tempDir, err := ioutil.TempDir("", "working-dir-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Resolve todo path from working directory
+	todoPath, err := ResolveTodoPathFromWorkingDir(tempDir)
+
+	// Assert no error
+	if err != nil {
+		t.Errorf("ResolveTodoPathFromWorkingDir(%s) error = %v; want nil", tempDir, err)
+	}
+
+	// Verify correct path
+	expectedPath := filepath.Join(tempDir, ".claude", "todos")
+	if todoPath != expectedPath {
+		t.Errorf("ResolveTodoPathFromWorkingDir(%s) = %s; want %s", tempDir, todoPath, expectedPath)
+	}
+
+	// Verify directory was created
+	if !IsDirectory(todoPath) {
+		t.Errorf("ResolveTodoPathFromWorkingDir() did not create directory at %s", todoPath)
+	}
+
+	// Verify correct permissions
+	info, err := os.Stat(todoPath)
+	if err == nil {
+		mode := info.Mode().Perm()
+		if mode != 0755 {
+			t.Errorf("Directory created with wrong permissions: %o; want 755", mode)
+		}
+	}
+}
+
+// Test 22: ResolveTodoPathFromWorkingDir handles existing directory
+func TestResolveTodoPathFromWorkingDir_ExistingDirectory(t *testing.T) {
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+
+	// Create temp directory structure
+	tempDir, err := ioutil.TempDir("", "working-dir-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Pre-create the .claude/todos directory
+	todoDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todoDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create todo directory: %v", err)
+	}
+
+	// Add a file to verify directory is not recreated
+	testFile := filepath.Join(todoDir, "test.md")
+	err = ioutil.WriteFile(testFile, []byte("test content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Resolve todo path from working directory
+	todoPath, err := ResolveTodoPathFromWorkingDir(tempDir)
+
+	// Assert no error
+	if err != nil {
+		t.Errorf("ResolveTodoPathFromWorkingDir(%s) error = %v; want nil", tempDir, err)
+	}
+
+	// Verify correct path
+	if todoPath != todoDir {
+		t.Errorf("ResolveTodoPathFromWorkingDir(%s) = %s; want %s", tempDir, todoPath, todoDir)
+	}
+
+	// Verify test file still exists (directory wasn't recreated)
+	if !FileExists(testFile) {
+		t.Errorf("Test file was removed, directory may have been recreated")
+	}
+}
+
+// Test 23: ResolveTodoPathFromWorkingDir handles permission errors
+func TestResolveTodoPathFromWorkingDir_PermissionError(t *testing.T) {
+	// Skip if running as root
+	if os.Geteuid() == 0 {
+		t.Skip("Test cannot run as root")
+	}
+
+	// Suppress log output during test
+	log.SetOutput(ioutil.Discard)
+	defer log.SetOutput(os.Stderr)
+
+	// Create temp directory
+	tempDir, err := ioutil.TempDir("", "working-dir-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create .claude directory with no write permissions
+	claudeDir := filepath.Join(tempDir, ".claude")
+	err = os.Mkdir(claudeDir, 0555) // Read and execute only
+	if err != nil {
+		t.Fatalf("Failed to create .claude directory: %v", err)
+	}
+
+	// Try to resolve todo path (should fail due to permissions)
+	_, err = ResolveTodoPathFromWorkingDir(tempDir)
+
+	// Assert error is returned
+	if err == nil {
+		t.Errorf("ResolveTodoPathFromWorkingDir(%s) error = nil; want permission error", tempDir)
+	}
+}
