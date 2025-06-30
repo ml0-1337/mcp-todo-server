@@ -75,6 +75,10 @@ type SessionInfo struct {
 
 Sessions are managed through the `Mcp-Session-Id` header, ensuring consistent behavior throughout a connection.
 
+## Known Issues (Fixed)
+
+Previously, only `todo_create` operations respected the `X-Working-Directory` header. Other operations like `todo_read`, `todo_update`, and `todo_archive` would always operate on the server's directory. This has been fixed - all operations now properly use the context-aware manager.
+
 ## Testing
 
 ### Manual Test Script

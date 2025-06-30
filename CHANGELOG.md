@@ -15,10 +15,17 @@ All notable changes to the MCP Todo Server project will be documented in this fi
 ### Fixed
 - Fixed initialization bug where `NewTodoHandlers` was creating regular `TodoManager` instead of `ContextualTodoManagerWrapper`
 - Fixed session management for StreamableHTTPServer requiring `Mcp-Session-Id` headers
+- **Fixed all todo operations to be context-aware** - Previously only creation worked with X-Working-Directory
+  - `todo_read` now correctly lists todos from the project directory
+  - `todo_update` can now update todos in the project directory
+  - `todo_archive` archives to the project's archive directory
+  - `todo_clean` operates on the project's todos
+  - All other operations now respect the working directory context
 
 ### Changed
 - HTTP transport now recommended over STDIO for better project isolation
 - Updated documentation to explain context-aware todo creation
+- Added comprehensive test scripts for verifying context-aware operations
 
 ## [1.0.0] - Previous Release
 
