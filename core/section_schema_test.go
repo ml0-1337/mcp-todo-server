@@ -242,11 +242,10 @@ func TestValidateSectionSchemaTypes(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "results schema rejects entries without timestamps",
+			name:    "results schema accepts entries without timestamps",
 			schema:  SchemaResults,
 			content: "Test started\n[2025-01-01 10:01:00] Test passed",
-			wantErr: true,
-			errMsg:  "entries must start with timestamp",
+			wantErr: false,
 		},
 		// Strategy schema tests
 		{

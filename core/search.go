@@ -295,11 +295,14 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 		
 		// Parse date_from if provided
 		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
+			// Parse as start of day in UTC
 			t, err := time.ParseInLocation("2006-01-02", dateFrom, time.UTC)
 			if err != nil {
 				return nil, fmt.Errorf("invalid date_from format: %w", err)
 			}
 			fromTime = &t
+			// Debug logging
+			// fmt.Printf("DEBUG SearchTodos: date_from parsed as %v\n", *fromTime)
 		}
 		
 		// Parse date_to if provided
@@ -324,6 +327,7 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 			} else if fromTime != nil {
 				// Only start date - search from date to now
 				now := time.Now().UTC()
+				// fmt.Printf("DEBUG SearchTodos: Creating date range query from %v to %v\n", *fromTime, now)
 				dateRangeQuery = bleve.NewDateRangeInclusiveQuery(*fromTime, now, &trueVal, &trueVal)
 			} else {
 				// Only end date - search from beginning of time to date
@@ -356,6 +360,7 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 	var results []SearchResult
 
 	// Post-filtering disabled - using bleve date range queries
+	// fmt.Printf("DEBUG SearchTodos: Got %d hits from bleve\n", len(searchResults.Hits))
 	for _, hit := range searchResults.Hits {
 
 		result := SearchResult{

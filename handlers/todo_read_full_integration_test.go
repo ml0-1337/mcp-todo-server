@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -78,8 +79,9 @@ Temporary notes and ideas.
 		},
 	}
 
-	// Call HandleTodoRead
-	result, err := handlers.HandleTodoRead(nil, request.ToCallToolRequest())
+	// Call HandleTodoRead with proper context
+	ctx := context.Background()
+	result, err := handlers.HandleTodoRead(ctx, request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoRead failed: %v", err)
 	}
@@ -243,8 +245,9 @@ Bug investigation results.
 		},
 	}
 
-	// Call HandleTodoRead
-	result, err := handlers.HandleTodoRead(nil, request.ToCallToolRequest())
+	// Call HandleTodoRead with proper context
+	ctx := context.Background()
+	result, err := handlers.HandleTodoRead(ctx, request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoRead failed: %v", err)
 	}
