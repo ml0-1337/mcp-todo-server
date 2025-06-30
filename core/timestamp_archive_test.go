@@ -33,7 +33,7 @@ func TestArchiveTodoWithStandardTimestamp(t *testing.T) {
 	}
 
 	// Verify file was moved to archive
-	originalPath := filepath.Join(tempDir, todo.ID+".md")
+	originalPath := GetTodoPath(tempDir, todo.ID)
 	if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 		t.Error("Original todo file should have been moved")
 	}
@@ -75,8 +75,13 @@ type: test
 This todo uses RFC3339 timestamp format to test archiving.
 `
 
-	// Write test file
-	filePath := filepath.Join(tempDir, "test-rfc3339-archive.md")
+	// Write test file in the correct location
+	todosDir := filepath.Join(tempDir, TodoSubdir)
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create todos directory: %v", err)
+	}
+	filePath := filepath.Join(todosDir, "test-rfc3339-archive.md")
 	err = ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)

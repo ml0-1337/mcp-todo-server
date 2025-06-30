@@ -11,40 +11,24 @@ import (
 
 // Test 16: todo_archive should move files to correct quarterly folder
 func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
-	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "archive-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Create todo manager
-	manager := NewTodoManager(tempDir)
+	// Setup test environment
+	manager, tempDir, cleanup := SetupTestTodoManager(t)
+	defer cleanup()
 
 	// Create a test todo
-	todo, err := manager.CreateTodo("Test archive functionality", "high", "feature")
-	if err != nil {
-		t.Fatalf("Failed to create todo: %v", err)
-	}
+	todo := CreateTestTodo(t, manager, "Test archive functionality", "high", "feature")
 
-	// Get current date path for verification
-	now := time.Now()
-	year := now.Format("2006")
-	month := now.Format("01")
-	day := now.Format("02")
-	expectedArchivePath := filepath.Join(tempDir, "..", "archive", year, month, day, todo.ID+".md")
+	// Get expected archive path
+	expectedArchivePath := GetArchivePath(tempDir, todo, "")
 
 	// Archive the todo
-	err = manager.ArchiveTodo(todo.ID, "")
+	err := manager.ArchiveTodo(todo.ID, "")
 	if err != nil {
 		t.Fatalf("Failed to archive todo: %v", err)
 	}
 
 	// Verify original file no longer exists
-	originalPath := filepath.Join(tempDir, todo.ID+".md")
-	if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
-		t.Error("Original todo file should have been moved")
-	}
+	VerifyTodoNotExists(t, tempDir, todo.ID)
 
 	// Verify file exists in archive
 	if _, err := os.Stat(expectedArchivePath); os.IsNotExist(err) {
@@ -113,21 +97,12 @@ func TestGetQuarter(t *testing.T) {
 
 // Test 17: todo_archive should update completed timestamp
 func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
-	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "archive-timestamp-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Create todo manager
-	manager := NewTodoManager(tempDir)
+	// Setup test environment
+	manager, tempDir, cleanup := SetupTestTodoManager(t)
+	defer cleanup()
 
 	// Create a test todo
-	todo, err := manager.CreateTodo("Test timestamp update", "high", "feature")
-	if err != nil {
-		t.Fatalf("Failed to create todo: %v", err)
-	}
+	todo := CreateTestTodo(t, manager, "Test timestamp update", "high", "feature")
 
 	// Verify initial state has no completed timestamp
 	originalTodo, err := manager.ReadTodo(todo.ID)
@@ -148,8 +123,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	}
 
 	// Read archived todo from daily structure
-	now := time.Now()
-	archivePath := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo.ID+".md")
+	archivePath := GetArchivePath(tempDir, todo, "")
 
 	content, err := ioutil.ReadFile(archivePath)
 	if err != nil {
@@ -169,6 +143,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 
 	// Verify timestamp format is correct (should be parseable)
 	// and year/month/day match today
+	now := time.Now()
 	if archivedTodo.Completed.Year() != now.Year() {
 		t.Errorf("Completed year %d doesn't match current year %d",
 			archivedTodo.Completed.Year(), now.Year())

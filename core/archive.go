@@ -97,7 +97,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	}
 
 	// Now update the frontmatter
-	frontmatter["completed"] = completedTime.Format("2006-01-02 15:04:05")
+	frontmatter["completed"] = completedTime.Format(time.RFC3339)
 	frontmatter["status"] = "completed"
 
 	// Marshal back to YAML
