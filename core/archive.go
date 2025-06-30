@@ -24,10 +24,7 @@ func GetDailyPath(t time.Time) string {
 
 // ArchiveTodo moves a todo to the archive folder and sets completed timestamp
 func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	// Check if todo has active children
+	// Check if todo has active children first (before locking)
 	children, err := tm.GetChildren(id)
 	if err != nil {
 		return fmt.Errorf("failed to check for children: %w", err)
@@ -44,6 +41,10 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	if incompleteChildren > 0 {
 		return fmt.Errorf("cannot archive todo %s: has active children", id)
 	}
+
+	// Now lock for the actual archive operation
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
 
 	// Construct source file path
 	sourcePath := filepath.Join(tm.basePath, id+".md")
