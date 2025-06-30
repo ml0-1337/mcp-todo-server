@@ -21,8 +21,8 @@ type TodoHandlers struct {
 
 // NewTodoHandlers creates new todo handlers with dependencies
 func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
-	// Create todo manager
-	manager := core.NewTodoManager(todoPath)
+	// Create context-aware todo manager wrapper
+	manager := NewContextualTodoManagerWrapper(todoPath)
 
 	// Create search engine
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
@@ -31,8 +31,9 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 		return nil, fmt.Errorf("failed to create search engine: %w", err)
 	}
 
-	// Create stats engine
-	stats := core.NewStatsEngine(manager)
+	// Create stats engine with the default manager
+	// (stats needs concrete TodoManager, not the wrapper)
+	stats := core.NewStatsEngine(manager.defaultManager)
 
 	// Create template manager
 	templates := core.NewTemplateManager(templatePath)
@@ -43,6 +44,10 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 		stats:     stats,
 		templates: templates,
 		createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			// Handle ContextualTodoManagerWrapper
+			if wrapper, ok := m.(*ContextualTodoManagerWrapper); ok {
+				return core.NewTodoLinker(wrapper.defaultManager)
+			}
 			// Type assert to concrete type for core.NewTodoLinker
 			if tm, ok := m.(*core.TodoManager); ok {
 				return core.NewTodoLinker(tm)
@@ -144,7 +149,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	existingTodos, _ := h.manager.ListTodos("", "", 0)
 
 	// Return enhanced response with hints
-	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
+	filePath := filepath.Join(h.GetBasePathForContext(ctx), todo.ID+".md")
 	return FormatTodoCreateResponseWithHints(todo, filePath, existingTodos), nil
 }
 
@@ -156,8 +161,8 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 		return HandleError(err), nil
 	}
 
-	// Create parent todo
-	parentTodo, err := h.manager.CreateTodo(params.Parent.Task, params.Parent.Priority, params.Parent.Type)
+	// Create parent todo using context
+	parentTodo, err := h.CreateTodoWithContext(ctx, params.Parent.Task, params.Parent.Priority, params.Parent.Type)
 	if err != nil {
 		return HandleError(fmt.Errorf("failed to create parent todo: %w", err)), nil
 	}
@@ -173,8 +178,8 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 	// Create children todos
 	createdChildren := make([]*core.Todo, 0, len(params.Children))
 	for i, childInfo := range params.Children {
-		// Create child todo
-		childTodo, err := h.manager.CreateTodo(childInfo.Task, childInfo.Priority, childInfo.Type)
+		// Create child todo using context
+		childTodo, err := h.CreateTodoWithContext(ctx, childInfo.Task, childInfo.Priority, childInfo.Type)
 		if err != nil {
 			// Try to clean up already created todos
 			fmt.Printf("Error creating child %d: %v. Rolling back...\n", i, err)

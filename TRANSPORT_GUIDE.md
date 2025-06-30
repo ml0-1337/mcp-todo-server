@@ -15,6 +15,7 @@ With HTTP transport, you can:
 - Connect to the same todo server from different projects
 - Run multiple server instances on different ports
 - Use standard HTTP tools for debugging
+- **Automatic project-based todo creation** - todos are created in the project where Claude Code is running, not in the server's directory
 
 ## Usage
 
@@ -98,6 +99,16 @@ With HTTP transport, you can run multiple server instances:
 ```
 
 Each can be configured in different projects with their own `.mcp-http.json` files.
+
+## Context-Aware Todo Creation
+
+When using HTTP transport, the server automatically creates todos in the correct project directory through the `X-Working-Directory` header that Claude Code sends. This means:
+
+- Todos are created in `/your/project/.claude/todos/` not in the server's directory
+- Each project maintains its own todo list
+- No manual configuration needed - it just works!
+
+For technical details, see [docs/http-headers.md](docs/http-headers.md).
 
 ## Testing
 

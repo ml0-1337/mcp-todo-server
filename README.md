@@ -20,8 +20,13 @@ The server now supports both STDIO and HTTP transports. HTTP is recommended as i
 - Multiple Claude Code instances to connect simultaneously
 - Running multiple server instances on different ports
 - Better debugging with standard HTTP tools
+- **Context-aware todo creation** - todos are created in the project where Claude Code is running
 
-See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for details.
+### HTTP Header-Based Working Directory
+
+When using HTTP transport, the server automatically detects where Claude Code is running and creates todos in that project's directory instead of the server's directory. This is done through the `X-Working-Directory` header.
+
+See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for transport details and [docs/http-headers.md](docs/http-headers.md) for working directory resolution.
 
 ## Current Status
 
