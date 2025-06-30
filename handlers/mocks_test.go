@@ -363,6 +363,40 @@ func (m *MockTemplateManager) ExecuteTemplate(tmpl *core.Template, vars map[stri
 	return "Executed template content", nil
 }
 
+// MockTodoLinker is a mock implementation of TodoLinkerInterface
+type MockTodoLinker struct {
+	mu    sync.Mutex
+	calls []MockCall
+
+	LinkTodosFunc func(parentID, childID, linkType string) error
+}
+
+func NewMockTodoLinker() *MockTodoLinker {
+	return &MockTodoLinker{
+		calls: make([]MockCall, 0),
+	}
+}
+
+func (m *MockTodoLinker) recordCall(method string, args ...interface{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls = append(m.calls, MockCall{Method: method, Args: args})
+}
+
+func (m *MockTodoLinker) GetCalls() []MockCall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]MockCall{}, m.calls...)
+}
+
+func (m *MockTodoLinker) LinkTodos(parentID, childID, linkType string) error {
+	m.recordCall("LinkTodos", parentID, childID, linkType)
+	if m.LinkTodosFunc != nil {
+		return m.LinkTodosFunc(parentID, childID, linkType)
+	}
+	return nil
+}
+
 // MockCallToolRequest wraps arguments for testing
 type MockCallToolRequest struct {
 	Arguments map[string]interface{}
