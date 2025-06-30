@@ -47,7 +47,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	defer tm.mu.Unlock()
 
 	// Construct source file path
-	sourcePath := filepath.Join(tm.basePath, id+".md")
+	sourcePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
 
 	// Check if todo exists
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
