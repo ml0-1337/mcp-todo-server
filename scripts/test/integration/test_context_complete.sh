@@ -1,8 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_context_complete.sh - Comprehensive test for context-aware todo operations
+#
+# This script tests all todo operations (create, read, update, archive) to ensure
+# they correctly use the X-Working-Directory header for project isolation.
+#
+# Usage: ./test_context_complete.sh
 
-# Comprehensive test for context-aware todo operations
-
-set -e
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 echo "Testing all context-aware todo operations..."
 

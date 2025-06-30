@@ -123,6 +123,28 @@ Simple HTTP header and session management test:
 ./scripts/test/integration/test_simple.sh
 ```
 
+#### test_read_context_awareness.sh
+Tests todo_read context-aware directory functionality:
+- Verifies todo_read operations use X-Working-Directory header
+- Ensures todos are read from project directory, not server directory
+- Tests isolation between different projects
+
+**Usage:**
+```bash
+./scripts/test/integration/test_read_context_awareness.sh
+```
+
+#### test_context_complete.sh
+Comprehensive test for all context-aware operations:
+- Tests CREATE, READ, UPDATE, ARCHIVE operations
+- Verifies X-Working-Directory header is respected by all operations
+- Confirms proper project isolation for all todo management functions
+
+**Usage:**
+```bash
+./scripts/test/integration/test_context_complete.sh
+```
+
 ## Common Test Patterns
 
 All test scripts follow these patterns:

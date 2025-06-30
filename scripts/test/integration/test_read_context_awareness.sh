@@ -1,8 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_read_context_awareness.sh - Test todo_read context-aware directory functionality
+#
+# This script verifies that todo_read and other operations correctly use the
+# X-Working-Directory header to read from the project directory, not the server's
+# directory.
+#
+# Usage: ./test_read_context_awareness.sh
 
-# Test to verify todo_read issue with context-aware directories
-
-set -e
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 echo "Testing todo_read context awareness issue..."
 
