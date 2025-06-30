@@ -1,4 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# setup.sh - Initial setup and configuration for MCP Todo Server
+# 
+# This script helps users quickly set up the MCP Todo Server with their
+# preferred transport mode (HTTP or STDIO) and provides instructions
+# for integrating with Claude Code.
+#
+# Usage: ./setup.sh
+
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Quick setup script for MCP Todo Server
 

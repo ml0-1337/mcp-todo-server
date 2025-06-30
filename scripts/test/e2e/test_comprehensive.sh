@@ -1,4 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_comprehensive.sh - Comprehensive end-to-end test suite for MCP Todo Server
+#
+# This script tests the full functionality of the MCP Todo Server in STDIO mode,
+# including initialization, tool listing, todo CRUD operations, search, stats,
+# and templates.
+#
+# Usage: ./test_comprehensive.sh
+
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Comprehensive test script for MCP Todo Server
 

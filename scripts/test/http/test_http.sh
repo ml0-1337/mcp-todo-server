@@ -1,4 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_http.sh - Basic HTTP transport mode test for MCP Todo Server
+#
+# This script tests basic HTTP functionality including server startup,
+# initialization, tool listing, and basic todo operations.
+#
+# Usage: ./test_http.sh
+
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Test script for MCP Todo Server in HTTP mode
 

@@ -52,6 +52,15 @@ mcp-todo-server/
 │   │   └── PRD.md                # Product Requirements Document
 │   └── analysis/
 │       └── go_mcp_server_research.md # MCP protocol research
+├── scripts/                      # All executable scripts
+│   ├── setup/                    # Installation and setup
+│   │   └── setup.sh             # Guided setup script
+│   ├── test/                     # Test scripts by category
+│   │   ├── e2e/                 # End-to-end tests
+│   │   ├── http/                # HTTP transport tests
+│   │   ├── stdio/               # STDIO transport tests
+│   │   └── integration/         # Integration tests
+│   └── README.md                # Script documentation
 ├── server/
 │   ├── server.go                 # MCP server implementation
 │   ├── server_test.go            # Server initialization tests
@@ -80,6 +89,10 @@ mcp-todo-server/
 # Clone or navigate to the project
 cd /Users/macbook/Programming/go_projects/mcp-todo-server
 
+# Run the setup script for guided installation
+./scripts/setup/setup.sh
+
+# Or manually:
 # Download dependencies
 go mod tidy
 
@@ -87,7 +100,7 @@ go mod tidy
 go build -o mcp-todo-server
 
 # Test the installation
-./test_server.sh
+./scripts/test/stdio/test_server.sh
 ```
 
 ### Quick Start

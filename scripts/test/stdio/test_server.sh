@@ -1,4 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_server.sh - Basic STDIO transport mode test for MCP Todo Server
+#
+# This script tests basic STDIO functionality including initialization,
+# tool listing, and todo creation.
+#
+# Usage: ./test_server.sh
+
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Test script for MCP Todo Server
 

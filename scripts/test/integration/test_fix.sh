@@ -1,8 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_fix.sh - Test context-aware working directory fix
+#
+# This script verifies that todos are created in the correct directory
+# when using the X-Working-Directory header, not in the server's directory.
+#
+# Usage: ./test_fix.sh
 
-# Quick test for the context-aware fix
-
-set -e
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 echo "Testing context-aware todo creation fix..."
 

@@ -1,8 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_simple.sh - Simple HTTP header and session management test
+#
+# This script tests session management and working directory isolation
+# using HTTP headers including X-Working-Directory and Mcp-Session-Id.
+#
+# Usage: ./test_simple.sh
 
-# Simple test for HTTP header working directory
-
-set -e
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 echo "Testing HTTP header-based working directory..."
 

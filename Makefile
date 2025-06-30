@@ -216,8 +216,8 @@ server-dev: ## Start with development settings
 .PHONY: test-e2e
 test-e2e: build ## Run comprehensive end-to-end tests
 	@echo "$(GREEN)Running end-to-end tests...$(NC)"
-	@chmod +x ./test_comprehensive.sh
-	@./test_comprehensive.sh
+	@chmod +x ./scripts/test/e2e/test_comprehensive.sh
+	@./scripts/test/e2e/test_comprehensive.sh
 
 # Documentation & Release
 .PHONY: docs
@@ -247,8 +247,9 @@ release: clean test build-all ## Build release binaries for all platforms
 # Utility targets
 .PHONY: setup
 setup: ## Initial project setup (deps, tools)
-	@echo "$(GREEN)Running development setup...$(NC)"
-	@./scripts/setup-dev.sh
+	@echo "$(GREEN)Running initial setup...$(NC)"
+	@chmod +x ./scripts/setup/setup.sh
+	@./scripts/setup/setup.sh
 
 .PHONY: tools
 tools: ## Install development tools
@@ -288,14 +289,14 @@ version: ## Display version information
 .PHONY: test-http-quick
 test-http-quick: build ## Quick HTTP transport test
 	@echo "$(GREEN)Running quick HTTP test...$(NC)"
-	@chmod +x ./test_http.sh
-	@./test_http.sh
+	@chmod +x ./scripts/test/http/test_http.sh
+	@./scripts/test/http/test_http.sh
 
 .PHONY: test-stdio-quick
 test-stdio-quick: build ## Quick STDIO transport test
 	@echo "$(GREEN)Running quick STDIO test...$(NC)"
-	@chmod +x ./test_server.sh
-	@./test_server.sh
+	@chmod +x ./scripts/test/stdio/test_server.sh
+	@./scripts/test/stdio/test_server.sh
 
 # Docker targets
 .PHONY: docker-build

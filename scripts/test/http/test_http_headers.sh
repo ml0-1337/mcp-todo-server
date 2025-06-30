@@ -1,8 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_http_headers.sh - Test HTTP header-based working directory isolation
+#
+# This script verifies that the X-Working-Directory HTTP header correctly
+# isolates todo files between different projects/directories.
+#
+# Usage: ./test_http_headers.sh
 
-# Test script for HTTP header-based working directory
-
-set -e
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 echo "Testing HTTP header-based working directory..."
 
@@ -22,6 +27,7 @@ echo "  - $PROJECT2_DIR"
 
 # Build the server
 echo "Building server..."
+# Build in test directory
 go build -o $TEST_DIR/mcp-todo-server
 
 # Start server in background

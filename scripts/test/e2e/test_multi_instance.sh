@@ -1,4 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# test_multi_instance.sh - Test multiple concurrent MCP server instances
+#
+# This script verifies that the HTTP transport mode allows running multiple
+# server instances on different ports simultaneously.
+#
+# Usage: ./test_multi_instance.sh
+
+set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Test script for multiple MCP server instances
 
