@@ -411,3 +411,67 @@ func TestRepository_ConcurrentAccess(t *testing.T) {
 		}
 	}
 }
+
+func TestRepository_NotFoundError(t *testing.T) {
+	// Test 5: Repository should return error when todo not found
+	// Input: Request for non-existent todo ID
+	// Expected: Returns domain.ErrTodoNotFound
+	
+	// Arrange
+	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Act - Try to find non-existent todo
+	_, err = repo.FindByID(ctx, "non-existent-todo-id")
+	
+	// Assert - Should return ErrTodoNotFound
+	if err == nil {
+		t.Error("Expected error for non-existent todo, but got nil")
+	}
+	
+	if err != domain.ErrTodoNotFound {
+		t.Errorf("Expected domain.ErrTodoNotFound, got: %v", err)
+	}
+	
+	// Act - Try to find with content
+	_, _, err = repo.FindByIDWithContent(ctx, "another-non-existent-id")
+	
+	// Assert - Should also return ErrTodoNotFound
+	if err == nil {
+		t.Error("Expected error for non-existent todo with content, but got nil")
+	}
+	
+	if err != domain.ErrTodoNotFound {
+		t.Errorf("Expected domain.ErrTodoNotFound for content retrieval, got: %v", err)
+	}
+	
+	// Act - Try to delete non-existent todo
+	err = repo.Delete(ctx, "delete-non-existent")
+	
+	// Assert - Delete should also return ErrTodoNotFound
+	if err == nil {
+		t.Error("Expected error for deleting non-existent todo, but got nil")
+	}
+	
+	if err != domain.ErrTodoNotFound {
+		t.Errorf("Expected domain.ErrTodoNotFound for delete, got: %v", err)
+	}
+	
+	// Act - Try to get content of non-existent todo
+	_, err = repo.GetContent(ctx, "content-non-existent")
+	
+	// Assert - GetContent should return ErrTodoNotFound
+	if err == nil {
+		t.Error("Expected error for getting content of non-existent todo, but got nil")
+	}
+	
+	if err != domain.ErrTodoNotFound {
+		t.Errorf("Expected domain.ErrTodoNotFound for GetContent, got: %v", err)
+	}
+}
