@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -96,6 +97,20 @@ func (h *TodoHandlers) GetBasePathForContext(ctx context.Context) string {
 	return h.manager.GetBasePath()
 }
 
+// getManagerForContext returns the appropriate todo manager for the context
+func (h *TodoHandlers) getManagerForContext(ctx context.Context) TodoManagerInterface {
+	// Check if we have a contextual manager wrapper
+	if ctxWrapper, ok := h.manager.(*ContextualTodoManagerWrapper); ok {
+		manager := ctxWrapper.GetManagerForContext(ctx)
+		log.Printf("Using context-aware manager with path: %s", manager.GetBasePath())
+		return manager
+	}
+	
+	// Fall back to the default manager
+	log.Printf("Using default manager (no context wrapper)")
+	return h.manager
+}
+
 // HandleTodoCreate creates a new todo
 func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Extract parameters
@@ -126,11 +141,14 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		return HandleError(err), nil
 	}
 
+	// Get the context-aware manager for remaining operations
+	manager := h.getManagerForContext(ctx)
+
 	// Set parent ID if provided
 	if params.ParentID != "" {
 		todo.ParentID = params.ParentID
 		// Update the todo file with parent ID
-		err = h.manager.UpdateTodo(todo.ID, "", "", "", map[string]string{"parent_id": params.ParentID})
+		err = manager.UpdateTodo(todo.ID, "", "", "", map[string]string{"parent_id": params.ParentID})
 		if err != nil {
 			// Log but don't fail the creation
 			fmt.Printf("Warning: failed to set parent_id: %v\n", err)
@@ -146,7 +164,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	}
 
 	// Get existing todos for similarity detection
-	existingTodos, _ := h.manager.ListTodos("", "", 0)
+	existingTodos, _ := manager.ListTodos("", "", 0)
 
 	// Return enhanced response with hints
 	filePath := filepath.Join(h.GetBasePathForContext(ctx), todo.ID+".md")
@@ -187,8 +205,11 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 			return HandleError(fmt.Errorf("failed to create child %d: %w", i, err)), nil
 		}
 
+		// Get context-aware manager for update
+		manager := h.getManagerForContext(ctx)
+		
 		// Set parent ID
-		err = h.manager.UpdateTodo(childTodo.ID, "", "", "", map[string]string{"parent_id": parentTodo.ID})
+		err = manager.UpdateTodo(childTodo.ID, "", "", "", map[string]string{"parent_id": parentTodo.ID})
 		if err != nil {
 			fmt.Printf("Warning: failed to set parent_id for child %s: %v\n", childTodo.ID, err)
 		}
@@ -215,18 +236,21 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 		return HandleError(err), nil
 	}
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	// Single todo read
 	if params.ID != "" {
 		if params.Format == "full" {
 			// For full format, read both todo and content
-			todo, content, err := h.manager.ReadTodoWithContent(params.ID)
+			todo, content, err := manager.ReadTodoWithContent(params.ID)
 			if err != nil {
 				return HandleError(err), nil
 			}
 			return formatSingleTodoWithContent(todo, content, params.Format), nil
 		} else {
 			// For other formats, just read todo metadata
-			todo, err := h.manager.ReadTodo(params.ID)
+			todo, err := manager.ReadTodo(params.ID)
 			if err != nil {
 				return HandleError(err), nil
 			}
@@ -235,7 +259,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	}
 
 	// List todos with filters
-	todos, err := h.manager.ListTodos(params.Filter.Status, params.Filter.Priority, params.Filter.Days)
+	todos, err := manager.ListTodos(params.Filter.Status, params.Filter.Priority, params.Filter.Days)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -244,7 +268,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	if params.Format == "full" {
 		contents := make(map[string]string)
 		for _, todo := range todos {
-			content, err := h.manager.ReadTodoContent(todo.ID)
+			content, err := manager.ReadTodoContent(todo.ID)
 			if err == nil {
 				contents[todo.ID] = content
 			}
@@ -263,6 +287,9 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		return HandleError(err), nil
 	}
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	// Prepare metadata map
 	metadata := make(map[string]string)
 	if params.Metadata.Status != "" {
@@ -278,7 +305,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	// If updating a section, validate content against schema (skip for toggle operation)
 	if params.Section != "" && params.Content != "" && params.Operation != "toggle" {
 		// Read todo to get section metadata
-		todo, err := h.manager.ReadTodo(params.ID)
+		todo, err := manager.ReadTodo(params.ID)
 		if err != nil {
 			return HandleError(err), nil
 		}
@@ -314,16 +341,16 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	}
 
 	// Update todo
-	err = h.manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, metadata)
+	err = manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, metadata)
 	if err != nil {
 		return HandleError(err), nil
 	}
 
 	// Re-index after update and prepare enriched response
-	todo, err := h.manager.ReadTodo(params.ID)
+	todo, err := manager.ReadTodo(params.ID)
 	if err == nil {
 		// Read full content for indexing and response
-		content, _ := h.manager.ReadTodoContent(params.ID)
+		content, _ := manager.ReadTodoContent(params.ID)
 		h.search.IndexTodo(todo, content)
 
 		// Return enriched response with full todo data
@@ -371,11 +398,14 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		return HandleError(err), nil
 	}
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	// Read todo BEFORE archiving to get its metadata
-	todo, readErr := h.manager.ReadTodo(params.ID)
+	todo, readErr := manager.ReadTodo(params.ID)
 
 	// Archive todo
-	err = h.manager.ArchiveTodo(params.ID, params.Quarter)
+	err = manager.ArchiveTodo(params.ID, params.Quarter)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -436,7 +466,7 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 	}
 
 	// Write and index
-	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
+	filePath := filepath.Join(h.GetBasePathForContext(ctx), todo.ID+".md")
 	content := fmt.Sprintf("# Task: %s\n\n", todo.Task) // Template content would be added
 	err = h.search.IndexTodo(todo, content)
 	if err != nil {
@@ -502,11 +532,14 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 	// Get operation type
 	operation := request.GetString("operation", "archive_old")
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	switch operation {
 	case "archive_old":
 		// Archive todos older than specified days
 		days := request.GetInt("days", 90)
-		count, err := h.manager.ArchiveOldTodos(days)
+		count, err := manager.ArchiveOldTodos(days)
 		if err != nil {
 			return HandleError(err), nil
 		}
@@ -514,7 +547,7 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 
 	case "find_duplicates":
 		// Find duplicate todos
-		duplicates, err := h.manager.FindDuplicateTodos()
+		duplicates, err := manager.FindDuplicateTodos()
 		if err != nil {
 			return HandleError(err), nil
 		}
@@ -545,14 +578,17 @@ func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallT
 		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
 	}
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	// Read todo
-	todo, err := h.manager.ReadTodo(id)
+	todo, err := manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
 
 	// Read todo content to analyze sections
-	content, err := h.manager.ReadTodoContent(id)
+	content, err := manager.ReadTodoContent(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -597,8 +633,11 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 		return HandleError(fmt.Errorf("invalid schema: %s", schema)), nil
 	}
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	// Read the todo
-	todo, err := h.manager.ReadTodo(id)
+	todo, err := manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -622,7 +661,7 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	}
 
 	// Save the todo with the new section
-	err = h.manager.SaveTodo(todo)
+	err = manager.SaveTodo(todo)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -654,8 +693,11 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 		return HandleError(fmt.Errorf("'order' must be an object mapping section keys to order values")), nil
 	}
 
+	// Get the context-aware manager
+	manager := h.getManagerForContext(ctx)
+
 	// Read the todo
-	todo, err := h.manager.ReadTodo(id)
+	todo, err := manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -689,7 +731,7 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 	}
 
 	// Save the todo with updated section orders
-	err = h.manager.SaveTodo(todo)
+	err = manager.SaveTodo(todo)
 	if err != nil {
 		return HandleError(err), nil
 	}
