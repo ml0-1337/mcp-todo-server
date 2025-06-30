@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	"github.com/user/mcp-todo-server/internal/infrastructure/factory"
 )
 
 // TodoHandlers contains handlers for all todo operations
@@ -22,7 +24,8 @@ type TodoHandlers struct {
 
 // NewTodoHandlers creates new todo handlers with dependencies
 func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
-	// Create context-aware todo manager wrapper
+	// Create todo manager using the new architecture via factory
+	// This will be replaced with direct repository/service creation after transition
 	manager := NewContextualTodoManagerWrapper(todoPath)
 
 	// Create search engine
@@ -56,6 +59,102 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 			return nil
 		},
 	}, nil
+}
+
+// NewTodoHandlersWithRepository creates handlers using the new repository pattern
+func NewTodoHandlersWithRepository(todoPath, templatePath string) (*TodoHandlers, error) {
+	// Create a simple context manager that uses the repository pattern
+	contextManager := &SimpleContextManagerWrapper{
+		defaultPath: todoPath,
+		managers:    make(map[string]TodoManagerInterface),
+	}
+
+	// Create search engine
+	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
+	search, err := core.NewSearchEngine(indexPath, todoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search engine: %w", err)
+	}
+
+	// Create a default manager for stats (temporary until stats is refactored)
+	defaultManager := core.NewTodoManager(todoPath)
+	stats := core.NewStatsEngine(defaultManager)
+
+	// Create template manager
+	templates := core.NewTemplateManager(templatePath)
+
+	return &TodoHandlers{
+		manager:   contextManager,
+		search:    search,
+		stats:     stats,
+		templates: templates,
+		createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			// For now, use the default manager
+			return core.NewTodoLinker(defaultManager)
+		},
+	}, nil
+}
+
+// SimpleContextManagerWrapper implements TodoManagerInterface with context awareness
+type SimpleContextManagerWrapper struct {
+	defaultPath string
+	managers    map[string]TodoManagerInterface
+	mu          sync.RWMutex
+}
+
+// Implement all TodoManagerInterface methods
+func (w *SimpleContextManagerWrapper) CreateTodo(task, priority, todoType string) (*core.Todo, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.CreateTodo(task, priority, todoType)
+}
+
+func (w *SimpleContextManagerWrapper) ReadTodo(id string) (*core.Todo, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.ReadTodo(id)
+}
+
+func (w *SimpleContextManagerWrapper) ReadTodoWithContent(id string) (*core.Todo, string, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.ReadTodoWithContent(id)
+}
+
+func (w *SimpleContextManagerWrapper) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.UpdateTodo(id, section, operation, content, metadata)
+}
+
+func (w *SimpleContextManagerWrapper) SaveTodo(todo *core.Todo) error {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.SaveTodo(todo)
+}
+
+func (w *SimpleContextManagerWrapper) ListTodos(status, priority string, days int) ([]*core.Todo, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.ListTodos(status, priority, days)
+}
+
+func (w *SimpleContextManagerWrapper) ReadTodoContent(id string) (string, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.ReadTodoContent(id)
+}
+
+func (w *SimpleContextManagerWrapper) ArchiveTodo(id, quarter string) error {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.ArchiveTodo(id, quarter)
+}
+
+func (w *SimpleContextManagerWrapper) ArchiveOldTodos(days int) (int, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.ArchiveOldTodos(days)
+}
+
+func (w *SimpleContextManagerWrapper) FindDuplicateTodos() ([][]string, error) {
+	adapter := factory.CreateTodoManager(w.defaultPath)
+	return adapter.FindDuplicateTodos()
+}
+
+func (w *SimpleContextManagerWrapper) GetBasePath() string {
+	return w.defaultPath
 }
 
 // NewTodoHandlersWithDependencies creates new todo handlers with explicit dependencies (for testing)
