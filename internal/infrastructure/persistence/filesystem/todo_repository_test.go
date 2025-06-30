@@ -2,8 +2,10 @@ package filesystem
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 	
@@ -183,5 +185,229 @@ func TestRepository_ListFilteredByStatus(t *testing.T) {
 	
 	if len(result) > 0 && result[0].Status != "completed" {
 		t.Errorf("Expected status 'completed', got '%s'", result[0].Status)
+	}
+}
+
+func TestRepository_UpdatePreservingMetadata(t *testing.T) {
+	// Test 3: Repository should update todo content preserving metadata
+	// Input: Existing todo with metadata, then update only status
+	// Expected: Status changes but other fields remain unchanged
+	
+	// Arrange
+	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Create initial todo with all fields
+	originalTodo := &domain.Todo{
+		ID:       "test-update-1",
+		Task:     "Original task description",
+		Started:  time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC),
+		Status:   "in_progress",
+		Priority: "high",
+		Type:     "feature",
+		Tags:     []string{"important", "backend"},
+		Sections: map[string]*domain.SectionDefinition{
+			"notes": {
+				Title:    "Implementation Notes",
+				Content:  "Original notes content",
+				Order:    1,
+				Metadata: map[string]interface{}{"author": "test"},
+			},
+		},
+	}
+	
+	// Save original
+	err = repo.Save(ctx, originalTodo)
+	if err != nil {
+		t.Fatalf("Failed to save original todo: %v", err)
+	}
+	
+	// Act - Update only the status
+	updatedTodo, err := repo.FindByID(ctx, "test-update-1")
+	if err != nil {
+		t.Fatalf("Failed to retrieve todo for update: %v", err)
+	}
+	
+	updatedTodo.Status = "completed"
+	updatedTodo.Completed = time.Now()
+	
+	err = repo.Save(ctx, updatedTodo)
+	if err != nil {
+		t.Fatalf("Failed to save updated todo: %v", err)
+	}
+	
+	// Assert - Retrieve and verify
+	final, err := repo.FindByID(ctx, "test-update-1")
+	if err != nil {
+		t.Fatalf("Failed to retrieve updated todo: %v", err)
+	}
+	
+	// Check that status was updated
+	if final.Status != "completed" {
+		t.Errorf("Status not updated: expected 'completed', got '%s'", final.Status)
+	}
+	
+	// Check that other fields were preserved
+	if final.Task != originalTodo.Task {
+		t.Errorf("Task changed unexpectedly: expected '%s', got '%s'", originalTodo.Task, final.Task)
+	}
+	
+	if !final.Started.Equal(originalTodo.Started) {
+		t.Errorf("Started time changed unexpectedly: expected %v, got %v", originalTodo.Started, final.Started)
+	}
+	
+	if final.Priority != originalTodo.Priority {
+		t.Errorf("Priority changed unexpectedly: expected '%s', got '%s'", originalTodo.Priority, final.Priority)
+	}
+	
+	if final.Type != originalTodo.Type {
+		t.Errorf("Type changed unexpectedly: expected '%s', got '%s'", originalTodo.Type, final.Type)
+	}
+	
+	if len(final.Tags) != len(originalTodo.Tags) {
+		t.Errorf("Tags changed unexpectedly: expected %d tags, got %d", len(originalTodo.Tags), len(final.Tags))
+	}
+	
+	// Check sections were preserved
+	if final.Sections["notes"] == nil {
+		t.Error("Notes section was lost during update")
+	} else {
+		if final.Sections["notes"].Title != originalTodo.Sections["notes"].Title {
+			t.Errorf("Section title changed: expected '%s', got '%s'", 
+				originalTodo.Sections["notes"].Title, 
+				final.Sections["notes"].Title)
+		}
+		if final.Sections["notes"].Metadata["author"] != "test" {
+			t.Error("Section metadata was lost during update")
+		}
+	}
+}
+
+func TestRepository_ConcurrentAccess(t *testing.T) {
+	// Test 4: Repository should handle concurrent access safely
+	// Input: Multiple goroutines reading and writing simultaneously
+	// Expected: All operations complete without race conditions or data corruption
+	
+	// Arrange
+	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Create initial todos
+	for i := 0; i < 5; i++ {
+		todo := &domain.Todo{
+			ID:       fmt.Sprintf("concurrent-todo-%d", i),
+			Task:     fmt.Sprintf("Concurrent task %d", i),
+			Started:  time.Now(),
+			Status:   "in_progress",
+			Priority: "medium",
+			Type:     "task",
+		}
+		if err := repo.Save(ctx, todo); err != nil {
+			t.Fatalf("Failed to create initial todo %d: %v", i, err)
+		}
+	}
+	
+	// Act - Concurrent operations
+	var wg sync.WaitGroup
+	errors := make(chan error, 100)
+	
+	// Multiple readers
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			
+			// Read random todos multiple times
+			for j := 0; j < 5; j++ {
+				todoID := fmt.Sprintf("concurrent-todo-%d", id%5)
+				_, err := repo.FindByID(ctx, todoID)
+				if err != nil {
+					errors <- fmt.Errorf("reader %d failed: %w", id, err)
+				}
+				
+				// Also do list operations
+				_, err = repo.List(ctx, repository.ListFilters{Status: "in_progress"})
+				if err != nil {
+					errors <- fmt.Errorf("reader %d list failed: %w", id, err)
+				}
+			}
+		}(i)
+	}
+	
+	// Multiple writers updating different todos
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			
+			todoID := fmt.Sprintf("concurrent-todo-%d", id)
+			
+			// Update the todo multiple times
+			for j := 0; j < 3; j++ {
+				todo, err := repo.FindByID(ctx, todoID)
+				if err != nil {
+					errors <- fmt.Errorf("writer %d read failed: %w", id, err)
+					return
+				}
+				
+				// Modify and save
+				todo.Priority = "high"
+				todo.Tags = append(todo.Tags, fmt.Sprintf("update-%d", j))
+				
+				if err := repo.Save(ctx, todo); err != nil {
+					errors <- fmt.Errorf("writer %d save failed: %w", id, err)
+				}
+				
+				// Small delay to increase chance of contention
+				time.Sleep(time.Millisecond)
+			}
+		}(i)
+	}
+	
+	// Wait for all operations to complete
+	wg.Wait()
+	close(errors)
+	
+	// Assert - Check for errors
+	var errorCount int
+	for err := range errors {
+		t.Errorf("Concurrent operation error: %v", err)
+		errorCount++
+	}
+	
+	if errorCount > 0 {
+		t.Fatalf("Had %d errors during concurrent operations", errorCount)
+	}
+	
+	// Verify data integrity - all todos should still exist
+	for i := 0; i < 5; i++ {
+		todoID := fmt.Sprintf("concurrent-todo-%d", i)
+		todo, err := repo.FindByID(ctx, todoID)
+		if err != nil {
+			t.Errorf("Todo %s missing after concurrent operations: %v", todoID, err)
+			continue
+		}
+		
+		// Should have been updated
+		if todo.Priority != "high" {
+			t.Errorf("Todo %s not properly updated, priority is %s", todoID, todo.Priority)
+		}
+		
+		// Should have update tags
+		if len(todo.Tags) != 3 {
+			t.Errorf("Todo %s has %d tags, expected 3", todoID, len(todo.Tags))
+		}
 	}
 }
