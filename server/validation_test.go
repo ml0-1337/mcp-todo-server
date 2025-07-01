@@ -12,11 +12,7 @@ import (
 // Test 3: Server should validate tool parameters against JSON schema
 func TestParameterValidation(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "mcp-todo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set environment variables to use temp directory
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")

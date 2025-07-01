@@ -9,11 +9,7 @@ import (
 // TestNewTodoServer tests creating a new todo server
 func TestNewTodoServer(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "mcp-todo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set environment variables to use temp directory
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
@@ -66,11 +62,7 @@ func TestNewTodoServer(t *testing.T) {
 // TestListTools tests listing available tools
 func TestListTools(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "mcp-todo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set environment variables to use temp directory
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")

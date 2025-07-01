@@ -1,7 +1,6 @@
 package adapters
 
 import (
-	"os"
 	"testing"
 	
 	"github.com/user/mcp-todo-server/internal/application"
@@ -12,11 +11,7 @@ func TestTodoManagerAdapter_CreateAndRead(t *testing.T) {
 	// Test that the adapter correctly bridges between old and new interfaces
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "adapter-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := filesystem.NewTodoRepository(tmpDir)
 	service := application.NewTodoService(repo)

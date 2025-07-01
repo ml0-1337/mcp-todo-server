@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -116,11 +115,7 @@ Tags: %s
 // BenchmarkSearchComplexQueries tests performance of complex search queries
 func BenchmarkSearchComplexQueries(b *testing.B) {
 	// Setup
-	tempDir, err := os.MkdirTemp("", "search-complex-bench-*")
-	if err != nil {
-		b.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := b.TempDir()
 	
 	// Create search engine and manager
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
@@ -186,11 +181,7 @@ func BenchmarkSearchComplexQueries(b *testing.B) {
 // BenchmarkSearchConcurrent tests concurrent search performance
 func BenchmarkSearchConcurrent(b *testing.B) {
 	// Setup
-	tempDir, err := os.MkdirTemp("", "search-concurrent-bench-*")
-	if err != nil {
-		b.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := b.TempDir()
 	
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
@@ -251,11 +242,7 @@ func BenchmarkSearchConcurrent(b *testing.B) {
 // BenchmarkIndexingPerformance tests todo indexing speed
 func BenchmarkIndexingPerformance(b *testing.B) {
 	// Setup
-	tempDir, err := os.MkdirTemp("", "index-bench-*")
-	if err != nil {
-		b.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := b.TempDir()
 	
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")

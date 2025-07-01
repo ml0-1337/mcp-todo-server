@@ -28,11 +28,7 @@ func TestServerStartupShutdown(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create unique temp directory for this test to avoid conflicts
-			tempDir, err := os.MkdirTemp("", "server-lifecycle-test-*")
-			if err != nil {
-				t.Fatalf("Failed to create temp dir: %v", err)
-			}
-			defer os.RemoveAll(tempDir)
+			tempDir := t.TempDir()
 
 			// Set environment variables to use isolated directories
 			oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
@@ -92,11 +88,7 @@ func TestServerStartupShutdown(t *testing.T) {
 // TestServerMultipleClose tests calling Close multiple times
 func TestServerMultipleClose(t *testing.T) {
 	// Create unique temp directory
-	tempDir, err := os.MkdirTemp("", "server-multiple-close-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set isolated paths
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")

@@ -19,11 +19,7 @@ func TestRepository_SaveAndRetrieveByID(t *testing.T) {
 	// Expected: Todo is saved and can be retrieved with same data
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := NewTodoRepository(tmpDir)
 	ctx := context.Background()
@@ -45,7 +41,7 @@ func TestRepository_SaveAndRetrieveByID(t *testing.T) {
 	}
 	
 	// Act - Save
-	err = repo.Save(ctx, todo)
+	err := repo.Save(ctx, todo)
 	
 	// Assert - Save should succeed
 	if err != nil {
@@ -96,11 +92,7 @@ func TestRepository_ListFilteredByStatus(t *testing.T) {
 	// Expected: Only todos matching the filter status are returned
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := NewTodoRepository(tmpDir)
 	ctx := context.Background()
@@ -194,11 +186,7 @@ func TestRepository_UpdatePreservingMetadata(t *testing.T) {
 	// Expected: Status changes but other fields remain unchanged
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := NewTodoRepository(tmpDir)
 	ctx := context.Background()
@@ -223,7 +211,7 @@ func TestRepository_UpdatePreservingMetadata(t *testing.T) {
 	}
 	
 	// Save original
-	err = repo.Save(ctx, originalTodo)
+	err := repo.Save(ctx, originalTodo)
 	if err != nil {
 		t.Fatalf("Failed to save original todo: %v", err)
 	}
@@ -295,11 +283,7 @@ func TestRepository_ConcurrentAccess(t *testing.T) {
 	// Expected: All operations complete without race conditions or data corruption
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := NewTodoRepository(tmpDir)
 	ctx := context.Background()
@@ -418,17 +402,13 @@ func TestRepository_NotFoundError(t *testing.T) {
 	// Expected: Returns domain.ErrTodoNotFound
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "todo-repo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := NewTodoRepository(tmpDir)
 	ctx := context.Background()
 	
 	// Act - Try to find non-existent todo
-	_, err = repo.FindByID(ctx, "non-existent-todo-id")
+	_, err := repo.FindByID(ctx, "non-existent-todo-id")
 	
 	// Assert - Should return ErrTodoNotFound
 	if err == nil {

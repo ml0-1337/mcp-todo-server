@@ -36,11 +36,7 @@ func (m *MockCallToolRequest) ToCallToolRequest() mcp.CallToolRequest {
 // TestMCPServerIntegration tests the MCP server integration
 func TestMCPServerIntegration(t *testing.T) {
 	// Create temp directory for test
-	tempDir, err := os.MkdirTemp("", "mcp-integration-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set environment variables for isolated test
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")

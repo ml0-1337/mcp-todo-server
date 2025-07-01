@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"os"
 	"testing"
 	
 	"github.com/user/mcp-todo-server/internal/infrastructure/persistence/filesystem"
@@ -14,18 +13,14 @@ func TestTodoService_ValidateBeforeSaving(t *testing.T) {
 	// Expected: Service rejects invalid todos before persisting
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "service-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := filesystem.NewTodoRepository(tmpDir)
 	service := NewTodoService(repo)
 	ctx := context.Background()
 	
 	// Test 1: Empty task should fail
-	_, err = service.CreateTodo(ctx, "", "high", "feature")
+	_, err := service.CreateTodo(ctx, "", "high", "feature")
 	if err == nil {
 		t.Error("Expected error for empty task, but got nil")
 	}
@@ -103,18 +98,14 @@ func TestTodoService_HandleRepositoryErrors(t *testing.T) {
 	// Expected: Service propagates errors with proper context
 	
 	// Arrange
-	tmpDir, err := os.MkdirTemp("", "service-error-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	
 	repo := filesystem.NewTodoRepository(tmpDir)
 	service := NewTodoService(repo)
 	ctx := context.Background()
 	
 	// Test 1: GetTodo with non-existent ID should return error
-	_, err = service.GetTodo(ctx, "non-existent-todo")
+	_, err := service.GetTodo(ctx, "non-existent-todo")
 	if err == nil {
 		t.Error("Expected error when getting non-existent todo, but got nil")
 	}
