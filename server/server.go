@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
+	"time"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
@@ -19,6 +21,7 @@ type TodoServer struct {
 	transport     string
 	httpServer    *server.StreamableHTTPServer
 	httpWrapper   *StreamableHTTPServerWrapper
+	startTime     time.Time
 	
 	closeMu       sync.Mutex
 	closed        bool
@@ -65,6 +68,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		mcpServer: s,
 		handlers:  todoHandlers,
 		transport: "stdio",
+		startTime: time.Now(),
 	}
 
 	// Apply options
@@ -361,6 +365,11 @@ func (ts *TodoServer) Close() error {
 	// Mark as closed
 	ts.closed = true
 	
+	// Stop cleanup routine if present
+	if ts.httpWrapper != nil {
+		ts.httpWrapper.Stop()
+	}
+	
 	// Shutdown HTTP server if present
 	if ts.httpServer != nil {
 		ctx := context.Background()
@@ -396,6 +405,51 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 	// Use custom HTTP server with middleware
 	http.Handle("/mcp", ts.httpWrapper)
 	
+	// Add health check endpoint
+	http.HandleFunc("/health", ts.handleHealthCheck)
+	
+	// Configure server with proper timeouts for connection resilience
+	server := &http.Server{
+		Addr:         addr,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	
 	log.Printf("Starting HTTP server with middleware on %s", addr)
-	return http.ListenAndServe(addr, nil)
+	return server.ListenAndServe()
+}
+
+// handleHealthCheck handles the /health endpoint
+func (ts *TodoServer) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	// Calculate uptime
+	uptime := time.Since(ts.startTime)
+	
+	// Get session count if using HTTP
+	sessionCount := 0
+	if ts.httpWrapper != nil && ts.httpWrapper.sessionManager != nil {
+		ts.httpWrapper.sessionManager.mu.RLock()
+		sessionCount = len(ts.httpWrapper.sessionManager.sessions)
+		ts.httpWrapper.sessionManager.mu.RUnlock()
+	}
+	
+	// Build health response
+	health := map[string]interface{}{
+		"status":       "healthy",
+		"uptime":       uptime.String(),
+		"uptimeMs":     uptime.Milliseconds(),
+		"serverTime":   time.Now().Format(time.RFC3339),
+		"transport":    ts.transport,
+		"version":      "2.0.0",
+		"sessions":     sessionCount,
+	}
+	
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	
+	// Write response
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		log.Printf("Error encoding health response: %v", err)
+	}
 }

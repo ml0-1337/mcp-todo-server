@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claude.restart-on-wake</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/macbook/Programming/go_projects/mcp-todo-server/scripts/macos/claude-restart-on-wake.sh</string>
+        <string>wake</string>
+    </array>
+    
+    <key>RunAtLoad</key>
+    <false/>
+    
+    <key>KeepAlive</key>
+    <false/>
+    
+    <!-- Trigger on wake from sleep -->
+    <key>WatchPaths</key>
+    <array>
+        <string>/var/run/resolv.conf</string>
+    </array>
+    
+    <!-- Throttle to prevent rapid restarts -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+    
+    <!-- Log output -->
+    <key>StandardOutPath</key>
+    <string>/Users/macbook/.claude/logs/restart-on-wake.stdout.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/Users/macbook/.claude/logs/restart-on-wake.stderr.log</string>
+</dict>
+</plist>
