@@ -123,7 +123,7 @@ func TestTodoService_HandleRepositoryErrors(t *testing.T) {
 	}
 	
 	// Test 4: ArchiveTodo on non-existent todo should fail
-	err = service.ArchiveTodo(ctx, "archive-non-existent", "")
+	err = service.ArchiveTodo(ctx, "archive-non-existent")
 	if err == nil {
 		t.Error("Expected error when archiving non-existent todo, but got nil")
 	}
@@ -134,7 +134,7 @@ func TestTodoService_HandleRepositoryErrors(t *testing.T) {
 		t.Fatalf("Failed to create test todo: %v", err)
 	}
 	
-	err = service.ArchiveTodo(ctx, todo.ID, "")
+	err = service.ArchiveTodo(ctx, todo.ID)
 	if err == nil {
 		t.Error("Expected error when archiving incomplete todo, but got nil")
 	}
@@ -150,7 +150,7 @@ func TestTodoService_HandleRepositoryErrors(t *testing.T) {
 		t.Errorf("Failed to update todo status: %v", err)
 	}
 	
-	err = service.ArchiveTodo(ctx, todo.ID, "")
+	err = service.ArchiveTodo(ctx, todo.ID)
 	if err != nil {
 		t.Errorf("Failed to archive completed todo: %v", err)
 	}

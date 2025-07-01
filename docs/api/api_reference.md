@@ -666,7 +666,6 @@ Archives completed todos to daily archive folders.
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | id | string | Yes | - | Todo ID to archive |
-| quarter | string | No | Current | Override quarter (ignored for daily) |
 
 ### Archive Path Structure
 

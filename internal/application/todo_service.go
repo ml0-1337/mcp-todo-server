@@ -83,7 +83,7 @@ func (s *TodoService) UpdateTodoStatus(ctx context.Context, id string, status st
 }
 
 // ArchiveTodo archives a completed todo
-func (s *TodoService) ArchiveTodo(ctx context.Context, id string, quarter string) error {
+func (s *TodoService) ArchiveTodo(ctx context.Context, id string) error {
 	todo, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -93,15 +93,9 @@ func (s *TodoService) ArchiveTodo(ctx context.Context, id string, quarter string
 		return fmt.Errorf("cannot archive incomplete todo")
 	}
 	
-	// Determine archive path
-	archivePath := quarter
-	if archivePath == "" {
-		now := todo.Completed
-		if now.IsZero() {
-			now = todo.Started
-		}
-		archivePath = fmt.Sprintf("%d/%02d/%02d", now.Year(), now.Month(), now.Day())
-	}
+	// Determine archive path based on started date
+	now := todo.Started
+	archivePath := fmt.Sprintf("%d/%02d/%02d", now.Year(), now.Month(), now.Day())
 	
 	return s.repo.Archive(ctx, id, archivePath)
 }

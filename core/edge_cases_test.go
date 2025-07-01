@@ -244,8 +244,7 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 		manager.UpdateTodo(child2.ID, "", "", "", map[string]string{"status": "completed"})
 
 		// Archive parent with cascade
-		quarter := GetQuarter(time.Now())
-		err = archiveTodoWithCascadeWrapper(manager, parent.ID, quarter, true)
+		err = archiveTodoWithCascadeWrapper(manager, parent.ID, true)
 		if err != nil {
 			t.Fatalf("Failed to archive with cascade: %v", err)
 		}
@@ -298,8 +297,7 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 		manager.UpdateTodo(child.ID, "", "", "", map[string]string{"status": "completed"})
 
 		// Archive parent without cascade
-		quarter := GetQuarter(time.Now())
-		err = archiveTodoWithCascadeWrapper(manager, parent.ID, quarter, false)
+		err = archiveTodoWithCascadeWrapper(manager, parent.ID, false)
 		if err != nil {
 			t.Fatalf("Failed to archive without cascade: %v", err)
 		}
@@ -324,22 +322,20 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 		todo.Completed = time.Now()
 		manager.UpdateTodo(todo.ID, "", "", "", map[string]string{"status": "completed"})
 
-		quarter := GetQuarter(time.Now())
-		err = manager.ArchiveTodo(todo.ID, quarter)
+		err = manager.ArchiveTodo(todo.ID)
 		if err != nil {
 			t.Fatalf("Failed first archive: %v", err)
 		}
 
 		// Try to archive again
-		err = archiveTodoWithCascadeWrapper(manager, todo.ID, quarter, false)
+		err = archiveTodoWithCascadeWrapper(manager, todo.ID, false)
 		if err == nil || !strings.Contains(err.Error(), "todo not found") {
 			t.Errorf("Should get 'todo not found' error, got: %v", err)
 		}
 	})
 
 	t.Run("Archive non-existent todo", func(t *testing.T) {
-		quarter := GetQuarter(time.Now())
-		err = archiveTodoWithCascadeWrapper(manager, "non-existent-todo", quarter, false)
+		err = archiveTodoWithCascadeWrapper(manager, "non-existent-todo", false)
 		if err == nil {
 			t.Error("Should get error for non-existent todo")
 		}
@@ -376,6 +372,6 @@ func isArchivedWrapper(tm *TodoManager, id string) bool {
 }
 
 // archiveTodoWithCascadeWrapper calls the ArchiveTodoWithCascade function
-func archiveTodoWithCascadeWrapper(tm *TodoManager, id, quarter string, cascade bool) error {
-	return tm.ArchiveTodoWithCascade(id, quarter, cascade)
+func archiveTodoWithCascadeWrapper(tm *TodoManager, id string, cascade bool) error {
+	return tm.ArchiveTodoWithCascade(id, cascade)
 }

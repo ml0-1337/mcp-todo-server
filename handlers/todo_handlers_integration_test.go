@@ -493,7 +493,7 @@ func TestHandleTodoArchive(t *testing.T) {
 						Started: time.Now(),
 					}, nil
 				}
-				tm.ArchiveTodoFunc = func(id, quarter string) error {
+				tm.ArchiveTodoFunc = func(id string) error {
 					return nil
 				}
 				se.DeleteTodoFunc = func(id string) error {
@@ -517,7 +517,7 @@ func TestHandleTodoArchive(t *testing.T) {
 						Started: time.Date(2025, 1, 15, 10, 0, 0, 0, time.UTC),
 					}, nil
 				}
-				tm.ArchiveTodoFunc = func(id, quarter string) error {
+				tm.ArchiveTodoFunc = func(id string) error {
 					return nil
 				}
 			},
@@ -534,7 +534,7 @@ func TestHandleTodoArchive(t *testing.T) {
 				tm.ReadTodoFunc = func(id string) (*core.Todo, error) {
 					return nil, errors.New("read error")
 				}
-				tm.ArchiveTodoFunc = func(id, quarter string) error {
+				tm.ArchiveTodoFunc = func(id string) error {
 					return nil // Archive still succeeds
 				}
 			},
@@ -555,7 +555,7 @@ func TestHandleTodoArchive(t *testing.T) {
 				},
 			},
 			setupMocks: func(tm *MockTodoManager, se *MockSearchEngine) {
-				tm.ArchiveTodoFunc = func(id, quarter string) error {
+				tm.ArchiveTodoFunc = func(id string) error {
 					return errors.New("archive failed")
 				}
 			},

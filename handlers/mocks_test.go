@@ -27,7 +27,7 @@ type MockTodoManager struct {
 	SaveTodoFunc            func(todo *core.Todo) error
 	ListTodosFunc           func(status, priority string, days int) ([]*core.Todo, error)
 	ReadTodoContentFunc     func(id string) (string, error)
-	ArchiveTodoFunc         func(id, quarter string) error
+	ArchiveTodoFunc         func(id string) error
 	ArchiveOldTodosFunc     func(days int) (int, error)
 	FindDuplicateTodosFunc  func() ([][]string, error)
 	GetBasePathFunc         func() string
@@ -118,10 +118,10 @@ func (m *MockTodoManager) ReadTodoContent(id string) (string, error) {
 	return "# Test Todo Content", nil
 }
 
-func (m *MockTodoManager) ArchiveTodo(id, quarter string) error {
-	m.recordCall("ArchiveTodo", id, quarter)
+func (m *MockTodoManager) ArchiveTodo(id string) error {
+	m.recordCall("ArchiveTodo", id)
 	if m.ArchiveTodoFunc != nil {
-		return m.ArchiveTodoFunc(id, quarter)
+		return m.ArchiveTodoFunc(id)
 	}
 	return nil
 }

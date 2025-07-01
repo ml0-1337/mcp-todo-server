@@ -111,9 +111,9 @@ func (a *TodoManagerAdapter) ReadTodoContent(id string) (string, error) {
 }
 
 // ArchiveTodo archives a todo
-func (a *TodoManagerAdapter) ArchiveTodo(id, quarter string) error {
+func (a *TodoManagerAdapter) ArchiveTodo(id string) error {
 	ctx := context.Background()
-	return a.service.ArchiveTodo(ctx, id, quarter)
+	return a.service.ArchiveTodo(ctx, id)
 }
 
 // ArchiveOldTodos archives todos older than specified days
@@ -131,7 +131,7 @@ func (a *TodoManagerAdapter) ArchiveOldTodos(days int) (int, error) {
 	
 	for _, todo := range todos {
 		if todo.IsCompleted() && todo.Completed.Before(cutoff) {
-			if err := a.service.ArchiveTodo(ctx, todo.ID, ""); err == nil {
+			if err := a.service.ArchiveTodo(ctx, todo.ID); err == nil {
 				count++
 			}
 		}

@@ -21,7 +21,7 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	todo, readErr := h.manager.ReadTodo(params.ID)
 
 	// Archive todo
-	err = h.manager.ArchiveTodo(params.ID, params.Quarter)
+	err = h.manager.ArchiveTodo(params.ID)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -29,14 +29,9 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	// Construct archive path
 	var archivePath string
 	if readErr == nil && todo != nil {
-		quarter := params.Quarter
-		if quarter == "" {
-			// Use the todo's started date for archive path (matches ArchiveTodo behavior)
-			dayPath := core.GetDailyPath(todo.Started)
-			archivePath = filepath.Join(".claude", "archive", dayPath, params.ID+".md")
-		} else {
-			archivePath = filepath.Join(".claude", "archive", quarter, params.ID+".md")
-		}
+		// Use the todo's started date for archive path (matches ArchiveTodo behavior)
+		dayPath := core.GetDailyPath(todo.Started)
+		archivePath = filepath.Join(".claude", "archive", dayPath, params.ID+".md")
 	} else {
 		// Fallback path when we couldn't read the todo
 		// This might happen with timestamp parsing errors

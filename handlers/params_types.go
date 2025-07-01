@@ -69,6 +69,5 @@ type SearchFilters struct {
 
 // TodoArchiveParams represents parameters for todo_archive
 type TodoArchiveParams struct {
-	ID      string
-	Quarter string
+	ID string
 }

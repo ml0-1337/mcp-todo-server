@@ -29,7 +29,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Archive the todo
-		err = manager.ArchiveTodo(todo.ID, "")
+		err = manager.ArchiveTodo(todo.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo: %v", err)
 		}
@@ -84,12 +84,12 @@ func TestDailyArchiveStructure(t *testing.T) {
 		todo2 := CreateTestTodoWithDate(t, manager, "Start of month todo", date2)
 
 		// For now, just archive normally (will need to implement date override)
-		err = manager.ArchiveTodo(todo1.ID, "")
+		err = manager.ArchiveTodo(todo1.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo1: %v", err)
 		}
 
-		err = manager.ArchiveTodo(todo2.ID, "")
+		err = manager.ArchiveTodo(todo2.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo2: %v", err)
 		}
@@ -128,12 +128,12 @@ func TestDailyArchiveStructure(t *testing.T) {
 		todo2 := CreateTestTodoWithDate(t, manager, "Start of year todo", date2)
 
 		// For now, just archive normally (will need to implement date override)
-		err = manager.ArchiveTodo(todo1.ID, "")
+		err = manager.ArchiveTodo(todo1.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo1: %v", err)
 		}
 
-		err = manager.ArchiveTodo(todo2.ID, "")
+		err = manager.ArchiveTodo(todo2.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo2: %v", err)
 		}
@@ -172,7 +172,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 			t.Fatalf("Failed to create todo: %v", err)
 		}
 
-		err = manager.ArchiveTodo(todo.ID, "")
+		err = manager.ArchiveTodo(todo.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo: %v", err)
 		}
@@ -226,7 +226,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Archive the todo
-		err = manager.ArchiveTodo(todo.ID, "")
+		err = manager.ArchiveTodo(todo.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive todo: %v", err)
 		}

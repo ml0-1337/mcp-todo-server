@@ -210,10 +210,6 @@ func ExtractTodoArchiveParams(request mcp.CallToolRequest) (*TodoArchiveParams, 
 	}
 	params.ID = id
 
-	// Optional quarter override
-	if quarter, ok := args["quarter"].(string); ok {
-		params.Quarter = quarter
-	}
 
 	return params, nil
 }

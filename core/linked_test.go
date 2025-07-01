@@ -96,7 +96,7 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		manager.CreateTodoWithParent("Active child 2", "medium", "feature", parent.ID)
 
 		// Try to archive parent
-		err := manager.ArchiveTodo(parent.ID, "")
+		err := manager.ArchiveTodo(parent.ID)
 		if err == nil {
 			t.Error("Should not allow archiving parent with active children")
 		}
@@ -116,17 +116,17 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		manager.UpdateTodo(child2.ID, "", "", "", map[string]string{"status": "completed"})
 
 		// Archive children first
-		err := manager.ArchiveTodo(child1.ID, "")
+		err := manager.ArchiveTodo(child1.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive child1: %v", err)
 		}
-		err = manager.ArchiveTodo(child2.ID, "")
+		err = manager.ArchiveTodo(child2.ID)
 		if err != nil {
 			t.Fatalf("Failed to archive child2: %v", err)
 		}
 
 		// Now archive parent should succeed
-		err = manager.ArchiveTodo(parent.ID, "")
+		err = manager.ArchiveTodo(parent.ID)
 		if err != nil {
 			t.Errorf("Should allow archiving parent when all children are archived, got: %v", err)
 		}
@@ -144,7 +144,7 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		manager.UpdateTodo(child2.ID, "", "", "", map[string]string{"status": "completed"})
 
 		// Archive with cascade option
-		err := manager.ArchiveTodoWithCascade(parent.ID, "", true)
+		err := manager.ArchiveTodoWithCascade(parent.ID, true)
 		if err != nil {
 			t.Fatalf("Failed to cascade archive: %v", err)
 		}

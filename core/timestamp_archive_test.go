@@ -27,7 +27,7 @@ func TestArchiveTodoWithStandardTimestamp(t *testing.T) {
 	}
 
 	// Archive the todo
-	err = manager.ArchiveTodo(todo.ID, "")
+	err = manager.ArchiveTodo(todo.ID)
 	if err != nil {
 		t.Fatalf("Failed to archive todo: %v", err)
 	}
@@ -89,7 +89,7 @@ This todo uses RFC3339 timestamp format to test archiving.
 
 	// Create manager and archive todo
 	manager := NewTodoManager(tempDir)
-	err = manager.ArchiveTodo("test-rfc3339-archive", "")
+	err = manager.ArchiveTodo("test-rfc3339-archive")
 	if err != nil {
 		t.Fatalf("Failed to archive todo with RFC3339 timestamp: %v", err)
 	}

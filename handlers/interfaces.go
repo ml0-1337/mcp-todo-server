@@ -14,7 +14,7 @@ type TodoManager interface {
 	SaveTodo(todo *core.Todo) error
 	ListTodos(status, priority string, days int) ([]*core.Todo, error)
 	ReadTodoContent(id string) (string, error)
-	ArchiveTodo(id, quarter string) error
+	ArchiveTodo(id string) error
 	ArchiveOldTodos(days int) (int, error)
 	FindDuplicateTodos() ([][]string, error)
 	GetBasePath() string

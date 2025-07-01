@@ -281,12 +281,10 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_archive
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_archive",
-			mcp.WithDescription("Archive completed todo to quarterly folder"),
+			mcp.WithDescription("Archive completed todo to daily folder"),
 			mcp.WithString("id",
 				mcp.Required(),
 				mcp.Description("Todo ID to archive")),
-			mcp.WithString("quarter",
-				mcp.Description("Override quarter (YYYY-QN)")),
 		),
 		ts.handlers.HandleTodoArchive,
 	)

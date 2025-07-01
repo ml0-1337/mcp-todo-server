@@ -242,8 +242,7 @@ func TestArchivePerformance(t *testing.T) {
 	// Time the cascade archive operation
 	start := time.Now()
 
-	quarter := GetQuarter(time.Now())
-	err = archiveTodoWithCascadeWrapper(manager, parent.ID, quarter, true)
+	err = manager.ArchiveTodoWithCascade(parent.ID, true)
 
 	elapsed := time.Since(start)
 
@@ -402,7 +401,7 @@ func TestMemoryLeaks(t *testing.T) {
 			if i%2 == 0 {
 				manager.UpdateTodo(todo.ID, "", "", "",
 					map[string]string{"status": "completed"})
-				manager.ArchiveTodo(todo.ID, GetQuarter(time.Now()))
+				manager.ArchiveTodo(todo.ID)
 			}
 		}
 	}

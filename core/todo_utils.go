@@ -259,7 +259,7 @@ func (tm *TodoManager) ArchiveOldTodos(days int) (int, error) {
 	count := 0
 	for _, todo := range todos {
 		if todo.Status == "completed" {
-			err = tm.ArchiveTodo(todo.ID, "")
+			err = tm.ArchiveTodo(todo.ID)
 			if err == nil {
 				count++
 			}

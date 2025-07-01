@@ -22,7 +22,7 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 	expectedArchivePath := GetArchivePath(tempDir, todo, "")
 
 	// Archive the todo
-	err := manager.ArchiveTodo(todo.ID, "")
+	err := manager.ArchiveTodo(todo.ID)
 	if err != nil {
 		t.Fatalf("Failed to archive todo: %v", err)
 	}
@@ -43,11 +43,10 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 			t.Fatalf("Failed to create todo: %v", err)
 		}
 
-		// Archive with specific quarter (ignored in daily archive)
-		overrideQuarter := "2024-Q4"
-		err = manager.ArchiveTodo(todo2.ID, overrideQuarter)
+		// Archive todo
+		err = manager.ArchiveTodo(todo2.ID)
 		if err != nil {
-			t.Fatalf("Failed to archive todo with override: %v", err)
+			t.Fatalf("Failed to archive todo: %v", err)
 		}
 
 		// Verify file is in daily structure based on started date
@@ -60,7 +59,7 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 
 	// Test archiving non-existent todo
 	t.Run("Archive non-existent todo", func(t *testing.T) {
-		err := manager.ArchiveTodo("non-existent-id", "")
+		err := manager.ArchiveTodo("non-existent-id")
 		if err == nil {
 			t.Error("Archiving non-existent todo should return error")
 		}
@@ -70,30 +69,6 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 	})
 }
 
-// Utility function to calculate quarter
-func TestGetQuarter(t *testing.T) {
-	tests := []struct {
-		date     time.Time
-		expected string
-	}{
-		{time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC), "2025-Q1"},
-		{time.Date(2025, 2, 28, 0, 0, 0, 0, time.UTC), "2025-Q1"},
-		{time.Date(2025, 3, 31, 0, 0, 0, 0, time.UTC), "2025-Q1"},
-		{time.Date(2025, 4, 1, 0, 0, 0, 0, time.UTC), "2025-Q2"},
-		{time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC), "2025-Q2"},
-		{time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC), "2025-Q3"},
-		{time.Date(2025, 9, 30, 0, 0, 0, 0, time.UTC), "2025-Q3"},
-		{time.Date(2025, 10, 1, 0, 0, 0, 0, time.UTC), "2025-Q4"},
-		{time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC), "2025-Q4"},
-	}
-
-	for _, test := range tests {
-		result := GetQuarter(test.date)
-		if result != test.expected {
-			t.Errorf("GetQuarter(%v) = %s, expected %s", test.date, result, test.expected)
-		}
-	}
-}
 
 // Test 17: todo_archive should update completed timestamp
 func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
@@ -117,7 +92,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	}
 
 	// Archive the todo
-	err = manager.ArchiveTodo(todo.ID, "")
+	err = manager.ArchiveTodo(todo.ID)
 	if err != nil {
 		t.Fatalf("Failed to archive todo: %v", err)
 	}
@@ -204,7 +179,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 			wg.Add(1)
 			go func(index int) {
 				defer wg.Done()
-				errors[index] = manager.ArchiveTodo(todo.ID, "")
+				errors[index] = manager.ArchiveTodo(todo.ID)
 				if errors[index] == nil {
 					successMutex.Lock()
 					successCount++
@@ -252,7 +227,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		defer os.Chmod(archiveDir, 0755) // Restore for cleanup
 
 		// Try to archive - should fail on write
-		err = manager.ArchiveTodo(todo.ID, "")
+		err = manager.ArchiveTodo(todo.ID)
 		if err == nil {
 			t.Error("Archive should fail when write fails")
 		}

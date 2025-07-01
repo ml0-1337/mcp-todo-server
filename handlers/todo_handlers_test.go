@@ -16,26 +16,13 @@ func TestTodoArchiveParamsExtraction(t *testing.T) {
 		expected    *TodoArchiveParams
 	}{
 		{
-			name: "valid parameters with quarter",
+			name: "valid parameters",
 			args: map[string]interface{}{
-				"id":      "test-todo-123",
-				"quarter": "2025-Q1",
+				"id": "test-todo-123",
 			},
 			expectError: false,
 			expected: &TodoArchiveParams{
-				ID:      "test-todo-123",
-				Quarter: "2025-Q1",
-			},
-		},
-		{
-			name: "valid parameters without quarter",
-			args: map[string]interface{}{
-				"id": "test-todo-456",
-			},
-			expectError: false,
-			expected: &TodoArchiveParams{
-				ID:      "test-todo-456",
-				Quarter: "",
+				ID: "test-todo-123",
 			},
 		},
 		{
@@ -80,11 +67,6 @@ func TestTodoArchiveParamsExtraction(t *testing.T) {
 			}
 			params.ID = id
 
-			// Extract optional quarter
-			if quarter, ok := tt.args["quarter"].(string); ok {
-				params.Quarter = quarter
-			}
-
 			// Verify results
 			if tt.expectError {
 				t.Fatal("Expected error but got valid params")
@@ -92,10 +74,6 @@ func TestTodoArchiveParamsExtraction(t *testing.T) {
 
 			if params.ID != tt.expected.ID {
 				t.Errorf("Expected ID '%s', got '%s'", tt.expected.ID, params.ID)
-			}
-
-			if params.Quarter != tt.expected.Quarter {
-				t.Errorf("Expected Quarter '%s', got '%s'", tt.expected.Quarter, params.Quarter)
 			}
 		})
 	}
