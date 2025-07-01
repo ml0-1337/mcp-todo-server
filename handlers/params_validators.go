@@ -1,21 +1,25 @@
 package handlers
 
+import (
+	"github.com/user/mcp-todo-server/internal/validation"
+)
+
 // isValidPriority validates priority values
 func isValidPriority(p string) bool {
-	return p == "high" || p == "medium" || p == "low"
+	return validation.IsValidPriority(p)
 }
 
 // isValidTodoType validates todo type values
 func isValidTodoType(t string) bool {
-	return t == "feature" || t == "bug" || t == "refactor" || t == "research" || t == "multi-phase" || t == "phase" || t == "subtask"
+	return validation.IsValidTodoType(t)
 }
 
 // isValidFormat validates format values
 func isValidFormat(f string) bool {
-	return f == "full" || f == "summary" || f == "list"
+	return validation.IsValidFormat(f)
 }
 
 // isValidOperation validates operation values
 func isValidOperation(o string) bool {
-	return o == "append" || o == "replace" || o == "prepend" || o == "toggle"
+	return validation.IsValidOperation(o)
 }
