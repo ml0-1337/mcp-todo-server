@@ -3,6 +3,7 @@ package core
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -210,6 +211,7 @@ func TestLinkTodosUpdateBehavior(t *testing.T) {
 
 	// Verify existing content is preserved
 	if !strings.Contains(content, "Initial findings") {
+		t.Logf("Content after linking:\n%s", content)
 		t.Error("Expected existing content to be preserved after linking")
 	}
 }
@@ -293,7 +295,7 @@ func TestLinkTodosErrorRecovery(t *testing.T) {
 		child, _ := manager.CreateTodo("Child", "medium", "phase")
 
 		// Delete parent file
-		os.Remove(tempDir + "/" + parent.ID + ".md")
+		os.Remove(filepath.Join(tempDir, ".claude", "todos", parent.ID + ".md"))
 
 		// Try to link
 		err := linker.LinkTodos(parent.ID, child.ID, "parent-child")
@@ -311,7 +313,7 @@ func TestLinkTodosErrorRecovery(t *testing.T) {
 		child, _ := manager.CreateTodo("Child", "medium", "phase")
 
 		// Delete child file
-		os.Remove(tempDir + "/" + child.ID + ".md")
+		os.Remove(filepath.Join(tempDir, ".claude", "todos", child.ID + ".md"))
 
 		// Try to link
 		err := linker.LinkTodos(parent.ID, child.ID, "parent-child")

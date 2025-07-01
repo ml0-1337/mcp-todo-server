@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -78,9 +79,23 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		if todoType, ok := metadata["type"]; ok {
 			todo.Type = todoType
 		}
+		if parentID, ok := metadata["parent_id"]; ok {
+			todo.ParentID = parentID
+		}
 
-		// Write back
-		return tm.writeTodo(todo)
+		// Update the frontmatter in the content while preserving the rest
+		updatedContent, err := updateFrontmatter(string(fileContent), todo)
+		if err != nil {
+			return fmt.Errorf("failed to update frontmatter: %w", err)
+		}
+		
+		// Write back the updated content
+		filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
+		if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
+			return fmt.Errorf("failed to write updated todo: %w", err)
+		}
+		
+		return nil
 	}
 
 	// For section updates, use sophisticated section-aware update
@@ -114,12 +129,54 @@ func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, co
 	return nil
 }
 
+// updateFrontmatter updates the YAML frontmatter while preserving the rest of the content
+func updateFrontmatter(content string, todo *Todo) (string, error) {
+	// Split the content into frontmatter and body
+	parts := strings.SplitN(content, "---", 3)
+	if len(parts) < 3 {
+		return "", fmt.Errorf("invalid markdown format: missing frontmatter delimiters")
+	}
+	
+	// Marshal the updated todo to YAML
+	yamlData, err := yaml.Marshal(todo)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal todo: %w", err)
+	}
+	
+	// Reconstruct the content with updated frontmatter
+	return "---\n" + string(yamlData) + "---" + parts[2], nil
+}
+
 // appendToSection appends content to a section
 func appendToSection(fileContent, section, content string) string {
-	// This is a placeholder - the real implementation would be more sophisticated
-	// For now, just append the content with timestamp
+	lines := strings.Split(fileContent, "\n")
 	timestampedContent := formatWithTimestamp(content)
-	return fileContent + "\n" + timestampedContent
+	
+	// Find the section
+	sectionHeader := "## " + strings.Title(section)
+	sectionIndex := -1
+	nextSectionIndex := len(lines)
+	
+	for i, line := range lines {
+		if strings.TrimSpace(line) == sectionHeader {
+			sectionIndex = i
+		} else if sectionIndex > -1 && strings.HasPrefix(strings.TrimSpace(line), "## ") {
+			nextSectionIndex = i
+			break
+		}
+	}
+	
+	if sectionIndex == -1 {
+		// Section doesn't exist, append it at the end
+		return fileContent + "\n\n" + sectionHeader + "\n\n" + timestampedContent
+	}
+	
+	// Find where to insert the content (before the next section)
+	insertIndex := nextSectionIndex
+	
+	// Insert the content
+	newLines := append(lines[:insertIndex], append([]string{timestampedContent}, lines[insertIndex:]...)...)
+	return strings.Join(newLines, "\n")
 }
 
 // replaceSection replaces a section's content

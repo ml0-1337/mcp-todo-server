@@ -73,7 +73,7 @@ func (tm *TodoManager) CreateTodoWithParent(task, priority, todoType, parentID s
 		err = tm.UpdateTodo(todo.ID, "", "", "", metadata)
 		if err != nil {
 			// Clean up the created todo on failure
-			os.Remove(filepath.Join(tm.basePath, todo.ID+".md"))
+			os.Remove(filepath.Join(tm.basePath, ".claude", "todos", todo.ID+".md"))
 			return nil, fmt.Errorf("failed to set parent_id: %w", err)
 		}
 		todo.ParentID = parentID
@@ -85,7 +85,8 @@ func (tm *TodoManager) CreateTodoWithParent(task, priority, todoType, parentID s
 // GetChildren returns all todos that have the given parent_id
 func (tm *TodoManager) GetChildren(parentID string) ([]*Todo, error) {
 	// Read all todos in the directory
-	files, err := ioutil.ReadDir(tm.basePath)
+	todosDir := filepath.Join(tm.basePath, ".claude", "todos")
+	files, err := ioutil.ReadDir(todosDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read todos directory: %w", err)
 	}
