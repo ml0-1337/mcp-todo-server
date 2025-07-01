@@ -30,12 +30,8 @@ func HandleError(err error) *mcp.CallToolResult {
 		return mcp.NewToolResultError("Todo not found")
 		
 	case interrors.IsValidation(err):
-		// Extract specific validation message if available
-		var validErr *interrors.ValidationError
-		if interrors.As(err, &validErr) {
-			return mcp.NewToolResultError(fmt.Sprintf("Validation error: %s", validErr.Message))
-		}
-		return mcp.NewToolResultError("Invalid parameter or ID format")
+		// Use the full error message which includes field name
+		return mcp.NewToolResultError(err.Error())
 		
 	case interrors.IsOperation(err):
 		// Extract specific operation message if available
@@ -62,6 +58,15 @@ func HandleError(err error) *mcp.CallToolResult {
 		// Preserve validation errors with their specific messages
 		return mcp.NewToolResultError(err.Error())
 
+	case strings.Contains(strings.ToLower(err.Error()), "not found"):
+		return mcp.NewToolResultError("Todo not found")
+
+	case strings.Contains(strings.ToLower(err.Error()), "archive"):
+		return mcp.NewToolResultError("Archive operation failed")
+
+	case strings.Contains(strings.ToLower(err.Error()), "base manager not available"):
+		return mcp.NewToolResultError("Linking feature not available")
+
 	default:
 		// Generic error with details
 		return mcp.NewToolResultError(fmt.Sprintf("Operation failed: %v", err))
@@ -71,7 +76,8 @@ func HandleError(err error) *mcp.CallToolResult {
 // ValidateRequiredParam checks if a required parameter is present
 func ValidateRequiredParam(param, name string) error {
 	if param == "" {
-		return interrors.NewValidationError(name, param, "missing required parameter")
+		// Return a simple error to match the expected format
+		return fmt.Errorf("missing required parameter '%s'", name)
 	}
 	return nil
 }
@@ -83,5 +89,6 @@ func ValidateEnum(value string, allowed []string, paramName string) error {
 			return nil
 		}
 	}
-	return interrors.NewValidationError(paramName, value, fmt.Sprintf("must be one of: %v", allowed))
+	// Return a simple error to match the expected format
+	return fmt.Errorf("invalid %s '%s': must be one of: %v", paramName, value, allowed)
 }

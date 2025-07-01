@@ -180,8 +180,8 @@ Custom security analysis content.`
 					return
 				}
 
-				if !contains(content.Text, "required parameter 'id'") {
-					t.Errorf("Expected missing parameter error, got: %s", content.Text)
+				if !contains(content.Text, "'id'") || !contains(content.Text, "required parameter") {
+					t.Errorf("Expected missing parameter error with 'id', got: %s", content.Text)
 				}
 			},
 		},

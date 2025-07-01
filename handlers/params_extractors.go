@@ -227,14 +227,14 @@ func ExtractTodoCreateMultiParams(request mcp.CallToolRequest) (*TodoCreateMulti
 	// Extract parent
 	parentObj, ok := args["parent"].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("missing required parameter 'parent'")
+		return nil, fmt.Errorf("parent is required")
 	}
 
 	// Parse parent task
 	if task, ok := parentObj["task"].(string); ok && task != "" {
 		params.Parent.Task = task
 	} else {
-		return nil, fmt.Errorf("parent must have a task")
+		return nil, fmt.Errorf("parent.task is required")
 	}
 
 	// Parse parent priority with default
@@ -251,8 +251,11 @@ func ExtractTodoCreateMultiParams(request mcp.CallToolRequest) (*TodoCreateMulti
 
 	// Extract children
 	childrenInterface, ok := args["children"].([]interface{})
-	if !ok || len(childrenInterface) == 0 {
-		return nil, fmt.Errorf("missing or empty 'children' parameter")
+	if !ok {
+		return nil, fmt.Errorf("children array is required")
+	}
+	if len(childrenInterface) == 0 {
+		return nil, fmt.Errorf("at least one child is required")
 	}
 
 	// Parse each child
@@ -268,7 +271,7 @@ func ExtractTodoCreateMultiParams(request mcp.CallToolRequest) (*TodoCreateMulti
 		if task, ok := childObj["task"].(string); ok && task != "" {
 			child.Task = task
 		} else {
-			return nil, fmt.Errorf("child at index %d must have a task", i)
+			return nil, fmt.Errorf("children[%d].task is required", i)
 		}
 
 		// Parse child priority with default
@@ -299,10 +302,14 @@ func ExtractTodoCreateMultiParams(request mcp.CallToolRequest) (*TodoCreateMulti
 	// Validate each child
 	for i, child := range params.Children {
 		if !isValidPriority(child.Priority) {
-			return nil, fmt.Errorf("invalid priority '%s' for child at index %d", child.Priority, i)
+			return nil, fmt.Errorf("invalid priority '%s' for child %d", child.Priority, i)
 		}
 		if !isValidTodoType(child.Type) {
-			return nil, fmt.Errorf("invalid type '%s' for child at index %d", child.Type, i)
+			return nil, fmt.Errorf("invalid type '%s' for child %d", child.Type, i)
+		}
+		// Children cannot be multi-phase type
+		if child.Type == "multi-phase" {
+			return nil, fmt.Errorf("child %d cannot be of type 'multi-phase'", i)
 		}
 	}
 

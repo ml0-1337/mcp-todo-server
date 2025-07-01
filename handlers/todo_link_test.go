@@ -233,8 +233,8 @@ func TestHandleTodoLink(t *testing.T) {
 					return
 				}
 				content := textContent.Text
-				if !strings.Contains(content, "failed to create linker") {
-					t.Errorf("Expected 'failed to create linker' error, got: %s", content)
+				if !strings.Contains(content, "Linking feature not available") {
+					t.Errorf("Expected 'Linking feature not available' error, got: %s", content)
 				}
 			},
 		},
