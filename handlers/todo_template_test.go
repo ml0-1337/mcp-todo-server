@@ -3,14 +3,11 @@ package handlers
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
-	ctxkeys "github.com/user/mcp-todo-server/internal/context"
 )
 
 func TestHandleTodoTemplate(t *testing.T) {
@@ -359,7 +356,7 @@ func TestHandleTodoTemplate(t *testing.T) {
 					return nil
 				}
 			},
-			context:     context.WithValue(context.Background(), ctxkeys.WorkingDirectoryKey, "/custom/project/path"),
+			context:     context.Background(),
 			expectError: false,
 			expectedResult: func(t *testing.T, result *mcp.CallToolResult) {
 				if result.IsError {
@@ -420,57 +417,5 @@ func TestHandleTodoTemplate(t *testing.T) {
 	}
 }
 
-// TestHandleTodoTemplateGetBasePathForContext tests the context-aware base path functionality
-func TestHandleTodoTemplateGetBasePathForContext(t *testing.T) {
-	t.Helper()
-	
-	// Create temporary directories for testing
-	tempDir := t.TempDir()
-
-	defaultPath := filepath.Join(tempDir, "default")
-	workDir := filepath.Join(tempDir, "work", "dir")
-	
-	// Create the directories
-	os.MkdirAll(defaultPath, 0755)
-	os.MkdirAll(workDir, 0755)
-
-	// Create a contextual todo manager wrapper
-	wrapper := NewContextualTodoManagerWrapper(defaultPath)
-	
-	handlers := &TodoHandlers{
-		manager:   wrapper,
-		search:    NewMockSearchEngine(),
-		templates: NewMockTemplateManager(),
-	}
-
-	tests := []struct {
-		name         string
-		context      context.Context
-		expectedPath string
-	}{
-		{
-			name:         "default context",
-			context:      context.Background(),
-			expectedPath: defaultPath,
-		},
-		{
-			name:         "custom working directory",
-			context:      context.WithValue(context.Background(), ctxkeys.WorkingDirectoryKey, workDir),
-			expectedPath: filepath.Join(workDir, ".claude", "todos"),
-		},
-		{
-			name:         "empty working directory",
-			context:      context.WithValue(context.Background(), ctxkeys.WorkingDirectoryKey, ""),
-			expectedPath: defaultPath,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			basePath := handlers.GetBasePathForContext(tt.context)
-			if basePath != tt.expectedPath {
-				t.Errorf("Expected base path %s, got %s", tt.expectedPath, basePath)
-			}
-		})
-	}
-}
+// TestHandleTodoTemplateGetBasePathForContext has been removed
+// The system no longer supports context-aware path resolution

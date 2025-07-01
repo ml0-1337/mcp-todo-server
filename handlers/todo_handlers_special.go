@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/user/mcp-todo-server/core"
 )
 
 // HandleTodoTemplate creates a todo from template
@@ -37,7 +38,7 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 	}
 
 	// Write and index
-	filePath := filepath.Join(h.GetBasePathForContext(ctx), todo.ID+".md")
+	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
 	content := fmt.Sprintf("# Task: %s\n\n", todo.Task) // Template content would be added
 	err = h.search.IndexTodo(todo, content)
 	if err != nil {
@@ -63,13 +64,10 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 	linkType := request.GetString("link_type", "parent-child")
 
 	// Create link
-	if h.createLinker == nil {
-		return HandleError(fmt.Errorf("linker not available")), nil
+	if h.baseManager == nil {
+		return HandleError(fmt.Errorf("base manager not available")), nil
 	}
-	linker := h.createLinker(h.manager)
-	if linker == nil {
-		return HandleError(fmt.Errorf("failed to create linker")), nil
-	}
+	linker := core.NewTodoLinker(h.baseManager)
 	err = linker.LinkTodos(parentID, childID, linkType)
 	if err != nil {
 		return HandleError(err), nil

@@ -17,14 +17,11 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		return nil, err
 	}
 
-	// Get the context-aware manager
-	manager := h.getManagerForContext(ctx)
-
 	// Read todo BEFORE archiving to get its metadata
-	todo, readErr := manager.ReadTodo(params.ID)
+	todo, readErr := h.manager.ReadTodo(params.ID)
 
 	// Archive todo
-	err = manager.ArchiveTodo(params.ID, params.Quarter)
+	err = h.manager.ArchiveTodo(params.ID, params.Quarter)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -61,14 +58,11 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 	// Get operation type
 	operation := request.GetString("operation", "archive_old")
 
-	// Get the context-aware manager
-	manager := h.getManagerForContext(ctx)
-
 	switch operation {
 	case "archive_old":
 		// Archive todos older than specified days
 		days := request.GetInt("days", 90)
-		count, err := manager.ArchiveOldTodos(days)
+		count, err := h.manager.ArchiveOldTodos(days)
 		if err != nil {
 			return HandleError(err), nil
 		}
@@ -76,7 +70,7 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 
 	case "find_duplicates":
 		// Find duplicate todos
-		duplicates, err := manager.FindDuplicateTodos()
+		duplicates, err := h.manager.FindDuplicateTodos()
 		if err != nil {
 			return HandleError(err), nil
 		}

@@ -16,13 +16,10 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 		return nil, err
 	}
 
-	// Get the manager for this context
-	manager := h.getManagerForContext(ctx)
-
 	// Handle single todo read
 	if params.ID != "" {
 		// Regular single todo read
-		todo, content, err := manager.ReadTodoWithContent(params.ID)
+		todo, content, err := h.manager.ReadTodoWithContent(params.ID)
 		if err != nil {
 			return HandleError(err), nil
 		}
@@ -35,7 +32,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	}
 
 	// Handle list todos
-	todos, err := manager.ListTodos(
+	todos, err := h.manager.ListTodos(
 		params.Filter.Status,
 		params.Filter.Priority,
 		params.Filter.Days,
@@ -48,7 +45,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	if params.Format == "full" && len(todos) > 0 {
 		contents := make(map[string]string)
 		for _, todo := range todos {
-			content, err := manager.ReadTodoContent(todo.ID)
+			content, err := h.manager.ReadTodoContent(todo.ID)
 			if err != nil {
 				// Skip todos we can't read content for
 				continue
