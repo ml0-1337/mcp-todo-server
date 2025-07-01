@@ -65,7 +65,7 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 
 	// Create link
 	if h.baseManager == nil {
-		return HandleError(fmt.Errorf("base manager not available")), nil
+		return HandleError(fmt.Errorf("Linking feature not available")), nil
 	}
 	linker := core.NewTodoLinker(h.baseManager)
 	err = linker.LinkTodos(parentID, childID, linkType)

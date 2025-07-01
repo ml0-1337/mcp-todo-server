@@ -25,6 +25,8 @@ func TestParentChildWorkflow(t *testing.T) {
 
 	// Create handlers
 	handlers := NewTodoHandlersWithDependencies(manager, searchEngine, statsEngine, templateManager)
+	// Set baseManager for linking to work
+	handlers.baseManager = manager
 
 	// Test 1: Create multi-phase project using todo_create_multi
 	createReq := &MockCallToolRequest{
@@ -216,6 +218,8 @@ func TestOrphanedPhaseDetection(t *testing.T) {
 
 	// Create handlers
 	handlers := NewTodoHandlersWithDependencies(manager, searchEngine, statsEngine, templateManager)
+	// Set baseManager for linking to work
+	handlers.baseManager = manager
 
 	// Create a parent todo
 	parent, err := manager.CreateTodo("Main Project", "high", "multi-phase")

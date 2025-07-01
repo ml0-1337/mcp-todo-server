@@ -116,7 +116,7 @@ func TestHandleTodoCreate(t *testing.T) {
 					"type":     "feature",
 				},
 			},
-			expectError: true,
+			expectError: false, // HandleError returns result, not error
 		},
 		{
 			name: "invalid priority",
@@ -127,7 +127,7 @@ func TestHandleTodoCreate(t *testing.T) {
 					"type":     "feature",
 				},
 			},
-			expectError: true,
+			expectError: false, // HandleError returns result, not error
 		},
 		{
 			name: "create todo error",
@@ -195,6 +195,16 @@ func TestHandleTodoCreate(t *testing.T) {
 			} else {
 				if err != nil {
 					t.Fatalf("Expected success but got error: %v", err)
+				}
+				// For validation error cases, check if result contains error
+				if (tt.name == "missing task parameter" || tt.name == "invalid priority") && result != nil {
+					content := result.Content[0].(mcp.TextContent).Text
+					if tt.name == "missing task parameter" && !strings.Contains(content, "missing required parameter 'task'") {
+						t.Errorf("Expected missing task error in result, got: %s", content)
+					}
+					if tt.name == "invalid priority" && !strings.Contains(content, "invalid priority 'urgent'") {
+						t.Errorf("Expected invalid priority error in result, got: %s", content)
+					}
 				}
 			}
 
@@ -825,11 +835,19 @@ func TestHandlerErrorPatterns(t *testing.T) {
 			},
 		}
 
-		_, err := handler.HandleTodoCreate(context.Background(), request.ToCallToolRequest())
+		result, err := handler.HandleTodoCreate(context.Background(), request.ToCallToolRequest())
 
-		// Should return error, not panic
-		if err == nil {
-			t.Error("Expected error for invalid parameters")
+		// Should return result with error message, not error
+		if err != nil {
+			t.Errorf("Expected result with error message, got error: %v", err)
+		}
+		if result == nil || len(result.Content) == 0 {
+			t.Error("Expected result with error content")
+		} else {
+			content := result.Content[0].(mcp.TextContent).Text
+			if !strings.Contains(content, "missing required parameter 'task'") {
+				t.Errorf("Expected missing task error in result, got: %s", content)
+			}
 		}
 	})
 }
