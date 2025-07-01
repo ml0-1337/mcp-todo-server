@@ -11,14 +11,23 @@ import (
 	"github.com/user/mcp-todo-server/server"
 )
 
+const Version = "2.0.0"
+
 func main() {
 	// Parse command line flags
 	var (
 		transport = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
 		port      = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
 		host      = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
+		version   = flag.Bool("version", false, "Print version and exit")
 	)
 	flag.Parse()
+
+	// Handle version flag
+	if *version {
+		fmt.Printf("MCP Todo Server v%s\n", Version)
+		os.Exit(0)
+	}
 
 	// Create server with transport type
 	todoServer, err := server.NewTodoServer(server.WithTransport(*transport))
@@ -35,13 +44,13 @@ func main() {
 	go func() {
 		switch *transport {
 		case "stdio":
-			log.Println("Starting MCP Todo Server v1.0.0 (STDIO mode)...")
+			log.Printf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}
 		case "http":
 			addr := fmt.Sprintf("%s:%s", *host, *port)
-			log.Printf("Starting MCP Todo Server v1.0.0 (HTTP mode) on %s...", addr)
+			log.Printf("Starting MCP Todo Server v%s (HTTP mode) on %s...", Version, addr)
 			if err := todoServer.StartHTTP(addr); err != nil {
 				errChan <- err
 			}
