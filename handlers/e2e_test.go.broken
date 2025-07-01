@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 	"github.com/user/mcp-todo-server/utils"
 )
@@ -35,44 +36,58 @@ func TestE2EMultiPhaseProject(t *testing.T) {
 
 	statsEngine := core.NewStatsEngine(todoManager)
 	templateManager := core.NewTemplateManager(utils.GetEnv("CLAUDE_TODO_TEMPLATES_PATH", "templates"))
-	todoLinker := &core.TodoLinker{Manager: todoManager}
 	
 	handlers := NewTodoHandlersWithDependencies(
 		todoManager,
 		searchEngine,
 		statsEngine,
 		templateManager,
-		todoLinker,
 	)
 
 	// Phase 1: Create main project
 	t.Run("CreateMainProject", func(t *testing.T) {
-		result := handlers.HandleTodoCreate(context.Background(), &MockCallToolRequest{
+		mockReq := &MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"task":     "Build E-commerce Platform",
 				"priority": "high",
 				"type":     "multi-phase",
 			},
-		})
-
-		if result.IsError {
-			t.Fatalf("Failed to create main project: %v", result.Content)
+		}
+		result, err := handlers.HandleTodoCreate(context.Background(), mockReq.ToCallToolRequest())
+		if err != nil {
+			t.Fatalf("Failed to create main project: %v", err)
 		}
 
-		// Extract project ID
-		content, ok := result.Content.([]interface{})
-		if !ok || len(content) == 0 {
-			t.Fatal("Invalid response format")
+		// Extract project ID from result
+		// The result contains text content with JSON
+		if len(result.Content) == 0 {
+			t.Fatal("Empty response")
 		}
 
-		todoMap, ok := content[0].(map[string]interface{})
-		if !ok {
-			t.Fatal("Invalid todo format")
+		// For testing, we'll parse the response to get the ID
+		// In real usage, the response would be handled by the MCP client
+		var projectID string
+		for _, content := range result.Content {
+			if textContent, ok := content.(mcp.TextContent); ok {
+				// Extract ID from the response text
+				if strings.Contains(textContent.Text, "id") {
+					// Simple extraction for test - in production this would be proper JSON parsing
+					lines := strings.Split(textContent.Text, "\n")
+					for _, line := range lines {
+						if strings.Contains(line, "\"id\":") {
+							parts := strings.Split(line, "\"")
+							if len(parts) >= 4 {
+								projectID = parts[3]
+								break
+							}
+						}
+					}
+				}
+			}
 		}
 
-		projectID, ok := todoMap["id"].(string)
-		if !ok || projectID == "" {
-			t.Fatal("Failed to get project ID")
+		if projectID == "" {
+			t.Fatal("Failed to extract project ID from response")
 		}
 
 		// Store for later phases
@@ -123,25 +138,34 @@ func TestE2EMultiPhaseProject(t *testing.T) {
 
 	t.Run("CreatePhases", func(t *testing.T) {
 		for _, phase := range phases {
-			result := handlers.HandleTodoCreate(context.Background(), &MockCallToolRequest{
+			mockReq := &MockCallToolRequest{
 				Arguments: map[string]interface{}{
 					"task":      phase.name,
 					"priority":  phase.priority,
 					"type":      "phase",
 					"parent_id": projectID,
 				},
-			})
-
-			if result.IsError {
-				t.Errorf("Failed to create phase %s: %v", phase.name, result.Content)
+			}
+			result, err := handlers.HandleTodoCreate(context.Background(), mockReq.ToCallToolRequest())
+			if err != nil {
+				t.Errorf("Failed to create phase %s: %v", phase.name, err)
 				continue
 			}
 
-			// Extract phase ID
-			if content, ok := result.Content.([]interface{}); ok && len(content) > 0 {
-				if todoMap, ok := content[0].(map[string]interface{}); ok {
-					if id, ok := todoMap["id"].(string); ok {
-						phaseIDs[phase.name] = id
+			// Extract phase ID from response
+			for _, content := range result.Content {
+				if textContent, ok := content.(mcp.TextContent); ok {
+					if strings.Contains(textContent.Text, "id") {
+						lines := strings.Split(textContent.Text, "\n")
+						for _, line := range lines {
+							if strings.Contains(line, "\"id\":") {
+								parts := strings.Split(line, "\"")
+								if len(parts) >= 4 {
+									phaseIDs[phase.name] = parts[3]
+									break
+								}
+							}
+						}
 					}
 				}
 			}
@@ -162,18 +186,19 @@ func TestE2EMultiPhaseProject(t *testing.T) {
 			}
 
 			for _, task := range phase.tasks {
-				result := handlers.HandleTodoCreate(context.Background(), &MockCallToolRequest{
+				mockReq := &MockCallToolRequest{
 					Arguments: map[string]interface{}{
 						"task":      task,
 						"priority":  "medium",
 						"type":      "task",
 						"parent_id": phaseID,
 					},
-				})
-
-				if result.IsError {
-					t.Errorf("Failed to create task '%s': %v", task, result.Content)
 				}
+				result, err := handlers.HandleTodoCreate(context.Background(), mockReq.ToCallToolRequest())
+				if err != nil {
+					t.Errorf("Failed to create task '%s': %v", task, err)
+				}
+				_ = result // Result contains the formatted response
 			}
 		}
 	})
@@ -184,35 +209,31 @@ func TestE2EMultiPhaseProject(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Search for API-related tasks
-		result := handlers.HandleTodoSearch(context.Background(), &MockCallToolRequest{
+		mockReq := &MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"query": "API",
 				"limit": 10,
 			},
-		})
-
-		if result.IsError {
-			t.Fatalf("Search failed: %v", result.Content)
+		}
+		result, err := handlers.HandleTodoSearch(context.Background(), mockReq.ToCallToolRequest())
+		if err != nil {
+			t.Fatalf("Search failed: %v", err)
 		}
 
-		results, ok := result.Content.([]interface{})
-		if !ok {
-			t.Fatal("Invalid search results format")
-		}
-
-		if len(results) == 0 {
+		// Check that we got results
+		if len(result.Content) == 0 {
 			t.Error("Expected to find API-related tasks")
 		}
 
 		// Search for testing tasks
-		result = handlers.HandleTodoSearch(context.Background(), &MockCallToolRequest{
+		mockReq2 := &MockCallToolRequest{
 			Arguments: map[string]interface{}{
 				"query": "test",
 				"limit": 10,
 			},
-		})
-
-		if result.IsError {
+		}
+		result2, err2 := handlers.HandleTodoSearch(context.Background(), mockReq2.ToCallToolRequest())
+		if err2 != nil {
 			t.Fatalf("Search for 'test' failed: %v", result.Content)
 		}
 

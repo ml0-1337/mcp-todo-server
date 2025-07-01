@@ -228,7 +228,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Original should not exist
-		originalPath := filepath.Join(tempDir, todo.ID+".md")
+		originalPath := GetTodoPath(tempDir, todo.ID)
 		if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 			t.Error("Original todo should not exist after successful archive")
 		}
@@ -258,7 +258,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Original should still exist and be unchanged
-		originalPath := filepath.Join(tempDir, todo.ID+".md")
+		originalPath := GetTodoPath(tempDir, todo.ID)
 		if _, err := os.Stat(originalPath); os.IsNotExist(err) {
 			t.Error("Original todo should still exist after failed archive")
 		}
@@ -293,7 +293,7 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	todo4, _ := manager.CreateTodo("Todo 4 - Valid", "high", "feature")
 
 	// Delete todo3's file to simulate missing todo
-	os.Remove(filepath.Join(tempDir, todo3.ID+".md"))
+	os.Remove(GetTodoPath(tempDir, todo3.ID))
 
 	// Create list of IDs including a non-existent one
 	todoIDs := []string{
@@ -368,7 +368,7 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	}
 
 	// Verify failed todos remain in original location (if they existed)
-	originalPath := filepath.Join(tempDir, todo3.ID+".md")
+	originalPath := GetTodoPath(tempDir, todo3.ID)
 	if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 		t.Error("Failed todo3 should not exist in original location (was already deleted)")
 	}

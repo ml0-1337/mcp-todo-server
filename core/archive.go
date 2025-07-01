@@ -167,7 +167,7 @@ func (tm *TodoManager) BulkArchiveTodos(ids []string) []BulkResult {
 // isArchived checks if a todo is already archived
 func isArchived(basePath, id string) bool {
 	// Check if file exists in main todo directory
-	mainPath := filepath.Join(basePath, id+".md")
+	mainPath := filepath.Join(basePath, ".claude", "todos", id+".md")
 	if _, err := os.Stat(mainPath); err == nil {
 		// File exists in main directory, not archived
 		return false

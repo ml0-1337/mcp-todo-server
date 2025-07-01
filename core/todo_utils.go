@@ -110,36 +110,53 @@ func extractTask(content string) string {
 // toggleChecklistItem toggles a checklist item between states
 func toggleChecklistItem(content string, itemText string) string {
 	lines := strings.Split(content, "\n")
-	inChecklist := false
 	
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		
-		// Check if we're in the checklist section
-		if strings.HasPrefix(trimmed, "## Checklist") {
-			inChecklist = true
-			continue
-		}
+		// Check all possible checkbox formats
+		var itemContent string
+		var currentMarker string
 		
-		// If we hit another section, we're out of the checklist
-		if inChecklist && strings.HasPrefix(trimmed, "##") {
-			inChecklist = false
-			continue
-		}
-		
-		// Only process checklist items in the checklist section
-		if inChecklist && (strings.HasPrefix(trimmed, "- [ ]") || strings.HasPrefix(trimmed, "- [x]")) {
-			// Extract the item text
-			itemContent := strings.TrimSpace(trimmed[5:])
-			if itemContent == itemText {
-				// Toggle the checkbox
-				if strings.HasPrefix(trimmed, "- [ ]") {
-					lines[i] = strings.Replace(line, "- [ ]", "- [x]", 1)
-				} else {
-					lines[i] = strings.Replace(line, "- [x]", "- [ ]", 1)
-				}
-				break
+		if strings.HasPrefix(trimmed, "- [ ]") {
+			itemContent = strings.TrimSpace(trimmed[5:])
+			currentMarker = "[ ]"
+		} else if strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
+			itemContent = strings.TrimSpace(trimmed[5:])
+			currentMarker = "[x]"
+			// Handle uppercase X
+			if strings.HasPrefix(trimmed, "- [X]") {
+				currentMarker = "[X]"
 			}
+		} else if strings.HasPrefix(trimmed, "- [>]") {
+			itemContent = strings.TrimSpace(trimmed[5:])
+			currentMarker = "[>]"
+		} else if strings.HasPrefix(trimmed, "- [-]") {
+			itemContent = strings.TrimSpace(trimmed[5:])
+			currentMarker = "[-]"
+		} else if strings.HasPrefix(trimmed, "- [~]") {
+			itemContent = strings.TrimSpace(trimmed[5:])
+			currentMarker = "[~]"
+		} else {
+			continue
+		}
+		
+		if itemContent == itemText {
+			// Toggle the checkbox state: pending -> in_progress -> completed -> pending
+			var newMarker string
+			switch currentMarker {
+			case "[ ]":
+				newMarker = "[>]"
+			case "[>]", "[-]", "[~]":
+				newMarker = "[x]"
+			case "[x]", "[X]":
+				newMarker = "[ ]"
+			}
+			
+			// Preserve the original indentation
+			leadingWhitespace := line[:len(line)-len(trimmed)]
+			lines[i] = leadingWhitespace + "- " + newMarker + " " + itemContent
+			break
 		}
 	}
 	
@@ -150,33 +167,33 @@ func toggleChecklistItem(content string, itemText string) string {
 func ParseChecklist(content string) []ChecklistItem {
 	var items []ChecklistItem
 	lines := strings.Split(content, "\n")
-	inChecklist := false
 	
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		
-		// Check if we're in the checklist section
-		if strings.HasPrefix(trimmed, "## Checklist") {
-			inChecklist = true
-			continue
-		}
-		
-		// If we hit another section, we're out of the checklist
-		if inChecklist && strings.HasPrefix(trimmed, "##") {
-			break
-		}
-		
-		// Parse checklist items
-		if inChecklist {
-			if strings.HasPrefix(trimmed, "- [ ]") {
+		// Parse checklist items regardless of section
+		if strings.HasPrefix(trimmed, "- [ ]") {
+			text := strings.TrimSpace(trimmed[5:])
+			if text != "" { // Skip empty items
 				items = append(items, ChecklistItem{
-					Text:   strings.TrimSpace(trimmed[5:]),
+					Text:   text,
 					Status: "pending",
 				})
-			} else if strings.HasPrefix(trimmed, "- [x]") {
+			}
+		} else if strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
+			text := strings.TrimSpace(trimmed[5:])
+			if text != "" { // Skip empty items
 				items = append(items, ChecklistItem{
-					Text:   strings.TrimSpace(trimmed[5:]),
+					Text:   text,
 					Status: "completed",
+				})
+			}
+		} else if strings.HasPrefix(trimmed, "- [>]") || strings.HasPrefix(trimmed, "- [-]") || strings.HasPrefix(trimmed, "- [~]") {
+			text := strings.TrimSpace(trimmed[5:])
+			if text != "" { // Skip empty items
+				items = append(items, ChecklistItem{
+					Text:   text,
+					Status: "in_progress",
 				})
 			}
 		}

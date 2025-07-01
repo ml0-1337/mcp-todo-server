@@ -35,7 +35,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Verify original file no longer exists
-		originalPath := filepath.Join(tempDir, todo.ID+".md")
+		originalPath := GetTodoPath(tempDir, todo.ID)
 		if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 			t.Error("Original todo file should have been moved")
 		}
@@ -76,33 +76,12 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 		// Create todos on different dates
 		// Todo 1: End of January
-		todo1, err := manager.CreateTodo("End of month todo", "high", "feature")
-		if err != nil {
-			t.Fatalf("Failed to create todo1: %v", err)
-		}
-		// We need to update the file with the new started date
-		// For now, let's use a workaround by updating metadata
-		metadata1 := map[string]string{
-			"started": "2025-01-31 12:00:00",
-		}
-		err = manager.UpdateTodo(todo1.ID, "", "", "", metadata1)
-		if err != nil {
-			t.Fatalf("Failed to update todo1 date: %v", err)
-		}
+		date1 := time.Date(2025, 1, 31, 12, 0, 0, 0, time.UTC)
+		todo1 := CreateTestTodoWithDate(t, manager, "End of month todo", date1)
 
 		// Todo 2: Beginning of February
-		todo2, err := manager.CreateTodo("Start of month todo", "high", "feature")
-		if err != nil {
-			t.Fatalf("Failed to create todo2: %v", err)
-		}
-		// Update the started date
-		metadata2 := map[string]string{
-			"started": "2025-02-01 12:00:00",
-		}
-		err = manager.UpdateTodo(todo2.ID, "", "", "", metadata2)
-		if err != nil {
-			t.Fatalf("Failed to update todo2 date: %v", err)
-		}
+		date2 := time.Date(2025, 2, 1, 12, 0, 0, 0, time.UTC)
+		todo2 := CreateTestTodoWithDate(t, manager, "Start of month todo", date2)
 
 		// For now, just archive normally (will need to implement date override)
 		err = manager.ArchiveTodo(todo1.ID, "")
@@ -141,30 +120,12 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 		// Create todos on different years
 		// Todo 1: End of 2024
-		todo1, err := manager.CreateTodo("End of year todo", "high", "feature")
-		if err != nil {
-			t.Fatalf("Failed to create todo1: %v", err)
-		}
-		metadata1 := map[string]string{
-			"started": "2024-12-31 12:00:00",
-		}
-		err = manager.UpdateTodo(todo1.ID, "", "", "", metadata1)
-		if err != nil {
-			t.Fatalf("Failed to update todo1 date: %v", err)
-		}
+		date1 := time.Date(2024, 12, 31, 12, 0, 0, 0, time.UTC)
+		todo1 := CreateTestTodoWithDate(t, manager, "End of year todo", date1)
 
 		// Todo 2: Beginning of 2025
-		todo2, err := manager.CreateTodo("Start of year todo", "high", "feature")
-		if err != nil {
-			t.Fatalf("Failed to create todo2: %v", err)
-		}
-		metadata2 := map[string]string{
-			"started": "2025-01-01 12:00:00",
-		}
-		err = manager.UpdateTodo(todo2.ID, "", "", "", metadata2)
-		if err != nil {
-			t.Fatalf("Failed to update todo2 date: %v", err)
-		}
+		date2 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+		todo2 := CreateTestTodoWithDate(t, manager, "Start of year todo", date2)
 
 		// For now, just archive normally (will need to implement date override)
 		err = manager.ArchiveTodo(todo1.ID, "")
@@ -258,7 +219,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Read original content
-		originalPath := filepath.Join(tempDir, todo.ID+".md")
+		originalPath := GetTodoPath(tempDir, todo.ID)
 		_, err = ioutil.ReadFile(originalPath)
 		if err != nil {
 			t.Fatalf("Failed to read original file: %v", err)

@@ -363,8 +363,8 @@ func generateBaseIDWrapper(tm *TodoManager, task string) string {
 }
 
 func isArchivedWrapper(tm *TodoManager, id string) bool {
-	// Check if file exists in main directory first
-	mainPath := filepath.Join(tm.basePath, id+".md")
+	// Check if file exists in main todo directory first
+	mainPath := GetTodoPath(tm.basePath, id)
 	if _, err := os.Stat(mainPath); err == nil {
 		// File exists in main directory, not archived
 		return false

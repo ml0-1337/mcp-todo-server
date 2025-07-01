@@ -3,7 +3,9 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 // Path constants for consistent directory structure
@@ -74,6 +76,43 @@ func CreateTestTodoWithContent(t *testing.T, manager *TodoManager, task, content
 	}
 	
 	return todo
+}
+
+// CreateTestTodoWithDate creates a todo with a specific started date
+func CreateTestTodoWithDate(t *testing.T, manager *TodoManager, task string, startedDate time.Time) *Todo {
+	todo := CreateTestTodo(t, manager, task, "high", "feature")
+	
+	// Read the file content
+	path := GetTodoPath(manager.basePath, todo.ID)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read todo file: %v", err)
+	}
+	
+	// Update the started date in the frontmatter
+	contentStr := string(content)
+	// Replace the started date line
+	lines := strings.Split(contentStr, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "started:") {
+			lines[i] = "started: " + startedDate.Format(time.RFC3339)
+			break
+		}
+	}
+	
+	// Write back the updated content
+	updatedContent := strings.Join(lines, "\n")
+	if err := os.WriteFile(path, []byte(updatedContent), 0644); err != nil {
+		t.Fatalf("Failed to write updated content: %v", err)
+	}
+	
+	// Re-read the todo to get the updated object
+	updatedTodo, err := manager.ReadTodo(todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to re-read todo: %v", err)
+	}
+	
+	return updatedTodo
 }
 
 // SetupTestTodoManager creates a TodoManager with a temporary directory
