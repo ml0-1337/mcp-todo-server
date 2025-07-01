@@ -71,6 +71,18 @@ func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
 }
 
 // parseTodoFile parses a todo file content
+// ParseTodoFileContent parses a todo from markdown content
+func (tm *TodoManager) ParseTodoFileContent(id, content string) (*Todo, error) {
+	todo, err := tm.parseTodoFile(content)
+	if err != nil {
+		return nil, err
+	}
+	if todo.ID == "" {
+		todo.ID = id
+	}
+	return todo, nil
+}
+
 func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 	// Split frontmatter and content
 	parts := strings.SplitN(content, "---", 3)

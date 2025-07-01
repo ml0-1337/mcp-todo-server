@@ -1,4 +1,4 @@
-package core
+package search
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	
+	"github.com/user/mcp-todo-server/internal/domain"
 )
 
 // TestIndexAndDeleteTodo tests the IndexTodo and DeleteTodo functions
@@ -21,7 +23,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
+	searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -29,7 +31,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 	t.Run("IndexTodo adds new todo to search", func(t *testing.T) {
 		// Create a todo
-		todo := &Todo{
+		todo := &domain.Todo{
 			ID:       "test-index-todo",
 			Task:     "Test indexing functionality",
 			Status:   "in_progress",
@@ -40,13 +42,13 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 		// Index the todo with content
 		content := "# Test Todo\n\nThis is test content for indexing"
-		err := searchEngine.IndexTodo(todo, content)
+		err := searchEngine.Index(todo, content)
 		if err != nil {
 			t.Fatalf("Failed to index todo: %v", err)
 		}
 
 		// Search for the indexed todo
-		results, err := searchEngine.SearchTodos("indexing functionality", nil, 10)
+		results, err := searchEngine.Search("indexing functionality", nil, 10)
 		if err != nil {
 			t.Fatalf("Search failed: %v", err)
 		}
@@ -63,7 +65,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 	t.Run("DeleteTodo removes todo from search", func(t *testing.T) {
 		// First ensure the todo exists in index
-		results, err := searchEngine.SearchTodos("test-index-todo", nil, 10)
+		results, err := searchEngine.Search("test-index-todo", nil, 10)
 		if err != nil {
 			t.Fatalf("Search failed: %v", err)
 		}
@@ -72,13 +74,13 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 		}
 
 		// Delete the todo from index
-		err = searchEngine.DeleteTodo("test-index-todo")
+		err = searchEngine.Delete("test-index-todo")
 		if err != nil {
 			t.Fatalf("Failed to delete todo: %v", err)
 		}
 
 		// Verify the todo was removed
-		results, err = searchEngine.SearchTodos("test-index-todo", nil, 10)
+		results, err = searchEngine.Search("test-index-todo", nil, 10)
 		if err != nil {
 			t.Fatalf("Search after delete failed: %v", err)
 		}
@@ -90,7 +92,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 	t.Run("IndexTodo updates existing todo", func(t *testing.T) {
 		// Create and index a todo
-		todo := &Todo{
+		todo := &domain.Todo{
 			ID:       "update-test-todo",
 			Task:     "Original task",
 			Status:   "pending",
@@ -99,7 +101,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 			Started:  time.Now(),
 		}
 
-		err := searchEngine.IndexTodo(todo, "Original content")
+		err := searchEngine.Index(todo, "Original content")
 		if err != nil {
 			t.Fatalf("Failed to index original todo: %v", err)
 		}
@@ -109,13 +111,13 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 		todo.Status = "completed"
 		todo.Priority = "high"
 
-		err = searchEngine.IndexTodo(todo, "Updated content with new information")
+		err = searchEngine.Index(todo, "Updated content with new information")
 		if err != nil {
 			t.Fatalf("Failed to re-index todo: %v", err)
 		}
 
 		// Search for updated content
-		results, err := searchEngine.SearchTodos("Updated task description", nil, 10)
+		results, err := searchEngine.Search("Updated task description", nil, 10)
 		if err != nil {
 			t.Fatalf("Search failed: %v", err)
 		}
@@ -132,7 +134,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 	t.Run("DeleteTodo with non-existent ID", func(t *testing.T) {
 		// Try to delete a todo that doesn't exist
-		err := searchEngine.DeleteTodo("non-existent-todo-id")
+		err := searchEngine.Delete("non-existent-todo-id")
 		// Should not error - Bleve handles this gracefully
 		if err != nil {
 			t.Logf("DeleteTodo on non-existent ID returned error (may be expected): %v", err)
@@ -142,7 +144,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 	t.Run("IndexTodo with empty content", func(t *testing.T) {
 		t.Skip("Skipping due to search engine test isolation issues")
 		uniqueID := fmt.Sprintf("zzzunique-%d", time.Now().UnixNano())
-		todo := &Todo{
+		todo := &domain.Todo{
 			ID:       uniqueID,
 			Task:     "Todo with empty content unique test",
 			Status:   "pending",
@@ -152,13 +154,13 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 		}
 
 		// Index with empty content
-		err := searchEngine.IndexTodo(todo, "")
+		err := searchEngine.Index(todo, "")
 		if err != nil {
 			t.Fatalf("Failed to index todo with empty content: %v", err)
 		}
 
 		// Should still be searchable by task - search for exact unique ID
-		results, err := searchEngine.SearchTodos(uniqueID, nil, 10)
+		results, err := searchEngine.Search(uniqueID, nil, 10)
 		if err != nil {
 			t.Fatalf("Search failed: %v", err)
 		}
@@ -183,7 +185,7 @@ func TestGetIndexedCount(t *testing.T) {
 
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
+	searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -215,7 +217,7 @@ func TestGetIndexedCount(t *testing.T) {
 		}
 
 		for _, td := range todos {
-			todo := &Todo{
+			todo := &domain.Todo{
 				ID:       td.id,
 				Task:     td.task,
 				Status:   "pending",
@@ -223,7 +225,7 @@ func TestGetIndexedCount(t *testing.T) {
 				Type:     "feature",
 				Started:  time.Now(),
 			}
-			err := searchEngine.IndexTodo(todo, "Content for "+td.task)
+			err := searchEngine.Index(todo, "Content for "+td.task)
 			if err != nil {
 				t.Fatalf("Failed to index todo %s: %v", td.id, err)
 			}
@@ -245,7 +247,7 @@ func TestGetIndexedCount(t *testing.T) {
 		countBefore, _ := searchEngine.GetIndexedCount()
 
 		// Delete one todo
-		err := searchEngine.DeleteTodo("count-test-2")
+		err := searchEngine.Delete("count-test-2")
 		if err != nil {
 			t.Fatalf("Failed to delete todo: %v", err)
 		}
@@ -266,7 +268,7 @@ func TestSearchEngineErrorHandling(t *testing.T) {
 	t.Run("NewSearchEngine with invalid path", func(t *testing.T) {
 		// Use a path that can't be created
 		invalidPath := "/root/invalid/path/that/cannot/be/created"
-		_, err := NewSearchEngine(invalidPath, "/tmp")
+		_, err := NewEngine(invalidPath, "/tmp")
 		if err == nil {
 			t.Error("Expected error for invalid path, got nil")
 		}
@@ -282,7 +284,7 @@ func TestSearchEngineErrorHandling(t *testing.T) {
 
 		// Create and close search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
+		searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -291,20 +293,20 @@ func TestSearchEngineErrorHandling(t *testing.T) {
 		searchEngine.Close()
 
 		// Try to use closed engine
-		_, err = searchEngine.SearchTodos("test", nil, 10)
+		_, err = searchEngine.Search("test", nil, 10)
 		if err == nil {
 			t.Error("Expected error when searching with closed index")
 		}
 
 		// Try to index with closed engine
-		todo := &Todo{ID: "test", Task: "Test"}
-		err = searchEngine.IndexTodo(todo, "content")
+		todo := &domain.Todo{ID: "test", Task: "Test"}
+		err = searchEngine.Index(todo, "content")
 		if err == nil {
 			t.Error("Expected error when indexing with closed index")
 		}
 
 		// Try to delete with closed engine
-		err = searchEngine.DeleteTodo("test")
+		err = searchEngine.Delete("test")
 		if err == nil {
 			t.Error("Expected error when deleting with closed index")
 		}
@@ -328,7 +330,7 @@ func TestSearchEngineWithSpecialContent(t *testing.T) {
 
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
+	searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -380,7 +382,7 @@ func TestSearchEngineWithSpecialContent(t *testing.T) {
 
 	for _, tc := range specialCases {
 		t.Run(tc.name, func(t *testing.T) {
-			todo := &Todo{
+			todo := &domain.Todo{
 				ID:       tc.id,
 				Task:     tc.task,
 				Status:   "pending",
@@ -390,13 +392,13 @@ func TestSearchEngineWithSpecialContent(t *testing.T) {
 			}
 
 			// Index the special content
-			err := searchEngine.IndexTodo(todo, tc.content)
+			err := searchEngine.Index(todo, tc.content)
 			if err != nil {
 				t.Fatalf("Failed to index %s: %v", tc.name, err)
 			}
 
 			// Search for it
-			results, err := searchEngine.SearchTodos(tc.search, nil, 10)
+			results, err := searchEngine.Search(tc.search, nil, 10)
 			if err != nil {
 				t.Fatalf("Search failed for %s: %v", tc.name, err)
 			}

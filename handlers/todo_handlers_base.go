@@ -28,7 +28,7 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 
 	// Create search engine
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
-	search, err := core.NewSearchEngine(indexPath, todoPath)
+	searchEngine, err := core.NewSearchEngine(indexPath, filepath.Join(todoPath, ".claude", "todos"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search engine: %w", err)
 	}
@@ -42,7 +42,7 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 
 	return &TodoHandlers{
 		manager:   manager,
-		search:    search,
+		search:    searchEngine,
 		stats:     stats,
 		templates: templates,
 		createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
@@ -69,7 +69,7 @@ func NewTodoHandlersWithRepository(todoPath, templatePath string) (*TodoHandlers
 
 	// Create search engine
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
-	search, err := core.NewSearchEngine(indexPath, todoPath)
+	searchEngine, err := core.NewSearchEngine(indexPath, filepath.Join(todoPath, ".claude", "todos"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search engine: %w", err)
 	}
@@ -83,7 +83,7 @@ func NewTodoHandlersWithRepository(todoPath, templatePath string) (*TodoHandlers
 
 	return &TodoHandlers{
 		manager:   contextManager,
-		search:    search,
+		search:    searchEngine,
 		stats:     stats,
 		templates: templates,
 		createLinker: func(m TodoManagerInterface) TodoLinkerInterface {

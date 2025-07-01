@@ -1,4 +1,4 @@
-package core
+package search
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create some test todos first
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 		todo1, err := manager.CreateTodo("Implement authentication", "high", "feature")
 		if err != nil {
 			t.Fatalf("Failed to create todo 1: %v", err)
@@ -41,7 +41,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -63,7 +63,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		}
 
 		// Verify each todo is searchable
-		results, err := searchEngine.SearchTodos("authentication", nil, 10)
+		results, err := searchEngine.Search("authentication", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -87,7 +87,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create some todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 		_, err = manager.CreateTodo("First todo", "high", "feature")
 		if err != nil {
 			t.Fatalf("Failed to create todo: %v", err)
@@ -96,7 +96,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		// Create first search engine instance
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine1, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine1, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create first search engine: %v", err)
 		}
@@ -111,7 +111,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		}
 
 		// Create second search engine instance - should open existing index
-		searchEngine2, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine2, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create second search engine: %v", err)
 		}
@@ -138,7 +138,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create many todos before search engine
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 		todoCount := 50
 
 		for i := 0; i < todoCount; i++ {
@@ -158,7 +158,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		// Create search engine - should batch index all todos
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -182,7 +182,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		}
 
 		// Verify search works - use quotes for exact phrase
-		results, err := searchEngine.SearchTodos(`"Task number 25"`, nil, 10)
+		results, err := searchEngine.Search(`"Task number 25"`, nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -216,7 +216,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		}
 
 		// Create some todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 		_, err = manager.CreateTodo("Test todo", "high", "feature")
 		if err != nil {
 			t.Fatalf("Failed to create todo: %v", err)
@@ -224,7 +224,7 @@ func TestSearchIndexCreation(t *testing.T) {
 
 		// Try to create search engine - should handle corruption
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			// It's OK if it fails, but should give meaningful error
 			if !strings.Contains(err.Error(), "index") && !strings.Contains(err.Error(), "corrupt") {
@@ -258,7 +258,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create test todos with different content
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("Implement authentication system", "high", "feature")
 		if err != nil {
@@ -284,14 +284,14 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		// Create search engine and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for "authentication"
-		results, err := searchEngine.SearchTodos("authentication", nil, 10)
+		results, err := searchEngine.Search("authentication", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search for 'authentication': %v", err)
 		}
@@ -320,7 +320,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("Research task", "high", "research")
 		if err != nil {
@@ -336,14 +336,14 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for content in findings
-		results, err := searchEngine.SearchTodos("WebSocket", nil, 10)
+		results, err := searchEngine.Search("WebSocket", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -367,7 +367,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("Implement user authentication with OAuth", "high", "feature")
 		if err != nil {
@@ -387,14 +387,14 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for multi-word query
-		results, err := searchEngine.SearchTodos("user authentication", nil, 10)
+		results, err := searchEngine.Search("user authentication", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -425,7 +425,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create some todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		_, err = manager.CreateTodo("Normal task", "high", "feature")
 		if err != nil {
@@ -435,14 +435,14 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for non-existent term
-		results, err := searchEngine.SearchTodos("xyznonexistentterm", nil, 10)
+		results, err := searchEngine.Search("xyznonexistentterm", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -462,7 +462,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with mixed case
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("Implement GraphQL API", "high", "feature")
 		if err != nil {
@@ -472,7 +472,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -482,7 +482,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		testCases := []string{"graphql", "GRAPHQL", "GraphQL", "gRaPhQl"}
 
 		for _, query := range testCases {
-			results, err := searchEngine.SearchTodos(query, nil, 10)
+			results, err := searchEngine.Search(query, nil, 10)
 			if err != nil {
 				t.Fatalf("Failed to search for '%s': %v", query, err)
 			}
@@ -507,7 +507,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create many todos with common term
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		for i := 0; i < 20; i++ {
 			task := fmt.Sprintf("Task %d: Implement feature", i+1)
@@ -520,7 +520,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -528,7 +528,7 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Search with limit
 		limit := 5
-		results, err := searchEngine.SearchTodos("feature", nil, limit)
+		results, err := searchEngine.Search("feature", nil, limit)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -551,7 +551,7 @@ func TestSearchFiltering(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with different statuses
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("Implement authentication feature", "high", "feature")
 		if err != nil {
@@ -587,7 +587,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -597,7 +597,7 @@ func TestSearchFiltering(t *testing.T) {
 		filters := map[string]string{
 			"status": "in_progress",
 		}
-		results, err := searchEngine.SearchTodos("feature", filters, 10)
+		results, err := searchEngine.Search("feature", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with status filter: %v", err)
 		}
@@ -615,7 +615,7 @@ func TestSearchFiltering(t *testing.T) {
 		filters = map[string]string{
 			"status": "completed",
 		}
-		results, err = searchEngine.SearchTodos("feature", filters, 10)
+		results, err = searchEngine.Search("feature", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with status filter: %v", err)
 		}
@@ -640,7 +640,7 @@ func TestSearchFiltering(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with different dates
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Create todo from 5 days ago
 		todo1, err := manager.CreateTodo("Old task about search", "high", "feature")
@@ -680,7 +680,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Create search engine AFTER all todos are created and updated
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -693,7 +693,7 @@ func TestSearchFiltering(t *testing.T) {
 		filters := map[string]string{
 			"date_from": sevenDaysAgo.Format("2006-01-02"),
 		}
-		results, err := searchEngine.SearchTodos("search", filters, 10)
+		results, err := searchEngine.Search("search", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with date filter: %v", err)
 		}
@@ -712,7 +712,7 @@ func TestSearchFiltering(t *testing.T) {
 			"date_from": time.Now().AddDate(0, 0, -20).Format("2006-01-02"),
 			"date_to":   time.Now().AddDate(0, 0, -4).Format("2006-01-02"),
 		}
-		results, err = searchEngine.SearchTodos("search", filters, 10)
+		results, err = searchEngine.Search("search", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with date range filter: %v", err)
 		}
@@ -735,7 +735,7 @@ func TestSearchFiltering(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with various combinations
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Todo 1: in_progress, recent, matches search
 		_, err = manager.CreateTodo("Implement user authentication", "high", "feature")
@@ -778,7 +778,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Create search engine AFTER all todos are created and updated
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -794,7 +794,7 @@ func TestSearchFiltering(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read todo file %s: %v", todoID, err)
 			}
-			err = searchEngine.IndexTodo(todo, string(content))
+			err = searchEngine.Index(todo, string(content))
 			if err != nil {
 				t.Fatalf("Failed to re-index todo %s: %v", todoID, err)
 			}
@@ -805,7 +805,7 @@ func TestSearchFiltering(t *testing.T) {
 			"status":    "in_progress",
 			"date_from": time.Now().AddDate(0, 0, -7).Format("2006-01-02"),
 		}
-		results, err := searchEngine.SearchTodos("authentication", filters, 10)
+		results, err := searchEngine.Search("authentication", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with combined filters: %v", err)
 		}
@@ -831,7 +831,7 @@ func TestSearchFiltering(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Create multiple todos with different statuses
 		_, err = manager.CreateTodo("First task", "high", "feature")
@@ -864,7 +864,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -874,7 +874,7 @@ func TestSearchFiltering(t *testing.T) {
 		filters := map[string]string{
 			"status": "completed",
 		}
-		results, err := searchEngine.SearchTodos("", filters, 10)
+		results, err := searchEngine.Search("", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with empty query: %v", err)
 		}
@@ -898,7 +898,7 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with "authentication" in different fields
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Todo 1: Multiple "authentication" occurrences in findings
 		todo1, err := manager.CreateTodo("Security research task", "high", "research")
@@ -929,14 +929,14 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for "authentication"
-		results, err := searchEngine.SearchTodos("authentication", nil, 10)
+		results, err := searchEngine.Search("authentication", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -979,7 +979,7 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with varying occurrences of "testing"
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Todo 1: Single occurrence
 		todo1, err := manager.CreateTodo("Basic testing setup", "medium", "feature")
@@ -1010,14 +1010,14 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for "testing"
-		results, err := searchEngine.SearchTodos("testing", nil, 10)
+		results, err := searchEngine.Search("testing", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -1048,7 +1048,7 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with exact vs partial phrase matches
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Todo 1: Partial match - words separated
 		_, err = manager.CreateTodo("User system with authentication", "high", "feature")
@@ -1071,14 +1071,14 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
 		defer searchEngine.Close()
 
 		// Search for exact phrase "user authentication"
-		results, err := searchEngine.SearchTodos("\"user authentication\"", nil, 10)
+		results, err := searchEngine.Search("\"user authentication\"", nil, 10)
 		if err != nil {
 			t.Fatalf("Failed to search: %v", err)
 		}
@@ -1107,7 +1107,7 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos with different statuses and relevance
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Todo 1: High relevance, wrong status
 		todo1, err := manager.CreateTodo("Database optimization task", "high", "feature")
@@ -1144,7 +1144,7 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1154,7 +1154,7 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 		filters := map[string]string{
 			"status": "in_progress",
 		}
-		results, err := searchEngine.SearchTodos("database optimization", filters, 10)
+		results, err := searchEngine.Search("database optimization", filters, 10)
 		if err != nil {
 			t.Fatalf("Failed to search with filter: %v", err)
 		}
@@ -1191,7 +1191,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		// Todo with "authentication" in title
 		todo1, err := manager.CreateTodo("Implement authentication system", "high", "feature")
@@ -1220,7 +1220,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1242,7 +1242,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		}
 
 		for _, test := range regexPatterns {
-			results, err := searchEngine.SearchTodos(test.pattern, nil, 10)
+			results, err := searchEngine.Search(test.pattern, nil, 10)
 			if err != nil {
 				t.Fatalf("Search failed for pattern %s: %v", test.pattern, err)
 			}
@@ -1259,7 +1259,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		}
 
 		// Verify normal search still works
-		results, err := searchEngine.SearchTodos("authentication", nil, 10)
+		results, err := searchEngine.Search("authentication", nil, 10)
 		if err != nil {
 			t.Fatalf("Normal search failed: %v", err)
 		}
@@ -1278,7 +1278,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("User management and admin panel", "high", "feature")
 		if err != nil {
@@ -1298,7 +1298,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1324,7 +1324,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		}
 
 		for _, test := range operatorQueries {
-			results, err := searchEngine.SearchTodos(test.query, nil, 10)
+			results, err := searchEngine.Search(test.query, nil, 10)
 			if err != nil {
 				t.Fatalf("Search failed for %s (%s): %v", test.query, test.desc, err)
 			}
@@ -1353,7 +1353,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		_, err = manager.CreateTodo("Test framework [unit tests]", "high", "testing")
 		if err != nil {
@@ -1373,7 +1373,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1404,7 +1404,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		}
 
 		for _, test := range groupingQueries {
-			results, err := searchEngine.SearchTodos(test.query, nil, 10)
+			results, err := searchEngine.Search(test.query, nil, 10)
 			if err != nil {
 				t.Fatalf("Search failed for %s (%s): %v", test.query, test.desc, err)
 			}
@@ -1426,7 +1426,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		defer os.RemoveAll(tempDir)
 
 		// Create todos
-		manager := NewTodoManager(tempDir)
+		manager := NewTestTodoManager(tempDir)
 
 		todo1, err := manager.CreateTodo("Security audit for authentication", "high", "security")
 		if err != nil {
@@ -1441,7 +1441,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 		todosPath := filepath.Join(tempDir, ".claude", "todos")
-		searchEngine, err := NewSearchEngine(indexPath, todosPath)
+		searchEngine, err := NewEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1466,7 +1466,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		}
 
 		for _, test := range mixedQueries {
-			results, err := searchEngine.SearchTodos(test.query, nil, 10)
+			results, err := searchEngine.Search(test.query, nil, 10)
 			if err != nil {
 				t.Fatalf("Search failed for %s (%s): %v", test.query, test.desc, err)
 			}
@@ -1495,7 +1495,7 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 		}
 
 		for _, query := range emptyQueries {
-			results, err := searchEngine.SearchTodos(query, nil, 10)
+			results, err := searchEngine.Search(query, nil, 10)
 			if err != nil {
 				t.Fatalf("Search failed for all-special-chars query %s: %v", query, err)
 			}

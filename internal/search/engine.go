@@ -1,4 +1,4 @@
-package core
+package search
 
 import (
 	"fmt"
@@ -9,41 +9,19 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
-	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
-	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
+	"github.com/user/mcp-todo-server/internal/domain"
+	domainSearch "github.com/user/mcp-todo-server/internal/domain/search"
 )
 
-// TodoDocument represents a todo in the search index
-type TodoDocument struct {
-	ID        string    `json:"id"`
-	Task      string    `json:"task"`
-	Status    string    `json:"status"`
-	Priority  string    `json:"priority"`
-	Type      string    `json:"type"`
-	Started   time.Time `json:"started"`
-	Completed time.Time `json:"completed,omitempty"`
-	Content   string    `json:"content"`
-	Findings  string    `json:"findings"`
-	Tests     string    `json:"tests"`
-}
-
-// SearchResult represents a search result
-type SearchResult struct {
-	ID      string
-	Task    string
-	Score   float64
-	Snippet string
-}
-
-// SearchEngine manages the bleve search index
-type SearchEngine struct {
+// Engine manages the bleve search index
+type Engine struct {
 	index    bleve.Index
 	basePath string
 }
 
-// NewSearchEngine creates or opens a search index
-func NewSearchEngine(indexPath, todosPath string) (*SearchEngine, error) {
+// NewEngine creates or opens a search index
+func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	// Check if index exists
 	index, err := bleve.Open(indexPath)
 	if err == bleve.ErrorIndexPathDoesNotExist {
@@ -63,7 +41,7 @@ func NewSearchEngine(indexPath, todosPath string) (*SearchEngine, error) {
 		}
 	}
 
-	engine := &SearchEngine{
+	engine := &Engine{
 		index:    index,
 		basePath: todosPath,
 	}
@@ -77,59 +55,10 @@ func NewSearchEngine(indexPath, todosPath string) (*SearchEngine, error) {
 	return engine, nil
 }
 
-// buildIndexMapping creates the index mapping for todos
-func buildIndexMapping() mapping.IndexMapping {
-	// Create a standard document mapping
-	todoMapping := bleve.NewDocumentMapping()
-
-	// Task field - boosted for relevance
-	taskFieldMapping := bleve.NewTextFieldMapping()
-	taskFieldMapping.Analyzer = standard.Name
-	taskFieldMapping.Store = true
-	taskFieldMapping.IncludeInAll = true
-	todoMapping.AddFieldMappingsAt("task", taskFieldMapping)
-
-	// Content fields
-	textFieldMapping := bleve.NewTextFieldMapping()
-	textFieldMapping.Analyzer = standard.Name
-	textFieldMapping.Store = true
-	textFieldMapping.IncludeInAll = true
-
-	todoMapping.AddFieldMappingsAt("content", textFieldMapping)
-	todoMapping.AddFieldMappingsAt("findings", textFieldMapping)
-	todoMapping.AddFieldMappingsAt("tests", textFieldMapping)
-
-	// Metadata fields
-	keywordFieldMapping := bleve.NewKeywordFieldMapping()
-	keywordFieldMapping.Store = true
-
-	todoMapping.AddFieldMappingsAt("id", keywordFieldMapping)
-	todoMapping.AddFieldMappingsAt("status", keywordFieldMapping)
-	todoMapping.AddFieldMappingsAt("priority", keywordFieldMapping)
-	todoMapping.AddFieldMappingsAt("type", keywordFieldMapping)
-
-	// Date fields
-	dateFieldMapping := bleve.NewDateTimeFieldMapping()
-	dateFieldMapping.Store = true
-	dateFieldMapping.Index = true
-	// Specify that we're using RFC3339 format for dates
-	dateFieldMapping.DateFormat = "dateTimeOptional"
-
-	todoMapping.AddFieldMappingsAt("started", dateFieldMapping)
-	todoMapping.AddFieldMappingsAt("completed", dateFieldMapping)
-
-	// Create index mapping
-	indexMapping := bleve.NewIndexMapping()
-	indexMapping.AddDocumentMapping("todo", todoMapping)
-	indexMapping.DefaultMapping = todoMapping
-
-	return indexMapping
-}
-
 // indexExistingTodos indexes all existing todo files
-func (se *SearchEngine) indexExistingTodos() error {
+func (e *Engine) indexExistingTodos() error {
 	// Read all .md files in basePath
-	files, err := ioutil.ReadDir(se.basePath)
+	files, err := ioutil.ReadDir(e.basePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No todos directory yet, that's OK
@@ -139,7 +68,7 @@ func (se *SearchEngine) indexExistingTodos() error {
 	}
 
 	// Create a batch for efficient indexing
-	batch := se.index.NewBatch()
+	batch := e.index.NewBatch()
 
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".md") {
@@ -148,7 +77,7 @@ func (se *SearchEngine) indexExistingTodos() error {
 
 		// Read and parse todo file
 		todoID := strings.TrimSuffix(file.Name(), ".md")
-		filePath := filepath.Join(se.basePath, file.Name())
+		filePath := filepath.Join(e.basePath, file.Name())
 
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
@@ -156,14 +85,13 @@ func (se *SearchEngine) indexExistingTodos() error {
 		}
 
 		// Parse todo to get structured data
-		manager := &TodoManager{basePath: se.basePath}
-		todo, err := manager.parseTodoFile(string(content))
+		todo, err := parseTodoFile(todoID, string(content))
 		if err != nil {
 			continue // Skip malformed files
 		}
 
 		// Create search document
-		doc := TodoDocument{
+		doc := Document{
 			ID:        todoID,
 			Task:      todo.Task,
 			Status:    todo.Status,
@@ -183,7 +111,7 @@ func (se *SearchEngine) indexExistingTodos() error {
 	}
 
 	// Execute batch
-	err = se.index.Batch(batch)
+	err = e.index.Batch(batch)
 	if err != nil {
 		return fmt.Errorf("failed to index batch: %w", err)
 	}
@@ -191,46 +119,22 @@ func (se *SearchEngine) indexExistingTodos() error {
 	return nil
 }
 
-// extractSection extracts content under a specific heading
-func extractSection(content, heading string) string {
-	lines := strings.Split(content, "\n")
-	inSection := false
-	var sectionLines []string
-
-	for _, line := range lines {
-		if line == heading {
-			inSection = true
-			continue
-		}
-
-		if inSection && strings.HasPrefix(line, "## ") {
-			break
-		}
-
-		if inSection {
-			sectionLines = append(sectionLines, line)
-		}
-	}
-
-	return strings.Join(sectionLines, "\n")
-}
-
 // Close closes the search index
-func (se *SearchEngine) Close() error {
-	return se.index.Close()
+func (e *Engine) Close() error {
+	return e.index.Close()
 }
 
 // GetIndexedCount returns the number of indexed documents
-func (se *SearchEngine) GetIndexedCount() (uint64, error) {
-	count, err := se.index.DocCount()
+func (e *Engine) GetIndexedCount() (uint64, error) {
+	count, err := e.index.DocCount()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get document count: %w", err)
 	}
 	return count, nil
 }
 
-// SearchTodos searches for todos matching the query
-func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, limit int) ([]SearchResult, error) {
+// Search performs a search with the given query and filters
+func (e *Engine) Search(queryStr string, filters map[string]string, limit int) ([]domainSearch.Result, error) {
 	// Build composite query
 	var searchQuery query.Query
 
@@ -242,15 +146,12 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 			searchQuery = bleve.NewQueryStringQuery(queryStr)
 		} else {
 			// Sanitize query to handle special characters safely
-			sanitized := sanitizeSearchQuery(queryStr)
+			sanitized := sanitizeQuery(queryStr)
 
 			// If sanitization removed all content, return empty results
 			if sanitized == "" {
-				return []SearchResult{}, nil
+				return []domainSearch.Result{}, nil
 			}
-
-			// Debug: log sanitized query
-			// fmt.Printf("DEBUG SearchTodos - Original: %q, Sanitized: %q\n", queryStr, sanitized)
 
 			// For non-phrase queries, use field-specific queries with boosting
 			// Create separate queries for each field with different boost values
@@ -301,8 +202,6 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 				return nil, fmt.Errorf("invalid date_from format: %w", err)
 			}
 			fromTime = &t
-			// Debug logging
-			// fmt.Printf("DEBUG SearchTodos: date_from parsed as %v\n", *fromTime)
 		}
 		
 		// Parse date_to if provided
@@ -327,7 +226,6 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 			} else if fromTime != nil {
 				// Only start date - search from date to now
 				now := time.Now().UTC()
-				// fmt.Printf("DEBUG SearchTodos: Creating date range query from %v to %v\n", *fromTime, now)
 				dateRangeQuery = bleve.NewDateRangeInclusiveQuery(*fromTime, now, &trueVal, &trueVal)
 			} else {
 				// Only end date - search from beginning of time to date
@@ -351,19 +249,16 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 	searchRequest.Highlight = bleve.NewHighlight() // Enable snippets
 
 	// Execute search
-	searchResults, err := se.index.Search(searchRequest)
+	searchResults, err := e.index.Search(searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
 
-	// Convert results - date filtering now handled by bleve
-	var results []SearchResult
+	// Convert results
+	var results []domainSearch.Result
 
-	// Post-filtering disabled - using bleve date range queries
-	// fmt.Printf("DEBUG SearchTodos: Got %d hits from bleve\n", len(searchResults.Hits))
 	for _, hit := range searchResults.Hits {
-
-		result := SearchResult{
+		result := domainSearch.Result{
 			ID:    hit.ID,
 			Score: hit.Score,
 		}
@@ -389,9 +284,9 @@ func (se *SearchEngine) SearchTodos(queryStr string, filters map[string]string, 
 	return results, nil
 }
 
-// IndexTodo indexes a single todo (for updates)
-func (se *SearchEngine) IndexTodo(todo *Todo, content string) error {
-	doc := TodoDocument{
+// Index adds or updates a todo in the search index
+func (e *Engine) Index(todo *domain.Todo, content string) error {
+	doc := Document{
 		ID:        todo.ID,
 		Task:      todo.Task,
 		Status:    todo.Status,
@@ -402,61 +297,14 @@ func (se *SearchEngine) IndexTodo(todo *Todo, content string) error {
 		Content:   content,
 	}
 
-	return se.index.Index(todo.ID, doc)
+	// Extract sections for better search
+	doc.Findings = extractSection(content, "## Findings & Research")
+	doc.Tests = extractSection(content, "## Test Cases")
+
+	return e.index.Index(todo.ID, doc)
 }
 
-// DeleteTodo removes a todo from the index
-func (se *SearchEngine) DeleteTodo(id string) error {
-	return se.index.Delete(id)
-}
-
-// sanitizeSearchQuery cleans up the search query to handle special characters safely
-// This prevents regex injection attacks and ensures queries don't break the search engine
-func sanitizeSearchQuery(query string) string {
-	// First, handle potential regex patterns - remove forward slashes that would indicate regex
-	if strings.HasPrefix(query, "/") && strings.HasSuffix(query, "/") {
-		// Don't execute as regex - treat as literal by removing slashes
-		query = query[1 : len(query)-1]
-	}
-
-	// Remove null bytes and other control characters
-	query = strings.ReplaceAll(query, "\x00", " ") // Replace null with space instead of removing
-	query = strings.ReplaceAll(query, "\n", " ")
-	query = strings.ReplaceAll(query, "\r", " ")
-	query = strings.ReplaceAll(query, "\t", " ")
-
-	// Replace special characters that break queries with spaces
-	// Keep alphanumeric, spaces, and some safe punctuation
-	var result []rune
-	for _, r := range query {
-		switch {
-		case r >= 'a' && r <= 'z':
-			result = append(result, r)
-		case r >= 'A' && r <= 'Z':
-			result = append(result, r)
-		case r >= '0' && r <= '9':
-			result = append(result, r)
-		case r == ' ':
-			result = append(result, r)
-		case r == '-' || r == '_':
-			// Keep hyphens and underscores as they're common in identifiers
-			result = append(result, r)
-		default:
-			// Replace other special characters with space
-			result = append(result, ' ')
-		}
-	}
-
-	// Convert back to string and clean up extra spaces
-	cleaned := string(result)
-
-	// Replace multiple consecutive spaces with single space
-	for strings.Contains(cleaned, "  ") {
-		cleaned = strings.ReplaceAll(cleaned, "  ", " ")
-	}
-
-	// Trim leading and trailing spaces
-	cleaned = strings.TrimSpace(cleaned)
-
-	return cleaned
+// Delete removes a todo from the index
+func (e *Engine) Delete(id string) error {
+	return e.index.Delete(id)
 }
