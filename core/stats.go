@@ -237,8 +237,9 @@ func (se *StatsEngine) GenerateTodoStats() (*TodoStats, error) {
 
 // Helper to get all todos
 func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
-	// Read all .md files in the base path
-	files, err := ioutil.ReadDir(se.manager.basePath)
+	// Read all .md files in the todos directory
+	todosDir := filepath.Join(se.manager.basePath, ".claude", "todos")
+	files, err := ioutil.ReadDir(todosDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read todos directory: %w", err)
 	}

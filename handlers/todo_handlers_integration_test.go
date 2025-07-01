@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,9 +47,9 @@ func TestHandleTodoCreate(t *testing.T) {
 			},
 			expectError: false,
 			expectedResult: func(t *testing.T, result *mcp.CallToolResult) {
-				// Result should not be an error
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				// Result should contain content
+				if result == nil || len(result.Content) == 0 {
+					t.Errorf("Expected result with content")
 				}
 			},
 		},
@@ -97,10 +98,10 @@ func TestHandleTodoCreate(t *testing.T) {
 						Started:  time.Now(),
 					}, nil
 				}
-				tm.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
+				tm.SaveTodoFunc = func(todo *core.Todo) error {
 					// Verify parent_id is set
-					if metadata["parent_id"] != "parent-123" {
-						t.Errorf("Expected parent_id=parent-123, got %v", metadata["parent_id"])
+					if todo.ParentID != "parent-123" {
+						t.Errorf("Expected parent_id=parent-123, got %v", todo.ParentID)
 					}
 					return nil
 				}
@@ -187,17 +188,13 @@ func TestHandleTodoCreate(t *testing.T) {
 			result, err := handler.HandleTodoCreate(context.Background(), tt.request.ToCallToolRequest())
 
 			// Verify
-			if err != nil {
-				t.Fatalf("HandleTodoCreate returned error: %v", err)
-			}
-
 			if tt.expectError {
-				if !result.IsError {
-					t.Error("Expected error result but got success")
+				if err == nil {
+					t.Error("Expected error but got success")
 				}
 			} else {
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				if err != nil {
+					t.Fatalf("Expected success but got error: %v", err)
 				}
 			}
 
@@ -266,11 +263,11 @@ func TestHandleTodoRead(t *testing.T) {
 				},
 			},
 			setupMocks: func(tm *MockTodoManager) {
-				tm.ReadTodoFunc = func(id string) (*core.Todo, error) {
-					return nil, fmt.Errorf("todo not found: %s", id)
+				tm.ReadTodoWithContentFunc = func(id string) (*core.Todo, string, error) {
+					return nil, "", fmt.Errorf("todo not found: %s", id)
 				}
 			},
-			expectError: true,
+			expectError: false, // HandleError returns result, not error
 		},
 		{
 			name: "invalid format",
@@ -303,17 +300,20 @@ func TestHandleTodoRead(t *testing.T) {
 			result, err := handler.HandleTodoRead(context.Background(), tt.request.ToCallToolRequest())
 
 			// Verify
-			if err != nil {
-				t.Fatalf("HandleTodoRead returned error: %v", err)
-			}
-
 			if tt.expectError {
-				if !result.IsError {
-					t.Error("Expected error result but got success")
+				if err == nil {
+					t.Error("Expected error but got success")
 				}
 			} else {
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				if err != nil {
+					t.Fatalf("Expected success but got error: %v", err)
+				}
+				// For "todo not found" case, check if result contains error
+				if tt.name == "todo not found" && result != nil {
+					content := result.Content[0].(mcp.TextContent).Text
+					if !strings.Contains(content, "Todo not found") {
+						t.Errorf("Expected 'Todo not found' error in result, got: %s", content)
+					}
 				}
 			}
 		})
@@ -414,16 +414,12 @@ func TestHandleTodoUpdate(t *testing.T) {
 				},
 			},
 			setupMocks: func(tm *MockTodoManager, se *MockSearchEngine) {
-				// Mock reading todo to check sections
-				tm.ReadTodoFunc = func(id string) (*core.Todo, error) {
-					return &core.Todo{
-						ID:       id,
-						Task:     "Test todo",
-						Sections: nil, // No sections defined, so any section is invalid
-					}, nil
+				// Mock update to return error for invalid section
+				tm.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
+					return fmt.Errorf("invalid section: %s", section)
 				}
 			},
-			expectError: true,
+			expectError: true, // Returns Go error, not HandleError
 		},
 	}
 
@@ -443,20 +439,16 @@ func TestHandleTodoUpdate(t *testing.T) {
 			handler := NewTodoHandlersWithDependencies(mockManager, mockSearch, mockStats, mockTemplates)
 
 			// Execute
-			result, err := handler.HandleTodoUpdate(context.Background(), tt.request.ToCallToolRequest())
+			_, err := handler.HandleTodoUpdate(context.Background(), tt.request.ToCallToolRequest())
 
 			// Verify
-			if err != nil {
-				t.Fatalf("HandleTodoUpdate returned error: %v", err)
-			}
-
 			if tt.expectError {
-				if !result.IsError {
-					t.Error("Expected error result but got success")
+				if err == nil {
+					t.Error("Expected error but got success")
 				}
 			} else {
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				if err != nil {
+					t.Fatalf("Expected success but got error: %v", err)
 				}
 			}
 
@@ -557,7 +549,7 @@ func TestHandleTodoArchive(t *testing.T) {
 					return errors.New("archive failed")
 				}
 			},
-			expectError: true,
+			expectError: false, // HandleError returns result, not error
 		},
 	}
 
@@ -580,17 +572,20 @@ func TestHandleTodoArchive(t *testing.T) {
 			result, err := handler.HandleTodoArchive(context.Background(), tt.request.ToCallToolRequest())
 
 			// Verify
-			if err != nil {
-				t.Fatalf("HandleTodoArchive returned error: %v", err)
-			}
-
 			if tt.expectError {
-				if !result.IsError {
-					t.Error("Expected error result but got success")
+				if err == nil {
+					t.Error("Expected error but got success")
 				}
 			} else {
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				if err != nil {
+					t.Fatalf("Expected success but got error: %v", err)
+				}
+				// For "archive error" case, check if result contains error
+				if tt.name == "archive error" && result != nil {
+					content := result.Content[0].(mcp.TextContent).Text
+					if !strings.Contains(content, "Archive operation failed") {
+						t.Errorf("Expected archive operation failed error in result, got: %s", content)
+					}
 				}
 			}
 		})
@@ -672,20 +667,16 @@ func TestHandleTodoSearch(t *testing.T) {
 			handler := NewTodoHandlersWithDependencies(mockManager, mockSearch, mockStats, mockTemplates)
 
 			// Execute
-			result, err := handler.HandleTodoSearch(context.Background(), tt.request.ToCallToolRequest())
+			_, err := handler.HandleTodoSearch(context.Background(), tt.request.ToCallToolRequest())
 
 			// Verify
-			if err != nil {
-				t.Fatalf("HandleTodoSearch returned error: %v", err)
-			}
-
 			if tt.expectError {
-				if !result.IsError {
-					t.Error("Expected error result but got success")
+				if err == nil {
+					t.Error("Expected error but got success")
 				}
 			} else {
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				if err != nil {
+					t.Fatalf("Expected success but got error: %v", err)
 				}
 			}
 		})
@@ -721,8 +712,8 @@ func TestHandleTodoStats(t *testing.T) {
 		t.Fatalf("HandleTodoStats returned error: %v", err)
 	}
 
-	if result.IsError {
-		t.Errorf("Expected success but got error")
+	if result == nil || len(result.Content) == 0 {
+		t.Errorf("Expected result with content")
 	}
 }
 
@@ -773,7 +764,7 @@ func TestHandleTodoClean(t *testing.T) {
 					"operation": "unknown",
 				},
 			},
-			expectError: true,
+			expectError: false, // HandleError returns result, not error
 		},
 	}
 
@@ -796,17 +787,20 @@ func TestHandleTodoClean(t *testing.T) {
 			result, err := handler.HandleTodoClean(context.Background(), tt.request.ToCallToolRequest())
 
 			// Verify
-			if err != nil {
-				t.Fatalf("HandleTodoClean returned error: %v", err)
-			}
-
 			if tt.expectError {
-				if !result.IsError {
-					t.Error("Expected error result but got success")
+				if err == nil {
+					t.Error("Expected error but got success")
 				}
 			} else {
-				if result.IsError {
-					t.Errorf("Expected success but got error")
+				if err != nil {
+					t.Fatalf("Expected success but got error: %v", err)
+				}
+				// For "unknown operation" case, check if result contains error
+				if tt.name == "unknown operation" && result != nil {
+					content := result.Content[0].(mcp.TextContent).Text
+					if !strings.Contains(content, "unknown operation") {
+						t.Errorf("Expected 'unknown operation' error in result, got: %s", content)
+					}
 				}
 			}
 		})
@@ -831,14 +825,11 @@ func TestHandlerErrorPatterns(t *testing.T) {
 			},
 		}
 
-		result, err := handler.HandleTodoCreate(context.Background(), request.ToCallToolRequest())
-		if err != nil {
-			t.Fatalf("HandleTodoCreate returned error: %v", err)
-		}
+		_, err := handler.HandleTodoCreate(context.Background(), request.ToCallToolRequest())
 
-		// Should return error result, not panic
-		if !result.IsError {
-			t.Error("Expected error result for invalid parameters")
+		// Should return error, not panic
+		if err == nil {
+			t.Error("Expected error for invalid parameters")
 		}
 	})
 }

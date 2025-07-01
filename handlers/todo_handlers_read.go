@@ -22,12 +22,15 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	// Handle single todo read
 	if params.ID != "" {
 		// Regular single todo read
-		todo, _, err := manager.ReadTodoWithContent(params.ID)
+		todo, content, err := manager.ReadTodoWithContent(params.ID)
 		if err != nil {
 			return HandleError(err), nil
 		}
 
 		// Create response based on format
+		if params.Format == "full" {
+			return formatSingleTodoWithContent(todo, content, params.Format), nil
+		}
 		return FormatTodoReadResponse([]*core.Todo{todo}, params.Format, true), nil
 	}
 
@@ -39,6 +42,20 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list todos: %w", err)
+	}
+
+	// For full format with multiple todos, we need to get content for each
+	if params.Format == "full" && len(todos) > 0 {
+		contents := make(map[string]string)
+		for _, todo := range todos {
+			content, err := manager.ReadTodoContent(todo.ID)
+			if err != nil {
+				// Skip todos we can't read content for
+				continue
+			}
+			contents[todo.ID] = content
+		}
+		return formatTodosFullWithContent(todos, contents), nil
 	}
 
 	// Create response

@@ -23,7 +23,7 @@ func BenchmarkSearchWithManyTodos(b *testing.B) {
 	// Create todo manager and search engine
 	manager := NewTodoManager(tempDir)
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -140,7 +140,8 @@ func TestConcurrentTodoOperations(t *testing.T) {
 	}
 
 	// Verify all todos were created
-	files, err := ioutil.ReadDir(tempDir)
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	files, err := ioutil.ReadDir(todosDir)
 	if err != nil {
 		t.Fatalf("Failed to read directory: %v", err)
 	}

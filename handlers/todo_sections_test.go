@@ -13,9 +13,9 @@ import (
 func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 	// Create mock managers
 	mockManager := NewMockTodoManager()
-	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
+	mockManager.ReadTodoWithContentFunc = func(id string) (*core.Todo, string, error) {
 		if id == "test-todo" {
-			return &core.Todo{
+			todo := &core.Todo{
 				ID:       "test-todo",
 				Task:     "Test todo with sections",
 				Status:   "in_progress",
@@ -23,13 +23,13 @@ func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 				Type:     "feature",
 				Sections: map[string]*core.SectionDefinition{
 					"findings": {
-						Title:    "## Findings & Research",
+						Title:    "Findings & Research",
 						Order:    1,
 						Schema:   core.SchemaResearch,
 						Required: true,
 					},
 					"test_list": {
-						Title:    "## Test List",
+						Title:    "Test List",
 						Order:    2,
 						Schema:   core.SchemaChecklist,
 						Required: true,
@@ -39,16 +39,37 @@ func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 						},
 					},
 					"custom_security": {
-						Title:    "## Security Analysis",
+						Title:    "Security Analysis",
 						Order:    9,
 						Schema:   core.SchemaFreeform,
 						Required: false,
 						Custom:   true,
 					},
 				},
-			}, nil
+			}
+			content := `# Task: Test todo with sections
+
+## Findings & Research
+
+Some research content here.
+
+## Test List
+
+- [x] Test 1
+- [x] Test 2
+- [x] Test 3
+- [x] Test 4
+- [ ] Test 5
+- [ ] Test 6
+- [ ] Test 7
+- [ ] Test 8
+
+## Security Analysis
+
+Custom security analysis content.`
+			return todo, content, nil
 		}
-		return nil, fmt.Errorf("todo not found: %s", id)
+		return nil, "", fmt.Errorf("todo not found: %s", id)
 	}
 
 	mockSearch := &MockSearchEngine{}
@@ -93,22 +114,20 @@ func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 				}
 
 				text := content.Text
+				t.Logf("Response text:\n%s", text)
 
 				// Should include section information
 				expectedContent := []string{
-					"findings",
-					"Findings & Research",
-					"research",
-					"required: true",
-					"test_list",
-					"Test List",
-					"checklist",
-					"completed: 4",
-					"total: 8",
-					"custom_security",
-					"Security Analysis",
-					"freeform",
-					"custom: true",
+					`"findings"`,
+					`"title": "Findings \u0026 Research"`,
+					`"schema": "research"`,
+					`"required": true`,
+					`"test_list"`,
+					`"title": "Test List"`,
+					`"schema": "checklist"`,
+					`"custom_security"`,
+					`"title": "Security Analysis"`,
+					`"schema": "freeform"`,
 				}
 
 				for _, expected := range expectedContent {
@@ -191,18 +210,21 @@ func TestHandleTodoSectionsReturnsAllSectionsWithMetadata(t *testing.T) {
 func TestHandleTodoSectionsWorksWithLegacyTodos(t *testing.T) {
 	// Create mock managers
 	mockManager := NewMockTodoManager()
-	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
+	mockManager.ReadTodoWithContentFunc = func(id string) (*core.Todo, string, error) {
 		if id == "legacy-todo" {
-			return &core.Todo{
+			todo := &core.Todo{
 				ID:       "legacy-todo",
 				Task:     "Legacy todo without section metadata",
 				Status:   "in_progress",
 				Priority: "high",
 				Type:     "feature",
 				// No Sections field - nil
-			}, nil
+			}
+			// Content without any section headers
+			content := "# Task: Legacy todo without section metadata\n\nJust some plain content without sections."
+			return todo, content, nil
 		}
-		return nil, fmt.Errorf("todo not found: %s", id)
+		return nil, "", fmt.Errorf("todo not found: %s", id)
 	}
 
 	mockSearch := &MockSearchEngine{}

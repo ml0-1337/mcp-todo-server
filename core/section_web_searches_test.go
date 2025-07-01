@@ -122,7 +122,7 @@ func TestNewTodosIncludeWebSearchesSection(t *testing.T) {
 	}
 
 	// Read the todo file
-	filePath := filepath.Join(tempDir, todo.ID+".md")
+	filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("Failed to read todo file: %v", err)

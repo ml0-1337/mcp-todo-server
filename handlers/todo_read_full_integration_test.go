@@ -24,8 +24,8 @@ func TestHandleTodoReadFullFormat(t *testing.T) {
 	// Create test todo with content
 	todoContent := `---
 todo_id: test-integration-full
-started: "2025-06-29 10:00:00"
-completed: ""
+started: "2025-06-29T10:00:00Z"
+completed:
 status: in_progress
 priority: high
 type: feature
@@ -57,8 +57,15 @@ Multiple lines of important information.
 Temporary notes and ideas.
 `
 
+	// Create .claude/todos directory
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create todos directory: %v", err)
+	}
+
 	// Write test todo file
-	todoPath := filepath.Join(tempDir, "test-integration-full.md")
+	todoPath := filepath.Join(todosDir, "test-integration-full.md")
 	err = ioutil.WriteFile(todoPath, []byte(todoContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test todo: %v", err)
@@ -92,6 +99,7 @@ Temporary notes and ideas.
 	}
 
 	textContent := result.Content[0].(mcp.TextContent)
+	t.Logf("Result content: %s", textContent.Text) // Debug output
 	var output map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &output)
 	if err != nil {
@@ -194,7 +202,7 @@ func TestHandleTodoReadMultipleFullFormat(t *testing.T) {
 			id: "todo-1",
 			content: `---
 todo_id: todo-1
-started: "2025-06-29 10:00:00"
+started: "2025-06-29T10:00:00Z"
 status: in_progress
 priority: high
 type: feature
@@ -209,7 +217,7 @@ type: feature
 			id: "todo-2",
 			content: `---
 todo_id: todo-2
-started: "2025-06-29 11:00:00"
+started: "2025-06-29T11:00:00Z"
 status: in_progress
 priority: medium
 type: bug
@@ -222,9 +230,16 @@ Bug investigation results.
 `},
 	}
 
+	// Create .claude/todos directory
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create todos directory: %v", err)
+	}
+
 	// Write test todos
 	for _, todo := range todos {
-		todoPath := filepath.Join(tempDir, todo.id+".md")
+		todoPath := filepath.Join(todosDir, todo.id+".md")
 		err = ioutil.WriteFile(todoPath, []byte(todo.content), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write test todo %s: %v", todo.id, err)
@@ -261,8 +276,11 @@ Bug investigation results.
 	var output []map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &output)
 	if err != nil {
-		t.Fatalf("Failed to parse JSON output: %v", err)
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, textContent.Text)
 	}
+
+	// Debug output
+	t.Logf("Full format output: %s", textContent.Text)
 
 	// Should have 2 todos
 	if len(output) != 2 {

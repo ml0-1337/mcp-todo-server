@@ -23,7 +23,7 @@ func BenchmarkSearchEngine(b *testing.B) {
 			
 			// Create search engine
 			indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-			searchEngine, err := NewSearchEngine(indexPath, tempDir)
+			searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 			if err != nil {
 				b.Fatalf("Failed to create search engine: %v", err)
 			}
@@ -126,7 +126,7 @@ func BenchmarkSearchComplexQueries(b *testing.B) {
 	
 	// Create search engine and manager
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -196,7 +196,7 @@ func BenchmarkSearchConcurrent(b *testing.B) {
 	
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -261,7 +261,7 @@ func BenchmarkIndexingPerformance(b *testing.B) {
 	
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}

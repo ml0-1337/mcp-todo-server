@@ -10,6 +10,41 @@ import (
 	"time"
 )
 
+// getDefaultSections returns the default sections for a new todo
+func getDefaultSections() map[string]*SectionDefinition {
+	sections := make(map[string]*SectionDefinition)
+	order := 0
+
+	// Add all standard sections in order
+	standardSections := []struct {
+		Key   string
+		Title string
+		Schema SectionSchema
+	}{
+		{"findings", "Findings & Research", SchemaResearch},
+		{"web_searches", "Web Searches", SchemaResearch},
+		{"test_strategy", "Test Strategy", SchemaStrategy},
+		{"test_list", "Test List", SchemaChecklist},
+		{"tests", "Test Cases", SchemaTestCases},
+		{"maintainability", "Maintainability Analysis", SchemaFreeform},
+		{"test_results", "Test Results Log", SchemaResults},
+		{"checklist", "Checklist", SchemaChecklist},
+		{"scratchpad", "Working Scratchpad", SchemaFreeform},
+	}
+
+	for _, std := range standardSections {
+		order++
+		sections[std.Key] = &SectionDefinition{
+			Title:    std.Title,
+			Order:    order,
+			Schema:   std.Schema,
+			Required: false,
+		}
+	}
+
+	return sections
+}
+
 // CreateTodo creates a new todo with a unique ID
 func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error) {
 	tm.mu.Lock()
@@ -35,6 +70,7 @@ func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error
 		Status:   "in_progress",
 		Priority: priority,
 		Type:     todoType,
+		Sections: getDefaultSections(),
 	}
 
 	// Write todo to file
@@ -81,6 +117,11 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		}
 		if parentID, ok := metadata["parent_id"]; ok {
 			todo.ParentID = parentID
+		}
+		if started, ok := metadata["started"]; ok {
+			if parsedTime, err := time.Parse(time.RFC3339, started); err == nil {
+				todo.Started = parsedTime
+			}
 		}
 
 		// Update the frontmatter in the content while preserving the rest

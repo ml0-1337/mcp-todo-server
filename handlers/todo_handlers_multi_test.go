@@ -37,11 +37,11 @@ func TestHandleTodoCreateMulti(t *testing.T) {
 		return todo, nil
 	}
 
-	// Mock UpdateTodo for setting parent_id
+	// Mock SaveTodo for setting parent_id
 	updatedMetadata := make(map[string]map[string]string)
-	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
-		if metadata != nil && metadata["parent_id"] != "" {
-			updatedMetadata[id] = metadata
+	mockManager.SaveTodoFunc = func(todo *core.Todo) error {
+		if todo.ParentID != "" {
+			updatedMetadata[todo.ID] = map[string]string{"parent_id": todo.ParentID}
 		}
 		return nil
 	}
@@ -172,21 +172,16 @@ func TestHandleTodoCreateMulti_CreateParentError(t *testing.T) {
 	}
 
 	// Call handler
-	result, err := handlers.HandleTodoCreateMulti(context.Background(), req.ToCallToolRequest())
+	_, err := handlers.HandleTodoCreateMulti(context.Background(), req.ToCallToolRequest())
 
-	// Should not return error (errors are handled via result)
-	if err != nil {
-		t.Fatalf("HandleTodoCreateMulti() error = %v", err)
+	// Should return error when parent creation fails
+	if err == nil {
+		t.Fatalf("HandleTodoCreateMulti() expected error, got nil")
 	}
 
-	// Check error in result
-	if result == nil {
-		t.Fatal("Expected result, got nil")
-	}
-
-	content := result.Content[0].(mcp.TextContent).Text
-	if !strings.Contains(content, "failed to create parent todo") {
-		t.Errorf("Result should contain parent creation error, got: %s", content)
+	// Check error message
+	if !strings.Contains(err.Error(), "failed to create parent todo") {
+		t.Errorf("Error should contain parent creation error, got: %s", err.Error())
 	}
 }
 
@@ -235,15 +230,15 @@ func TestHandleTodoCreateMulti_CreateChildError(t *testing.T) {
 	// Call handler
 	result, err := handlers.HandleTodoCreateMulti(context.Background(), req.ToCallToolRequest())
 
-	// Should not return error
+	// Should not return error (child failures are warnings)
 	if err != nil {
 		t.Fatalf("HandleTodoCreateMulti() error = %v", err)
 	}
 
-	// Check error in result
+	// Check result still shows success with partial creation
 	content := result.Content[0].(mcp.TextContent).Text
-	if !strings.Contains(content, "failed to create child 0") {
-		t.Errorf("Result should contain child creation error, got: %s", content)
+	if !strings.Contains(content, "Successfully created 1 todos (1 parent, 0 children)") {
+		t.Errorf("Result should show partial success, got: %s", content)
 	}
 }
 

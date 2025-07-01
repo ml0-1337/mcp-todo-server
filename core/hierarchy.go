@@ -43,6 +43,7 @@ func BuildTodoHierarchy(todos []*Todo) ([]*TodoNode, []*Todo) {
 				// Check for circular reference
 				if !hasCircularReference(todo.ID, todo.ParentID, todoMap, visitedInPath) {
 					parentNode.Children = append(parentNode.Children, node)
+					// fmt.Printf("DEBUG BuildHierarchy: Added %s as child of %s\n", todo.ID, todo.ParentID)
 				} else {
 					// Treat as orphan if circular reference detected
 					orphans = append(orphans, todo)

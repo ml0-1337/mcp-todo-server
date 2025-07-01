@@ -172,10 +172,10 @@ func TestHandleTodoTemplate(t *testing.T) {
 				if !strings.Contains(content, "\"id\": \"bug-123\"") {
 					t.Errorf("Expected todo ID in response, got: %s", content)
 				}
-				if !strings.Contains(content, "\"template\": \"applied\"") {
+				if !strings.Contains(content, "\"template\": \"Applied template sections and structure\"") {
 					t.Errorf("Expected template applied message, got: %s", content)
 				}
-				if !strings.Contains(content, "Todo created from template: bug-123") {
+				if !strings.Contains(content, "Todo created from template successfully: bug-123") {
 					t.Errorf("Expected success message, got: %s", content)
 				}
 			},

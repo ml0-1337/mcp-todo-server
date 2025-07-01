@@ -66,6 +66,8 @@ func generateBaseID(task string) string {
 	// Limit length
 	if len(id) > 50 {
 		id = id[:50]
+		// Trim any trailing hyphens after truncation
+		id = strings.TrimRight(id, "-")
 	}
 
 	// Ensure we have something

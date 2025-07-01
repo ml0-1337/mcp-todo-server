@@ -58,7 +58,8 @@ func TestBleveDateRangeQuery_StartDateOnly(t *testing.T) {
 	// Create search engine AFTER all todos are created and dates are updated
 	// This ensures proper indexing of the updated dates
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngineWithBleveDateRange(indexPath, tempDir)
+	todosPath := filepath.Join(tempDir, ".claude", "todos")
+	searchEngine, err := NewSearchEngineWithBleveDateRange(indexPath, todosPath)
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -179,7 +180,7 @@ func TestBleveDateRangeQuery_EndDateOnly(t *testing.T) {
 
 	// Create search engine AFTER all todos are created and dates are updated
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngineWithBleveDateRange(indexPath, tempDir)
+	searchEngine, err := NewSearchEngineWithBleveDateRange(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}

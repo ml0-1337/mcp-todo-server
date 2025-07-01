@@ -21,7 +21,7 @@ func TestIndexAndDeleteTodo(t *testing.T) {
 
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestGetIndexedCount(t *testing.T) {
 
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestSearchEngineErrorHandling(t *testing.T) {
 
 		// Create and close search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -328,7 +328,7 @@ func TestSearchEngineWithSpecialContent(t *testing.T) {
 
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	searchEngine, err := NewSearchEngine(indexPath, tempDir)
+	searchEngine, err := NewSearchEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}

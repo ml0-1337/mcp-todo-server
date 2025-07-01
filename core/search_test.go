@@ -40,7 +40,8 @@ func TestSearchIndexCreation(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -94,7 +95,8 @@ func TestSearchIndexCreation(t *testing.T) {
 
 		// Create first search engine instance
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine1, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine1, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create first search engine: %v", err)
 		}
@@ -109,7 +111,7 @@ func TestSearchIndexCreation(t *testing.T) {
 		}
 
 		// Create second search engine instance - should open existing index
-		searchEngine2, err := NewSearchEngine(indexPath, tempDir)
+		searchEngine2, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create second search engine: %v", err)
 		}
@@ -155,7 +157,8 @@ func TestSearchIndexCreation(t *testing.T) {
 
 		// Create search engine - should batch index all todos
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -220,7 +223,8 @@ func TestSearchIndexCreation(t *testing.T) {
 		}
 
 		// Try to create search engine - should handle corruption
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			// It's OK if it fails, but should give meaningful error
 			if !strings.Contains(err.Error(), "index") && !strings.Contains(err.Error(), "corrupt") {
@@ -279,7 +283,8 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Create search engine and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -330,7 +335,8 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -380,7 +386,8 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -427,7 +434,8 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -463,7 +471,8 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -510,7 +519,8 @@ func TestSearchTodosByKeywords(t *testing.T) {
 
 		// Create and index
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -556,7 +566,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Update todo2 to completed
 		err = manager.UpdateTodo(todo2.ID, "", "", "", map[string]string{
 			"status":    "completed",
-			"completed": time.Now().Format("2006-01-02 15:04:05"),
+			"completed": time.Now().Format(time.RFC3339),
 		})
 		if err != nil {
 			t.Fatalf("Failed to update todo 2 status: %v", err)
@@ -576,7 +586,8 @@ func TestSearchFiltering(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -639,7 +650,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Manually update the started date to 5 days ago at start of day
 		fiveDaysAgo := time.Now().UTC().AddDate(0, 0, -5)
 		fiveDaysAgo = time.Date(fiveDaysAgo.Year(), fiveDaysAgo.Month(), fiveDaysAgo.Day(), 0, 0, 0, 0, time.UTC)
-		fiveDaysAgoStr := fiveDaysAgo.Format("2006-01-02 15:04:05")
+		fiveDaysAgoStr := fiveDaysAgo.Format(time.RFC3339)
 		err = manager.UpdateTodo(todo1.ID, "", "", "", map[string]string{
 			"started": fiveDaysAgoStr,
 		})
@@ -658,7 +669,7 @@ func TestSearchFiltering(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create todo 3: %v", err)
 		}
-		thirtyDaysAgo := time.Now().AddDate(0, 0, -30).Format("2006-01-02 15:04:05")
+		thirtyDaysAgo := time.Now().AddDate(0, 0, -30).Format(time.RFC3339)
 		err = manager.UpdateTodo(todo3.ID, "", "", "", map[string]string{
 			"started": thirtyDaysAgo,
 		})
@@ -668,7 +679,8 @@ func TestSearchFiltering(t *testing.T) {
 
 		// Create search engine AFTER all todos are created and updated
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -686,12 +698,10 @@ func TestSearchFiltering(t *testing.T) {
 			t.Fatalf("Failed to search with date filter: %v", err)
 		}
 
-		// KNOWN ISSUE: Bleve date filtering has an issue where it sometimes excludes 
-		// todos from the current day. This test expects 2 results (todo1 and todo2)
-		// but currently only returns 1 (todo1). This needs further investigation.
-		// For now, we're adjusting the test to match current behavior.
-		if len(results) != 1 {
-			t.Errorf("Expected 1 result for last 7 days (should be 2 - known issue), got %d", len(results))
+		// Should return 2 results: todo1 (5 days ago) and todo2 (today)
+		// todo3 (30 days ago) should be excluded
+		if len(results) != 2 {
+			t.Errorf("Expected 2 results for last 7 days, got %d", len(results))
 			for i, r := range results {
 				t.Logf("Result %d: ID=%s, Task=%s", i, r.ID, r.Task)
 			}
@@ -740,7 +750,7 @@ func TestSearchFiltering(t *testing.T) {
 		}
 		err = manager.UpdateTodo(todo2.ID, "", "", "", map[string]string{
 			"status":    "completed",
-			"completed": time.Now().Format("2006-01-02 15:04:05"),
+			"completed": time.Now().Format(time.RFC3339),
 		})
 		if err != nil {
 			t.Fatalf("Failed to update todo 2: %v", err)
@@ -751,7 +761,7 @@ func TestSearchFiltering(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create todo 3: %v", err)
 		}
-		tenDaysAgo := time.Now().AddDate(0, 0, -10).Format("2006-01-02 15:04:05")
+		tenDaysAgo := time.Now().AddDate(0, 0, -10).Format(time.RFC3339)
 		err = manager.UpdateTodo(todo3.ID, "", "", "", map[string]string{
 			"started": tenDaysAgo,
 		})
@@ -767,7 +777,8 @@ func TestSearchFiltering(t *testing.T) {
 
 		// Create search engine AFTER all todos are created and updated
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -779,7 +790,7 @@ func TestSearchFiltering(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to read todo %s: %v", todoID, err)
 			}
-			content, err := ioutil.ReadFile(filepath.Join(tempDir, todoID+".md"))
+			content, err := ioutil.ReadFile(filepath.Join(tempDir, ".claude", "todos", todoID+".md"))
 			if err != nil {
 				t.Fatalf("Failed to read todo file %s: %v", todoID, err)
 			}
@@ -852,7 +863,8 @@ func TestSearchFiltering(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -916,7 +928,8 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -996,7 +1009,8 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1056,7 +1070,8 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1128,7 +1143,8 @@ func TestSearchResultsRankedByRelevance(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1195,9 +1211,16 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 			t.Fatalf("Failed to create todo 3: %v", err)
 		}
 
+		// Todo with "test" (for regex pattern test)
+		_, err = manager.CreateTodo("Write test cases for API endpoints", "medium", "test")
+		if err != nil {
+			t.Fatalf("Failed to create todo 4: %v", err)
+		}
+
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1274,7 +1297,8 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1348,7 +1372,8 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
@@ -1415,7 +1440,8 @@ func TestSearchHandlesSpecialCharacters(t *testing.T) {
 
 		// Create search engine
 		indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-		searchEngine, err := NewSearchEngine(indexPath, tempDir)
+		todosPath := filepath.Join(tempDir, ".claude", "todos")
+		searchEngine, err := NewSearchEngine(indexPath, todosPath)
 		if err != nil {
 			t.Fatalf("Failed to create search engine: %v", err)
 		}
