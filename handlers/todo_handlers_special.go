@@ -81,16 +81,10 @@ func (h *TodoHandlers) HandleTodoStats(ctx context.Context, request mcp.CallTool
 	// Get time period
 	period := request.GetString("period", "all")
 
-	// Calculate stats
-	stats, err := h.stats.GenerateTodoStats()
+	// Calculate stats with period filtering
+	stats, err := h.stats.GenerateTodoStatsForPeriod(period)
 	if err != nil {
 		return HandleError(err), nil
-	}
-
-	// Filter by period if needed
-	if period != "all" {
-		// TODO: Implement period filtering
-		// For now, return all stats
 	}
 
 	return FormatTodoStatsResponse(stats), nil

@@ -188,6 +188,58 @@ func (se *StatsEngine) GenerateTodoStats() (*TodoStats, error) {
 		return nil, err
 	}
 
+	return se.generateStatsFromTodos(todos)
+}
+
+// GenerateTodoStatsForPeriod generates statistics filtered by time period
+func (se *StatsEngine) GenerateTodoStatsForPeriod(period string) (*TodoStats, error) {
+	todos, err := se.getAllTodos()
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter todos by period
+	filteredTodos := se.filterTodosByPeriod(todos, period)
+
+	return se.generateStatsFromTodos(filteredTodos)
+}
+
+// filterTodosByPeriod filters todos based on the specified period
+func (se *StatsEngine) filterTodosByPeriod(todos []*Todo, period string) []*Todo {
+	if period == "all" || period == "" {
+		return todos
+	}
+
+	now := time.Now()
+	var cutoffTime time.Time
+
+	switch period {
+	case "week":
+		cutoffTime = now.AddDate(0, 0, -7)
+	case "month":
+		cutoffTime = now.AddDate(0, 0, -30)
+	case "quarter":
+		cutoffTime = now.AddDate(0, 0, -90)
+	case "year":
+		cutoffTime = now.AddDate(0, 0, -365)
+	default:
+		// Invalid period, return all todos
+		return todos
+	}
+
+	var filtered []*Todo
+	for _, todo := range todos {
+		// Include todo if it was started after the cutoff time
+		if !todo.Started.IsZero() && todo.Started.After(cutoffTime) {
+			filtered = append(filtered, todo)
+		}
+	}
+
+	return filtered
+}
+
+// generateStatsFromTodos generates statistics from a list of todos
+func (se *StatsEngine) generateStatsFromTodos(todos []*Todo) (*TodoStats, error) {
 	stats := &TodoStats{
 		TodosByType:     make(map[string]int),
 		TodosByPriority: make(map[string]int),
@@ -223,16 +275,47 @@ func (se *StatsEngine) GenerateTodoStats() (*TodoStats, error) {
 		stats.TodosByPriority[priority]++
 	}
 
-	// Calculate completion rates
-	typeRates, err := se.CalculateCompletionRatesByType()
-	if err == nil {
-		for k, v := range typeRates {
-			stats.CompletionRates[k] = v
+	// Calculate completion rates only from filtered todos
+	completedByType := make(map[string]int)
+	totalByType := make(map[string]int)
+	
+	for _, todo := range todos {
+		todoType := todo.Type
+		if todoType == "" {
+			todoType = "unknown"
+		}
+		totalByType[todoType]++
+		if todo.Status == "completed" {
+			completedByType[todoType]++
 		}
 	}
 
-	// Calculate average completion time
-	stats.AverageCompletionTime, _ = se.CalculateAverageCompletionTime()
+	// Calculate rates
+	for todoType, total := range totalByType {
+		if total > 0 {
+			completed := completedByType[todoType]
+			rate := float64(completed) / float64(total) * 100.0
+			stats.CompletionRates[todoType] = math.Round(rate*10) / 10
+		}
+	}
+
+	// Calculate average completion time only from filtered todos
+	var totalDuration time.Duration
+	completedCount := 0
+
+	for _, todo := range todos {
+		if todo.Status == "completed" && !todo.Started.IsZero() && !todo.Completed.IsZero() {
+			duration := todo.Completed.Sub(todo.Started)
+			if duration > 0 {
+				totalDuration += duration
+				completedCount++
+			}
+		}
+	}
+
+	if completedCount > 0 {
+		stats.AverageCompletionTime = totalDuration / time.Duration(completedCount)
+	}
 
 	return stats, nil
 }

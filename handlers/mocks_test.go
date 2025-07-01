@@ -226,6 +226,7 @@ type MockStatsEngine struct {
 	calls []MockCall
 
 	GenerateTodoStatsFunc                  func() (*core.TodoStats, error)
+	GenerateTodoStatsForPeriodFunc         func(period string) (*core.TodoStats, error)
 	CalculateCompletionRatesByTypeFunc     func() (map[string]float64, error)
 	CalculateCompletionRatesByPriorityFunc func() (map[string]float64, error)
 	CalculateAverageCompletionTimeFunc     func() (time.Duration, error)
@@ -260,6 +261,29 @@ func (m *MockStatsEngine) GenerateTodoStats() (*core.TodoStats, error) {
 		CompletedTodos:  5,
 		InProgressTodos: 3,
 		BlockedTodos:    2,
+	}, nil
+}
+
+func (m *MockStatsEngine) GenerateTodoStatsForPeriod(period string) (*core.TodoStats, error) {
+	m.recordCall("GenerateTodoStatsForPeriod", period)
+	if m.GenerateTodoStatsForPeriodFunc != nil {
+		return m.GenerateTodoStatsForPeriodFunc(period)
+	}
+	// Default implementation - returns different stats based on period
+	if period == "all" {
+		return &core.TodoStats{
+			TotalTodos:      10,
+			CompletedTodos:  5,
+			InProgressTodos: 3,
+			BlockedTodos:    2,
+		}, nil
+	}
+	// For other periods, return fewer todos (simulating filtering)
+	return &core.TodoStats{
+		TotalTodos:      3,
+		CompletedTodos:  1,
+		InProgressTodos: 2,
+		BlockedTodos:    0,
 	}, nil
 }
 

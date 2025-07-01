@@ -32,6 +32,7 @@ type SearchEngine interface {
 // StatsEngine defines the interface for statistics operations
 type StatsEngine interface {
 	GenerateTodoStats() (*core.TodoStats, error)
+	GenerateTodoStatsForPeriod(period string) (*core.TodoStats, error)
 	CalculateCompletionRatesByType() (map[string]float64, error)
 	CalculateCompletionRatesByPriority() (map[string]float64, error)
 	CalculateAverageCompletionTime() (time.Duration, error)
