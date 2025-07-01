@@ -124,8 +124,31 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 			todo.ParentID = parentID
 		}
 		if started, ok := metadata["started"]; ok {
-			if parsedTime, err := time.Parse(time.RFC3339, started); err == nil {
-				todo.Started = parsedTime
+			// Try multiple time formats
+			formats := []string{
+				time.RFC3339,
+				"2006-01-02 15:04:05",
+				"2006-01-02T15:04:05Z",
+			}
+			for _, format := range formats {
+				if parsedTime, err := time.Parse(format, started); err == nil {
+					todo.Started = parsedTime
+					break
+				}
+			}
+		}
+		if completed, ok := metadata["completed"]; ok {
+			// Try multiple time formats
+			formats := []string{
+				time.RFC3339,
+				"2006-01-02 15:04:05",
+				"2006-01-02T15:04:05Z",
+			}
+			for _, format := range formats {
+				if parsedTime, err := time.Parse(format, completed); err == nil {
+					todo.Completed = parsedTime
+					break
+				}
 			}
 		}
 
@@ -164,6 +187,9 @@ func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, co
 	} else if operation == "replace" {
 		// Simple replace operation
 		updatedContent = replaceSection(updatedContent, section, content)
+	} else if operation == "prepend" {
+		// Prepend operation
+		updatedContent = prependToSection(updatedContent, section, content)
 	}
 
 	// Write back to file
@@ -196,17 +222,42 @@ func updateFrontmatter(content string, todo *Todo) (string, error) {
 // appendToSection appends content to a section
 func appendToSection(fileContent, section, content string) string {
 	lines := strings.Split(fileContent, "\n")
-	timestampedContent := formatWithTimestamp(content)
 	
-	// Find the section
-	sectionHeader := "## " + strings.Title(section)
+	// Map section names to their proper titles
+	sectionTitles := map[string]string{
+		"findings":      "Findings & Research",
+		"web_searches":  "Web Searches",
+		"test_strategy": "Test Strategy",
+		"test_list":     "Test List",
+		"tests":         "Test Cases",
+		"maintainability": "Maintainability Analysis",
+		"test_results":  "Test Results Log",
+		"checklist":     "Checklist",
+		"scratchpad":    "Working Scratchpad",
+	}
+	
+	// Get the proper section title
+	sectionTitle := sectionTitles[section]
+	if sectionTitle == "" {
+		// Default to titlecase if not in map
+		sectionTitle = strings.Title(strings.Replace(section, "_", " ", -1))
+	}
+	
+	// Only add timestamp for test_results section
+	contentToAppend := content
+	if section == "test_results" {
+		contentToAppend = formatWithTimestamp(content)
+	}
+	
+	sectionHeader := "## " + sectionTitle
 	sectionIndex := -1
 	nextSectionIndex := len(lines)
 	
 	for i, line := range lines {
-		if strings.TrimSpace(line) == sectionHeader {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == sectionHeader {
 			sectionIndex = i
-		} else if sectionIndex > -1 && strings.HasPrefix(strings.TrimSpace(line), "## ") {
+		} else if sectionIndex > -1 && strings.HasPrefix(trimmed, "## ") {
 			nextSectionIndex = i
 			break
 		}
@@ -214,21 +265,170 @@ func appendToSection(fileContent, section, content string) string {
 	
 	if sectionIndex == -1 {
 		// Section doesn't exist, append it at the end
-		return fileContent + "\n\n" + sectionHeader + "\n\n" + timestampedContent
+		return fileContent + "\n\n" + sectionHeader + "\n\n" + contentToAppend
 	}
 	
 	// Find where to insert the content (before the next section)
-	insertIndex := nextSectionIndex
+	// But we need to insert after any existing content in the section
+	insertIndex := sectionIndex + 1
+	
+	// Skip empty lines after section header
+	for insertIndex < nextSectionIndex && strings.TrimSpace(lines[insertIndex]) == "" {
+		insertIndex++
+	}
+	
+	// Find the end of existing content in the section
+	for insertIndex < nextSectionIndex && strings.TrimSpace(lines[insertIndex]) != "" {
+		insertIndex++
+	}
+	
+	// If we have existing content, add a newline before appending
+	if insertIndex > sectionIndex + 1 {
+		contentToAppend = "\n" + contentToAppend
+	}
 	
 	// Insert the content
-	newLines := append(lines[:insertIndex], append([]string{timestampedContent}, lines[insertIndex:]...)...)
+	newLines := make([]string, 0, len(lines)+1)
+	newLines = append(newLines, lines[:insertIndex]...)
+	newLines = append(newLines, contentToAppend)
+	newLines = append(newLines, lines[insertIndex:]...)
+	
 	return strings.Join(newLines, "\n")
 }
 
 // replaceSection replaces a section's content
 func replaceSection(fileContent, section, content string) string {
-	// This is a placeholder - the real implementation would be more sophisticated
-	return fileContent
+	lines := strings.Split(fileContent, "\n")
+	
+	// Map section names to their proper titles
+	sectionTitles := map[string]string{
+		"findings":      "Findings & Research",
+		"web_searches":  "Web Searches",
+		"test_strategy": "Test Strategy",
+		"test_list":     "Test List",
+		"tests":         "Test Cases",
+		"maintainability": "Maintainability Analysis",
+		"test_results":  "Test Results Log",
+		"checklist":     "Checklist",
+		"scratchpad":    "Working Scratchpad",
+	}
+	
+	// Get the proper section title
+	sectionTitle := sectionTitles[section]
+	if sectionTitle == "" {
+		// Default to titlecase if not in map
+		sectionTitle = strings.Title(strings.Replace(section, "_", " ", -1))
+	}
+	
+	sectionHeader := "## " + sectionTitle
+	sectionIndex := -1
+	nextSectionIndex := len(lines)
+	
+	// Find the section
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == sectionHeader {
+			sectionIndex = i
+		} else if sectionIndex > -1 && strings.HasPrefix(trimmed, "## ") {
+			nextSectionIndex = i
+			break
+		}
+	}
+	
+	if sectionIndex == -1 {
+		// Section doesn't exist, append it at the end
+		return fileContent + "\n\n" + sectionHeader + "\n\n" + content
+	}
+	
+	// Replace the section content
+	// Keep lines up to and including the section header
+	result := lines[:sectionIndex+1]
+	
+	// Add empty line after header if content is not empty
+	if content != "" {
+		result = append(result, "")
+		// Add the new content (split by lines to maintain formatting)
+		contentLines := strings.Split(strings.TrimSpace(content), "\n")
+		result = append(result, contentLines...)
+	}
+	
+	// Add lines after the section
+	if nextSectionIndex < len(lines) {
+		// Add empty line before next section
+		result = append(result, "")
+		result = append(result, lines[nextSectionIndex:]...)
+	}
+	
+	return strings.Join(result, "\n")
+}
+
+// prependToSection prepends content to a section
+func prependToSection(fileContent, section, content string) string {
+	lines := strings.Split(fileContent, "\n")
+	
+	// Map section names to their proper titles
+	sectionTitles := map[string]string{
+		"findings":      "Findings & Research",
+		"web_searches":  "Web Searches",
+		"test_strategy": "Test Strategy",
+		"test_list":     "Test List",
+		"tests":         "Test Cases",
+		"maintainability": "Maintainability Analysis",
+		"test_results":  "Test Results Log",
+		"checklist":     "Checklist",
+		"scratchpad":    "Working Scratchpad",
+	}
+	
+	// Get the proper section title
+	sectionTitle := sectionTitles[section]
+	if sectionTitle == "" {
+		// Default to titlecase if not in map
+		sectionTitle = strings.Title(strings.Replace(section, "_", " ", -1))
+	}
+	
+	// Only add timestamp for test_results section
+	contentToPrepend := content
+	if section == "test_results" {
+		contentToPrepend = formatWithTimestamp(content)
+	}
+	
+	sectionHeader := "## " + sectionTitle
+	sectionIndex := -1
+	
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == sectionHeader {
+			sectionIndex = i
+			break
+		}
+	}
+	
+	if sectionIndex == -1 {
+		// Section doesn't exist, append it at the end
+		return fileContent + "\n\n" + sectionHeader + "\n\n" + contentToPrepend
+	}
+	
+	// Find where to insert the content (right after the section header)
+	insertIndex := sectionIndex + 1
+	
+	// Skip the first empty line after header if it exists
+	if insertIndex < len(lines) && strings.TrimSpace(lines[insertIndex]) == "" {
+		insertIndex++
+	}
+	
+	// Insert the content at the beginning of the section
+	newLines := make([]string, 0, len(lines)+2)
+	newLines = append(newLines, lines[:insertIndex]...)
+	newLines = append(newLines, contentToPrepend)
+	
+	// Add empty line if there's existing content
+	if insertIndex < len(lines) && strings.TrimSpace(lines[insertIndex]) != "" {
+		newLines = append(newLines, "")
+	}
+	
+	newLines = append(newLines, lines[insertIndex:]...)
+	
+	return strings.Join(newLines, "\n")
 }
 
 // ListTodos lists todos based on filters

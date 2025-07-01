@@ -23,8 +23,7 @@ func TestReadTodoWithContent(t *testing.T) {
 	// Create a test todo with content
 	todoContent := `---
 todo_id: test-todo-full
-started: "2025-06-29 10:00:00"
-completed: ""
+started: "2025-06-29T10:00:00Z"
 status: in_progress
 priority: high
 type: feature
@@ -47,8 +46,15 @@ This is the findings section with some content.
 Some notes here.
 `
 
+	// Create directory structure
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create directory: %v", err)
+	}
+	
 	// Write test todo file
-	todoPath := filepath.Join(tempDir, "test-todo-full.md")
+	todoPath := filepath.Join(todosDir, "test-todo-full.md")
 	err = ioutil.WriteFile(todoPath, []byte(todoContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test todo: %v", err)
