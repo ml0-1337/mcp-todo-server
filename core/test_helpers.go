@@ -16,6 +16,7 @@ const (
 
 // CreateTestTodo creates a todo for testing and ensures it's properly saved
 func CreateTestTodo(t *testing.T, manager *TodoManager, task string, priority string, todoType string) *Todo {
+	t.Helper()
 	todo, err := manager.CreateTodo(task, priority, todoType)
 	if err != nil {
 		t.Fatalf("Failed to create test todo: %v", err)
@@ -43,6 +44,7 @@ func GetArchivePath(basePath string, todo *Todo, quarter string) string {
 
 // VerifyTodoExists checks if a todo file exists at the expected location
 func VerifyTodoExists(t *testing.T, basePath, todoID string) {
+	t.Helper()
 	path := GetTodoPath(basePath, todoID)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		t.Errorf("Expected todo file to exist at %s", path)
@@ -51,6 +53,7 @@ func VerifyTodoExists(t *testing.T, basePath, todoID string) {
 
 // VerifyTodoNotExists checks if a todo file does not exist at the expected location
 func VerifyTodoNotExists(t *testing.T, basePath, todoID string) {
+	t.Helper()
 	path := GetTodoPath(basePath, todoID)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("Expected todo file to not exist at %s", path)
@@ -59,6 +62,7 @@ func VerifyTodoNotExists(t *testing.T, basePath, todoID string) {
 
 // VerifyArchiveExists checks if a todo exists in the archive
 func VerifyArchiveExists(t *testing.T, basePath string, todo *Todo, quarter string) {
+	t.Helper()
 	path := GetArchivePath(basePath, todo, quarter)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		t.Errorf("Expected archive file to exist at %s", path)
@@ -67,6 +71,7 @@ func VerifyArchiveExists(t *testing.T, basePath string, todo *Todo, quarter stri
 
 // CreateTestTodoWithContent creates a todo and writes specific content to it
 func CreateTestTodoWithContent(t *testing.T, manager *TodoManager, task, content string) *Todo {
+	t.Helper()
 	todo := CreateTestTodo(t, manager, task, "high", "feature")
 	
 	// Write the content directly to the file
@@ -80,6 +85,7 @@ func CreateTestTodoWithContent(t *testing.T, manager *TodoManager, task, content
 
 // CreateTestTodoWithDate creates a todo with a specific started date
 func CreateTestTodoWithDate(t *testing.T, manager *TodoManager, task string, startedDate time.Time) *Todo {
+	t.Helper()
 	todo := CreateTestTodo(t, manager, task, "high", "feature")
 	
 	// Read the file content
@@ -117,23 +123,21 @@ func CreateTestTodoWithDate(t *testing.T, manager *TodoManager, task string, sta
 
 // SetupTestTodoManager creates a TodoManager with a temporary directory
 func SetupTestTodoManager(t *testing.T) (*TodoManager, string, func()) {
-	tempDir, err := os.MkdirTemp("", "todo-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
+	t.Helper()
+	
+	// Use t.TempDir() for automatic cleanup
+	tempDir := t.TempDir()
 
 	// Ensure the todos subdirectory exists
 	todosDir := filepath.Join(tempDir, TodoSubdir)
 	if err := os.MkdirAll(todosDir, 0755); err != nil {
-		os.RemoveAll(tempDir)
 		t.Fatalf("Failed to create todos directory: %v", err)
 	}
 
 	manager := NewTodoManager(tempDir)
 	
-	cleanup := func() {
-		os.RemoveAll(tempDir)
-	}
+	// Return a no-op cleanup function since t.TempDir() handles it
+	cleanup := func() {}
 	
 	return manager, tempDir, cleanup
 }
