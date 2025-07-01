@@ -14,7 +14,7 @@ func TestHandleTodoLink(t *testing.T) {
 		name           string
 		request        *MockCallToolRequest
 		setupMocks     func(*MockTodoManager, *MockTodoLinker)
-		createLinker   func(TodoManagerInterface) TodoLinkerInterface
+		createLinker   func(TodoManager) TodoLinker
 		expectError    bool
 		expectedResult func(*testing.T, *mcp.CallToolResult)
 	}{
@@ -41,7 +41,7 @@ func TestHandleTodoLink(t *testing.T) {
 					return nil
 				}
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -89,7 +89,7 @@ func TestHandleTodoLink(t *testing.T) {
 					return nil
 				}
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -122,7 +122,7 @@ func TestHandleTodoLink(t *testing.T) {
 			setupMocks: func(tm *MockTodoManager, tl *MockTodoLinker) {
 				// No mocks needed - should fail at parameter validation
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -156,7 +156,7 @@ func TestHandleTodoLink(t *testing.T) {
 			setupMocks: func(tm *MockTodoManager, tl *MockTodoLinker) {
 				// No mocks needed - should fail at parameter validation
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -219,7 +219,7 @@ func TestHandleTodoLink(t *testing.T) {
 			setupMocks: func(tm *MockTodoManager, tl *MockTodoLinker) {
 				// No setup needed
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				return nil // Return nil to simulate creation failure
 			},
 			expectError: false,
@@ -254,7 +254,7 @@ func TestHandleTodoLink(t *testing.T) {
 					}
 				}
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -294,7 +294,7 @@ func TestHandleTodoLink(t *testing.T) {
 					}
 				}
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -334,7 +334,7 @@ func TestHandleTodoLink(t *testing.T) {
 					}
 				}
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker
@@ -375,7 +375,7 @@ func TestHandleTodoLink(t *testing.T) {
 					}
 				}
 			},
-			createLinker: func(m TodoManagerInterface) TodoLinkerInterface {
+			createLinker: func(m TodoManager) TodoLinker {
 				mockLinker := NewMockTodoLinker()
 				// Setup will be called when the linker is created
 				return mockLinker

@@ -12,7 +12,7 @@ import (
 	"github.com/user/mcp-todo-server/internal/domain/repository"
 )
 
-// TodoManagerAdapter adapts the new TodoService to the old TodoManagerInterface
+// TodoManagerAdapter adapts the new TodoService to the old TodoManager interface
 type TodoManagerAdapter struct {
 	service  *application.TodoService
 	repo     repository.TodoRepository

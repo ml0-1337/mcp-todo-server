@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// TodoManagerInterface defines the interface for todo management operations
-type TodoManagerInterface interface {
+// TodoManager defines the interface for todo management operations
+type TodoManager interface {
 	CreateTodo(task, priority, todoType string) (*core.Todo, error)
 	ReadTodo(id string) (*core.Todo, error)
 	ReadTodoWithContent(id string) (*core.Todo, string, error)
@@ -20,8 +20,8 @@ type TodoManagerInterface interface {
 	GetBasePath() string
 }
 
-// SearchEngineInterface defines the interface for search operations
-type SearchEngineInterface interface {
+// SearchEngine defines the interface for search operations
+type SearchEngine interface {
 	IndexTodo(todo *core.Todo, content string) error
 	DeleteTodo(id string) error
 	SearchTodos(queryStr string, filters map[string]string, limit int) ([]core.SearchResult, error)
@@ -29,8 +29,8 @@ type SearchEngineInterface interface {
 	GetIndexedCount() (uint64, error)
 }
 
-// StatsEngineInterface defines the interface for statistics operations
-type StatsEngineInterface interface {
+// StatsEngine defines the interface for statistics operations
+type StatsEngine interface {
 	GenerateTodoStats() (*core.TodoStats, error)
 	CalculateCompletionRatesByType() (map[string]float64, error)
 	CalculateCompletionRatesByPriority() (map[string]float64, error)
@@ -38,15 +38,15 @@ type StatsEngineInterface interface {
 	CalculateTestCoverage(todoID string) (float64, error)
 }
 
-// TemplateManagerInterface defines the interface for template operations
-type TemplateManagerInterface interface {
+// TemplateManager defines the interface for template operations
+type TemplateManager interface {
 	LoadTemplate(name string) (*core.Template, error)
 	ListTemplates() ([]string, error)
 	CreateFromTemplate(templateName, task, priority, todoType string) (*core.Todo, error)
 	ExecuteTemplate(tmpl *core.Template, vars map[string]interface{}) (string, error)
 }
 
-// TodoLinkerInterface defines the interface for linking operations
-type TodoLinkerInterface interface {
+// TodoLinker defines the interface for linking operations
+type TodoLinker interface {
 	LinkTodos(parentID, childID, linkType string) error
 }

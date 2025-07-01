@@ -9,10 +9,10 @@ import (
 
 // TodoHandlers contains handlers for all todo operations
 type TodoHandlers struct {
-	manager   TodoManagerInterface
-	search    SearchEngineInterface
-	stats     StatsEngineInterface
-	templates TemplateManagerInterface
+	manager   TodoManager
+	search    SearchEngine
+	stats     StatsEngine
+	templates TemplateManager
 	// Direct reference to TodoManager for linker creation
 	baseManager *core.TodoManager
 }
@@ -47,10 +47,10 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 
 // NewTodoHandlersWithDependencies creates new todo handlers with explicit dependencies (for testing)
 func NewTodoHandlersWithDependencies(
-	manager TodoManagerInterface,
-	search SearchEngineInterface,
-	stats StatsEngineInterface,
-	templates TemplateManagerInterface,
+	manager TodoManager,
+	search SearchEngine,
+	stats StatsEngine,
+	templates TemplateManager,
 ) *TodoHandlers {
 	return &TodoHandlers{
 		manager:   manager,

@@ -14,7 +14,7 @@ type MockCall struct {
 	Args   []interface{}
 }
 
-// MockTodoManager is a mock implementation of TodoManagerInterface
+// MockTodoManager is a mock implementation of TodoManager
 type MockTodoManager struct {
 	mu    sync.Mutex
 	calls []MockCall
@@ -150,7 +150,7 @@ func (m *MockTodoManager) GetBasePath() string {
 	return "/test/path"
 }
 
-// MockSearchEngine is a mock implementation of SearchEngineInterface
+// MockSearchEngine is a mock implementation of SearchEngine
 type MockSearchEngine struct {
 	mu    sync.Mutex
 	calls []MockCall
@@ -220,7 +220,7 @@ func (m *MockSearchEngine) GetIndexedCount() (uint64, error) {
 	return 0, nil
 }
 
-// MockStatsEngine is a mock implementation of StatsEngineInterface
+// MockStatsEngine is a mock implementation of StatsEngine
 type MockStatsEngine struct {
 	mu    sync.Mutex
 	calls []MockCall
@@ -295,7 +295,7 @@ func (m *MockStatsEngine) CalculateTestCoverage(todoID string) (float64, error) 
 	return 0.85, nil
 }
 
-// MockTemplateManager is a mock implementation of TemplateManagerInterface
+// MockTemplateManager is a mock implementation of TemplateManager
 type MockTemplateManager struct {
 	mu    sync.Mutex
 	calls []MockCall
@@ -363,7 +363,7 @@ func (m *MockTemplateManager) ExecuteTemplate(tmpl *core.Template, vars map[stri
 	return "Executed template content", nil
 }
 
-// MockTodoLinker is a mock implementation of TodoLinkerInterface
+// MockTodoLinker is a mock implementation of TodoLinker
 type MockTodoLinker struct {
 	mu    sync.Mutex
 	calls []MockCall
