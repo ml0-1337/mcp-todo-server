@@ -5,79 +5,6 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// TodoCreateParams represents parameters for todo_create
-type TodoCreateParams struct {
-	Task     string
-	Priority string
-	Type     string
-	Template string
-	ParentID string
-}
-
-// TodoCreateMultiParams represents parameters for todo_create_multi
-type TodoCreateMultiParams struct {
-	Parent   TodoCreateInfo   `json:"parent"`
-	Children []TodoCreateInfo `json:"children"`
-}
-
-// TodoCreateInfo represents information for creating a todo in bulk operations
-type TodoCreateInfo struct {
-	Task     string `json:"task"`
-	Priority string `json:"priority,omitempty"`
-	Type     string `json:"type,omitempty"`
-}
-
-// TodoReadParams represents parameters for todo_read
-type TodoReadParams struct {
-	ID     string
-	Filter TodoFilter
-	Format string
-}
-
-// TodoFilter represents filter options for todo_read
-type TodoFilter struct {
-	Status   string
-	Priority string
-	Days     int
-}
-
-// TodoUpdateParams represents parameters for todo_update
-type TodoUpdateParams struct {
-	ID        string
-	Section   string
-	Operation string
-	Content   string
-	Metadata  TodoMetadata
-}
-
-// TodoMetadata represents metadata updates
-type TodoMetadata struct {
-	Status      string
-	Priority    string
-	CurrentTest string
-}
-
-// TodoSearchParams represents parameters for todo_search
-type TodoSearchParams struct {
-	Query   string
-	Scope   []string
-	Filters SearchFilters
-	Limit   int
-}
-
-// SearchFilters represents search filter options
-type SearchFilters struct {
-	Status   string
-	DateFrom string
-	DateTo   string
-}
-
-// TodoArchiveParams represents parameters for todo_archive
-type TodoArchiveParams struct {
-	ID      string
-	Quarter string
-}
-
 // ExtractTodoCreateParams extracts and validates todo_create parameters
 func ExtractTodoCreateParams(request mcp.CallToolRequest) (*TodoCreateParams, error) {
 	params := &TodoCreateParams{}
@@ -158,6 +85,8 @@ func ExtractTodoReadParams(request mcp.CallToolRequest) (*TodoReadParams, error)
 	if format, ok := args["format"].(string); ok {
 		params.Format = format
 	}
+
+	// Validate format
 	if !isValidFormat(params.Format) {
 		return nil, fmt.Errorf("invalid format '%s', must be one of: full, summary, list", params.Format)
 	}
@@ -179,14 +108,14 @@ func ExtractTodoUpdateParams(request mcp.CallToolRequest) (*TodoUpdateParams, er
 	}
 	params.ID = id
 
-	// Optional section update
+	// Optional parameters
 	if section, ok := args["section"].(string); ok {
 		params.Section = section
 	}
 
 	params.Operation = "append"
-	if operation, ok := args["operation"].(string); ok {
-		params.Operation = operation
+	if op, ok := args["operation"].(string); ok {
+		params.Operation = op
 	}
 
 	if content, ok := args["content"].(string); ok {
@@ -194,21 +123,26 @@ func ExtractTodoUpdateParams(request mcp.CallToolRequest) (*TodoUpdateParams, er
 	}
 
 	// Extract metadata if provided
-	if metaObj, ok := args["metadata"].(map[string]interface{}); ok {
-		if status, ok := metaObj["status"].(string); ok {
+	if metadataObj, ok := args["metadata"].(map[string]interface{}); ok {
+		if status, ok := metadataObj["status"].(string); ok {
 			params.Metadata.Status = status
 		}
-		if priority, ok := metaObj["priority"].(string); ok {
+		if priority, ok := metadataObj["priority"].(string); ok {
 			params.Metadata.Priority = priority
 		}
-		if currentTest, ok := metaObj["current_test"].(string); ok {
+		if currentTest, ok := metadataObj["current_test"].(string); ok {
 			params.Metadata.CurrentTest = currentTest
 		}
 	}
 
 	// Validate operation
 	if !isValidOperation(params.Operation) {
-		return nil, fmt.Errorf("invalid operation '%s'", params.Operation)
+		return nil, fmt.Errorf("invalid operation '%s', must be one of: append, replace, prepend, toggle", params.Operation)
+	}
+
+	// Validate enum values in metadata
+	if params.Metadata.Priority != "" && !isValidPriority(params.Metadata.Priority) {
+		return nil, fmt.Errorf("invalid priority '%s' in metadata", params.Metadata.Priority)
 	}
 
 	return params, nil
@@ -223,39 +157,34 @@ func ExtractTodoSearchParams(request mcp.CallToolRequest) (*TodoSearchParams, er
 
 	// Required query
 	query, ok := args["query"].(string)
-	if !ok || query == "" {
+	if !ok {
 		return nil, fmt.Errorf("missing required parameter 'query'")
 	}
 	params.Query = query
 
-	// Optional scope with default
-	params.Scope = []string{"all"}
-	if scopeArr, ok := args["scope"].([]interface{}); ok {
-		params.Scope = []string{}
-		for _, s := range scopeArr {
+	// Optional scope (array of strings)
+	if scopeInterface, ok := args["scope"].([]interface{}); ok {
+		for _, s := range scopeInterface {
 			if str, ok := s.(string); ok {
 				params.Scope = append(params.Scope, str)
 			}
 		}
-		if len(params.Scope) == 0 {
-			params.Scope = []string{"all"}
-		}
 	}
 
 	// Extract filters if provided
-	if filterObj, ok := args["filters"].(map[string]interface{}); ok {
-		if status, ok := filterObj["status"].(string); ok {
+	if filtersObj, ok := args["filters"].(map[string]interface{}); ok {
+		if status, ok := filtersObj["status"].(string); ok {
 			params.Filters.Status = status
 		}
-		if dateFrom, ok := filterObj["date_from"].(string); ok {
+		if dateFrom, ok := filtersObj["date_from"].(string); ok {
 			params.Filters.DateFrom = dateFrom
 		}
-		if dateTo, ok := filterObj["date_to"].(string); ok {
+		if dateTo, ok := filtersObj["date_to"].(string); ok {
 			params.Filters.DateTo = dateTo
 		}
 	}
 
-	// Limit with default and max
+	// Limit with default
 	params.Limit = 20
 	if limit, ok := args["limit"].(float64); ok {
 		params.Limit = int(limit)
@@ -281,7 +210,7 @@ func ExtractTodoArchiveParams(request mcp.CallToolRequest) (*TodoArchiveParams, 
 	}
 	params.ID = id
 
-	// Optional quarter
+	// Optional quarter override
 	if quarter, ok := args["quarter"].(string); ok {
 		params.Quarter = quarter
 	}
@@ -293,108 +222,89 @@ func ExtractTodoArchiveParams(request mcp.CallToolRequest) (*TodoArchiveParams, 
 func ExtractTodoCreateMultiParams(request mcp.CallToolRequest) (*TodoCreateMultiParams, error) {
 	params := &TodoCreateMultiParams{}
 
-	// Get arguments map
 	args := request.GetArguments()
 
-	// Extract parent todo info
-	if parentObj, ok := args["parent"].(map[string]interface{}); ok {
-		if task, ok := parentObj["task"].(string); ok && task != "" {
-			params.Parent.Task = task
-		} else {
-			return nil, fmt.Errorf("parent.task is required")
-		}
+	// Extract parent
+	parentObj, ok := args["parent"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing required parameter 'parent'")
+	}
 
-		// Optional parent priority (default: high)
-		params.Parent.Priority = "high"
-		if priority, ok := parentObj["priority"].(string); ok && priority != "" {
-			params.Parent.Priority = priority
-		}
-
-		// Optional parent type (default: multi-phase)
-		params.Parent.Type = "multi-phase"
-		if todoType, ok := parentObj["type"].(string); ok && todoType != "" {
-			params.Parent.Type = todoType
-		}
+	// Parse parent task
+	if task, ok := parentObj["task"].(string); ok && task != "" {
+		params.Parent.Task = task
 	} else {
-		return nil, fmt.Errorf("parent is required")
+		return nil, fmt.Errorf("parent must have a task")
+	}
+
+	// Parse parent priority with default
+	params.Parent.Priority = "high"
+	if priority, ok := parentObj["priority"].(string); ok {
+		params.Parent.Priority = priority
+	}
+
+	// Parse parent type with default
+	params.Parent.Type = "multi-phase"
+	if todoType, ok := parentObj["type"].(string); ok {
+		params.Parent.Type = todoType
 	}
 
 	// Extract children
-	if childrenArr, ok := args["children"].([]interface{}); ok {
-		if len(childrenArr) == 0 {
-			return nil, fmt.Errorf("at least one child is required")
-		}
-
-		for i, childItem := range childrenArr {
-			if childObj, ok := childItem.(map[string]interface{}); ok {
-				child := TodoCreateInfo{}
-
-				// Task is required
-				if task, ok := childObj["task"].(string); ok && task != "" {
-					child.Task = task
-				} else {
-					return nil, fmt.Errorf("children[%d].task is required", i)
-				}
-
-				// Optional priority (default: medium)
-				child.Priority = "medium"
-				if priority, ok := childObj["priority"].(string); ok && priority != "" {
-					child.Priority = priority
-				}
-
-				// Optional type (default: phase)
-				child.Type = "phase"
-				if todoType, ok := childObj["type"].(string); ok && todoType != "" {
-					child.Type = todoType
-				}
-
-				params.Children = append(params.Children, child)
-			} else {
-				return nil, fmt.Errorf("children[%d] must be an object", i)
-			}
-		}
-	} else {
-		return nil, fmt.Errorf("children array is required")
+	childrenInterface, ok := args["children"].([]interface{})
+	if !ok || len(childrenInterface) == 0 {
+		return nil, fmt.Errorf("missing or empty 'children' parameter")
 	}
 
-	// Validate all priorities and types
+	// Parse each child
+	for i, childInterface := range childrenInterface {
+		childObj, ok := childInterface.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("invalid child at index %d", i)
+		}
+
+		child := TodoCreateInfo{}
+
+		// Parse child task
+		if task, ok := childObj["task"].(string); ok && task != "" {
+			child.Task = task
+		} else {
+			return nil, fmt.Errorf("child at index %d must have a task", i)
+		}
+
+		// Parse child priority with default
+		child.Priority = "medium"
+		if priority, ok := childObj["priority"].(string); ok {
+			child.Priority = priority
+		}
+
+		// Parse child type with default
+		child.Type = "phase"
+		if todoType, ok := childObj["type"].(string); ok {
+			child.Type = todoType
+		}
+
+		params.Children = append(params.Children, child)
+	}
+
+	// Validate parent priority
 	if !isValidPriority(params.Parent.Priority) {
 		return nil, fmt.Errorf("invalid parent priority '%s'", params.Parent.Priority)
 	}
+
+	// Validate parent type
 	if !isValidTodoType(params.Parent.Type) {
 		return nil, fmt.Errorf("invalid parent type '%s'", params.Parent.Type)
 	}
 
+	// Validate each child
 	for i, child := range params.Children {
 		if !isValidPriority(child.Priority) {
-			return nil, fmt.Errorf("invalid priority '%s' for child %d", child.Priority, i)
+			return nil, fmt.Errorf("invalid priority '%s' for child at index %d", child.Priority, i)
 		}
 		if !isValidTodoType(child.Type) {
-			return nil, fmt.Errorf("invalid type '%s' for child %d", child.Type, i)
-		}
-
-		// Validate that phase/subtask children are appropriate
-		if child.Type == "multi-phase" {
-			return nil, fmt.Errorf("child %d cannot be of type 'multi-phase'", i)
+			return nil, fmt.Errorf("invalid type '%s' for child at index %d", child.Type, i)
 		}
 	}
 
 	return params, nil
-}
-
-// Validation helpers
-func isValidPriority(p string) bool {
-	return p == "high" || p == "medium" || p == "low"
-}
-
-func isValidTodoType(t string) bool {
-	return t == "feature" || t == "bug" || t == "refactor" || t == "research" || t == "multi-phase" || t == "phase" || t == "subtask"
-}
-
-func isValidFormat(f string) bool {
-	return f == "full" || f == "summary" || f == "list"
-}
-
-func isValidOperation(o string) bool {
-	return o == "append" || o == "replace" || o == "prepend" || o == "toggle"
 }
