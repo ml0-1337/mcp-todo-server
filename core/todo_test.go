@@ -98,7 +98,7 @@ func TestMarkdownFileCreation(t *testing.T) {
 	}
 
 	// Check file exists at expected path
-	expectedPath := filepath.Join(tempDir, todo.ID+".md")
+	expectedPath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 	fileInfo, err := os.Stat(expectedPath)
 	if err != nil {
 		t.Errorf("Todo file not created at expected path %s: %v", expectedPath, err)
@@ -250,7 +250,7 @@ func TestFileSystemErrorHandling(t *testing.T) {
 		}
 
 		// Make the file read-only
-		filePath := filepath.Join(tempDir, todo1.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo1.ID+".md")
 		err = os.Chmod(filePath, 0444) // r--r--r-- (read-only)
 		if err != nil {
 			t.Fatalf("Failed to set file permissions: %v", err)
@@ -299,7 +299,7 @@ func TestFileSystemErrorHandling(t *testing.T) {
 
 			// Verify file was created
 			if todo != nil {
-				filePath := filepath.Join(tempDir, todo.ID+".md")
+				filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 				if _, err := os.Stat(filePath); err != nil {
 					t.Errorf("File not created for task %q: %v", task, err)
 				}
@@ -443,8 +443,15 @@ Database connections not being closed properly.
 Unit tests for connection pool.
 `
 
+		// Create directory structure
+		todosDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todosDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create directory: %v", err)
+		}
+
 		// Write test file
-		filePath := filepath.Join(tempDir, "test-optional-fields.md")
+		filePath := filepath.Join(todosDir, "test-optional-fields.md")
 		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write test file: %v", err)
@@ -532,8 +539,15 @@ priority high  # missing colon
 # Task: Test invalid YAML
 `
 
+		// Create directory structure
+		todosDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todosDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create directory: %v", err)
+		}
+
 		// Write test file
-		filePath := filepath.Join(tempDir, "invalid-yaml.md")
+		filePath := filepath.Join(todosDir, "invalid-yaml.md")
 		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write test file: %v", err)
@@ -578,8 +592,15 @@ type: research
 This file has no task heading.
 `
 
+		// Create directory structure
+		todosDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todosDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create directory: %v", err)
+		}
+
 		// Write test file
-		filePath := filepath.Join(tempDir, "no-task-heading.md")
+		filePath := filepath.Join(todosDir, "no-task-heading.md")
 		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write test file: %v", err)
@@ -636,7 +657,7 @@ func TestUpdateTodo(t *testing.T) {
 		}
 
 		// Read file content to check findings section
-		filePath := filepath.Join(tempDir, todo.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
@@ -686,7 +707,7 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file and verify
-		filePath := filepath.Join(tempDir, todo.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
@@ -732,7 +753,7 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file and verify order
-		filePath := filepath.Join(tempDir, todo.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
@@ -833,7 +854,7 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file to check current_test was added
-		filePath := filepath.Join(tempDir, todo.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
@@ -880,7 +901,7 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file and verify both updates exist
-		filePath := filepath.Join(tempDir, todo.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
@@ -992,7 +1013,7 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Verify file is not corrupted
-		filePath := filepath.Join(tempDir, todo.ID+".md")
+		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)

@@ -202,8 +202,8 @@ func TestHandleTodoLink(t *testing.T) {
 					return
 				}
 				content := textContent.Text
-				if !strings.Contains(content, "linker not available") {
-					t.Errorf("Expected 'linker not available' error, got: %s", content)
+				if !strings.Contains(content, "Linking feature not available") {
+					t.Errorf("Expected 'Linking feature not available' error, got: %s", content)
 				}
 			},
 		},
@@ -407,7 +407,7 @@ func TestHandleTodoLink(t *testing.T) {
 			// Create handlers
 			handlers := &TodoHandlers{
 				manager: mockManager,
-				// For testing, we'll set baseManager to nil and handle linking differently
+				// Set baseManager to nil for these tests since we can't use the mock
 				baseManager: nil,
 			}
 

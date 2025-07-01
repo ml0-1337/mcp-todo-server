@@ -55,7 +55,7 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		if err == nil {
 			t.Error("Should return error when parent_id doesn't exist")
 		}
-		if err != nil && err.Error() != "parent todo not found: non-existent-parent" {
+		if err != nil && err.Error() != "parent todo 'non-existent-parent' not found" {
 			t.Errorf("Expected 'parent todo not found' error, got: %v", err)
 		}
 	})

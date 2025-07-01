@@ -54,7 +54,7 @@ func TestParameterValidation(t *testing.T) {
 
 		// Should return an error result, not a Go error
 		if err != nil {
-			t.Fatalf("Expected nil error, got: %v", err)
+			t.Fatalf("Unexpected Go error: %v", err)
 		}
 
 		// Check if result indicates an error
@@ -101,13 +101,34 @@ func TestParameterValidation(t *testing.T) {
 		result, err := server.handlers.HandleTodoCreate(context.Background(), request)
 
 		if err != nil {
-			t.Fatalf("Expected nil error, got: %v", err)
+			t.Fatalf("Unexpected Go error: %v", err)
 		}
 
-		// Should either accept with default or return validation error
-		// For now, we'll accept that it might use a default
+		// Should return an error result for invalid priority
 		if result == nil {
 			t.Fatal("Expected result, got nil")
+		}
+
+		// The result should indicate the invalid priority
+		if !result.IsError {
+			t.Error("Expected error result for invalid priority")
+		}
+
+		// Check error content mentions invalid priority
+		if len(result.Content) == 0 {
+			t.Fatal("Expected content in error result")
+		}
+
+		errorContent := ""
+		// Try to extract text content
+		if tc, ok := mcp.AsTextContent(result.Content[0]); ok {
+			errorContent = tc.Text
+		}
+
+		// Verify error message contains expected keywords
+		errorLower := strings.ToLower(errorContent)
+		if !strings.Contains(errorLower, "priority") || !strings.Contains(errorLower, "urgent") {
+			t.Errorf("Error message should mention invalid priority 'urgent', got: %s", errorContent)
 		}
 	})
 }

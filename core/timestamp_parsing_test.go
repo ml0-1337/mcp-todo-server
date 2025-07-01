@@ -34,7 +34,14 @@ This todo uses the standard timestamp format.
 `
 
 	// Write test file
-	filePath := filepath.Join(tempDir, "test-standard-timestamp.md")
+	// Create directory structure
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create directory: %v", err)
+	}
+
+	filePath := filepath.Join(todosDir, "test-standard-timestamp.md")
 	err = ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
@@ -88,7 +95,14 @@ This todo uses RFC3339 timestamp format like the problematic test-archive-demo.m
 `
 
 	// Write test file
-	filePath := filepath.Join(tempDir, "test-rfc3339-timestamp.md")
+	// Create directory structure
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create directory: %v", err)
+	}
+
+	filePath := filepath.Join(todosDir, "test-rfc3339-timestamp.md")
 	err = ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
@@ -142,7 +156,14 @@ This todo uses RFC3339Nano timestamp format with nanosecond precision.
 `
 
 	// Write test file
-	filePath := filepath.Join(tempDir, "test-rfc3339nano-timestamp.md")
+	// Create directory structure
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create directory: %v", err)
+	}
+
+	filePath := filepath.Join(todosDir, "test-rfc3339nano-timestamp.md")
 	err = ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
@@ -195,8 +216,15 @@ type: test
 This todo uses an invalid timestamp format.
 `
 
+	// Create directory structure
+	todosDir := filepath.Join(tempDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create directory: %v", err)
+	}
+
 	// Write test file
-	filePath := filepath.Join(tempDir, "test-invalid-timestamp.md")
+	filePath := filepath.Join(todosDir, "test-invalid-timestamp.md")
 	err = ioutil.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)

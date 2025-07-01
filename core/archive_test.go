@@ -64,7 +64,7 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 		if err == nil {
 			t.Error("Archiving non-existent todo should return error")
 		}
-		if !os.IsNotExist(err) && err.Error() != "todo not found: non-existent-id" {
+		if !os.IsNotExist(err) && err.Error() != "todo 'non-existent-id' not found" {
 			t.Errorf("Expected 'todo not found' error, got: %v", err)
 		}
 	})

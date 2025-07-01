@@ -82,7 +82,7 @@ func TestValidationError(t *testing.T) {
 		{
 			name: "validation error with field",
 			err:  interrors.NewValidationError("priority", "invalid", "must be high, medium, or low"),
-			want: "validation error for field 'priority': must be high, medium, or low",
+			want: "validation error for field 'priority' with value 'invalid': must be high, medium, or low",
 		},
 		{
 			name: "validation error without field",

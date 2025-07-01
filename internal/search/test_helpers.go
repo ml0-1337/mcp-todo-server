@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	
 	"github.com/user/mcp-todo-server/internal/domain"
@@ -102,20 +103,91 @@ func (tm *TestTodoManager) ReadTodo(id string) (*domain.Todo, error) {
 
 // UpdateTodo updates a todo (simplified for tests)
 func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
-	// For tests, we'll just update the file content
+	// Read the current file content
 	filePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
 	fileContent, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read todo file: %w", err)
 	}
 	
-	// Simple append operation for tests
-	if operation == "append" && content != "" {
-		fileContent = append(fileContent, []byte("\n"+content)...)
+	// If we're appending content to a section
+	if operation == "append" && section != "" && content != "" {
+		// Find and update the section
+		sectionHeader := fmt.Sprintf("## %s", getSectionTitle(section))
+		lines := strings.Split(string(fileContent), "\n")
+		for i, line := range lines {
+			if strings.TrimSpace(line) == sectionHeader {
+				// Insert content after the section header
+				// Find the next section or end of file
+				insertIndex := i + 1
+				for insertIndex < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[insertIndex]), "##") {
+					insertIndex++
+				}
+				// Insert before the next section
+				newLines := append(lines[:insertIndex], append([]string{content}, lines[insertIndex:]...)...)
+				fileContent = []byte(strings.Join(newLines, "\n"))
+				break
+			}
+		}
 		return ioutil.WriteFile(filePath, fileContent, 0644)
 	}
 	
+	// If we're updating metadata, read the todo and update it
+	if metadata != nil {
+		todo, err := tm.ReadTodo(id)
+		if err != nil {
+			return err
+		}
+		
+		// Update metadata
+		for key, value := range metadata {
+			switch key {
+			case "status":
+				todo.Status = value
+			case "priority":
+				todo.Priority = value
+			case "completed":
+				if value != "" {
+					completed, err := time.Parse(time.RFC3339, value)
+					if err == nil {
+						todo.Completed = completed
+					}
+				}
+			case "started":
+				if value != "" {
+					started, err := time.Parse(time.RFC3339, value)
+					if err == nil {
+						todo.Started = started
+					}
+				}
+			}
+		}
+		
+		// Write the updated todo back
+		return tm.writeTodo(todo)
+	}
+	
 	return nil
+}
+
+// getSectionTitle maps section keys to their full titles
+func getSectionTitle(section string) string {
+	switch section {
+	case "findings":
+		return "Findings & Research"
+	case "tests":
+		return "Test Cases"
+	case "test_list":
+		return "Test List"
+	case "test_strategy":
+		return "Test Strategy"
+	case "checklist":
+		return "Checklist"
+	case "scratchpad":
+		return "Working Scratchpad"
+	default:
+		return section
+	}
 }
 
 // generateTestID creates a kebab-case ID from the task description

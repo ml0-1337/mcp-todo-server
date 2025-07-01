@@ -22,7 +22,7 @@ func TestNewTodoServer(t *testing.T) {
 	// Create required directories
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
 	templatesDir := filepath.Join(tempDir, ".claude", "templates")
-	err = os.MkdirAll(todosDir, 0755)
+	err := os.MkdirAll(todosDir, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create todos dir: %v", err)
 	}

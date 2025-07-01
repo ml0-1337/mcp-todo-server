@@ -16,7 +16,8 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	// Parse parameters
 	params, err := ExtractTodoCreateParams(request)
 	if err != nil {
-		return nil, err
+		// Return validation errors as tool results, not Go errors
+		return HandleError(err), nil
 	}
 
 	// Create todo

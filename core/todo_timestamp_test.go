@@ -43,8 +43,15 @@ sections:
 [2025-01-01 10:00:00] Initial test entry
 `
 	
+	// Create directory structure
+	todosDir := filepath.Join(tmpDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	
 	// Write test todo file
-	filePath := filepath.Join(tmpDir, todoID+".md")
+	filePath := filepath.Join(todosDir, todoID+".md")
 	err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 	if err != nil {
 		t.Fatal(err)
@@ -119,8 +126,15 @@ sections:
 [2025-01-01 10:00:00] Existing test entry
 `
 	
+	// Create directory structure
+	todosDir := filepath.Join(tmpDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	
 	// Write test todo file
-	filePath := filepath.Join(tmpDir, todoID+".md")
+	filePath := filepath.Join(todosDir, todoID+".md")
 	err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 	if err != nil {
 		t.Fatal(err)
@@ -208,8 +222,15 @@ sections:
 [2025-01-01 10:00:00] Initial test entry
 `
 	
+	// Create directory structure
+	todosDir := filepath.Join(tmpDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	
 	// Write test todo file
-	filePath := filepath.Join(tmpDir, todoID+".md")
+	filePath := filepath.Join(todosDir, todoID+".md")
 	err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 	if err != nil {
 		t.Fatal(err)
@@ -288,8 +309,15 @@ Initial research content
 - [ ] Initial checklist item
 `
 	
+	// Create directory structure
+	todosDir := filepath.Join(tmpDir, ".claude", "todos")
+	err = os.MkdirAll(todosDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	
 	// Write test todo file
-	filePath := filepath.Join(tmpDir, todoID+".md")
+	filePath := filepath.Join(todosDir, todoID+".md")
 	err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
 	if err != nil {
 		t.Fatal(err)
