@@ -8,6 +8,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // HandleTodoCreate handles the todo_create tool
@@ -24,7 +25,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	// Create todo
 	todo, err := manager.CreateTodo(params.Task, params.Priority, params.Type)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create todo: %w", err)
+		return nil, interrors.Wrap(err, "failed to create todo")
 	}
 
 	// Handle parent-child relationship if parent_id is provided
@@ -33,7 +34,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		todo.ParentID = params.ParentID
 		err = manager.SaveTodo(todo)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update todo with parent_id: %w", err)
+			return nil, interrors.Wrap(err, "failed to update todo with parent_id")
 		}
 
 		// Create the link using the TodoLinker
@@ -82,7 +83,7 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 		params.Parent.Type,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create parent todo: %w", err)
+		return nil, interrors.Wrap(err, "failed to create parent todo")
 	}
 
 	// Index parent todo

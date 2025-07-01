@@ -186,3 +186,41 @@ func CleanupOnFailure(t testing.TB, cleanup func()) {
 		}
 	})
 }
+
+// RequireFileContains checks that a file contains a substring and fails if not
+func RequireFileContains(t testing.TB, path, substring string) {
+	t.Helper()
+	
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read file %s: %v", path, err)
+	}
+	
+	if !strings.Contains(string(content), substring) {
+		t.Fatalf("File %s does not contain substring: %s", path, substring)
+	}
+}
+
+// AssertPathExists checks that a path exists
+func AssertPathExists(t testing.TB, path string) {
+	t.Helper()
+	
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		t.Errorf("Expected path to exist: %s", path)
+	}
+}
+
+// AssertFileContains checks that a file contains a substring
+func AssertFileContains(t testing.TB, path, substring string) {
+	t.Helper()
+	
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Errorf("Failed to read file %s: %v", path, err)
+		return
+	}
+	
+	if !strings.Contains(string(content), substring) {
+		t.Errorf("File %s does not contain substring: %s", path, substring)
+	}
+}

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // writeTodo writes a todo to disk
@@ -15,7 +17,7 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	// Ensure directory exists
 	dir := filepath.Join(tm.basePath, ".claude", "todos")
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
 	}
 
 	// Create the todo file with frontmatter
@@ -24,7 +26,7 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	// Marshal the frontmatter
 	yamlData, err := yaml.Marshal(todo)
 	if err != nil {
-		return fmt.Errorf("failed to marshal todo: %w", err)
+		return interrors.Wrap(err, "failed to marshal todo")
 	}
 
 	// Build content with sections
@@ -47,7 +49,7 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 
 	// Write to file
 	if err := ioutil.WriteFile(filename, []byte(contentBuilder.String()), 0644); err != nil {
-		return fmt.Errorf("failed to write todo file: %w", err)
+		return interrors.NewOperationError("write", "todo file", "failed to save todo", err)
 	}
 
 	return nil
@@ -62,9 +64,9 @@ func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("todo not found: %s", id)
+			return nil, interrors.NewNotFoundError("todo", id)
 		}
-		return nil, fmt.Errorf("failed to read todo: %w", err)
+		return nil, interrors.Wrap(err, "failed to read todo")
 	}
 
 	return tm.parseTodoFile(string(content))
@@ -87,13 +89,13 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 	// Split frontmatter and content
 	parts := strings.SplitN(content, "---", 3)
 	if len(parts) < 3 {
-		return nil, fmt.Errorf("invalid todo file format: missing frontmatter")
+		return nil, interrors.NewValidationError("content", content, "invalid todo file format: missing frontmatter")
 	}
 
 	// Parse frontmatter
 	var todo Todo
 	if err := yaml.Unmarshal([]byte(parts[1]), &todo); err != nil {
-		return nil, fmt.Errorf("failed to parse frontmatter: %w", err)
+		return nil, interrors.Wrap(err, "failed to parse frontmatter")
 	}
 
 	// Extract task from heading

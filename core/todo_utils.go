@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // generateBaseID creates a kebab-case ID from the task description
@@ -95,7 +97,7 @@ func parseTimestamp(timestamp string) (time.Time, error) {
 		}
 	}
 
-	return time.Time{}, fmt.Errorf("unable to parse timestamp: %s", timestamp)
+	return time.Time{}, interrors.NewValidationError("timestamp", timestamp, "unable to parse timestamp")
 }
 
 // extractTask extracts the task from the markdown content

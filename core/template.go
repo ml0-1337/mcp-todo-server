@@ -10,6 +10,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // Template represents a todo template with metadata and content
@@ -39,27 +41,27 @@ func (tm *TemplateManager) LoadTemplate(name string) (*Template, error) {
 
 	// Check if template exists
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("template not found: %s", name)
+		return nil, interrors.NewNotFoundError("template", name)
 	}
 
 	// Read template file
 	content, err := ioutil.ReadFile(templatePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read template: %w", err)
+		return nil, interrors.Wrap(err, "failed to read template")
 	}
 
 	// Parse template file
 	contentStr := string(content)
 	parts := strings.Split(contentStr, "---\n")
 	if len(parts) < 3 {
-		return nil, fmt.Errorf("invalid template format: missing frontmatter delimiters")
+		return nil, interrors.NewValidationError("template", name, "invalid template format: missing frontmatter delimiters")
 	}
 
 	// Parse YAML frontmatter
 	var template Template
 	err = yaml.Unmarshal([]byte(parts[1]), &template)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse template frontmatter: %w", err)
+		return nil, interrors.Wrap(err, "failed to parse template frontmatter")
 	}
 
 	// Set the content (everything after frontmatter)
@@ -67,7 +69,7 @@ func (tm *TemplateManager) LoadTemplate(name string) (*Template, error) {
 
 	// Validate template name matches filename
 	if template.Name != name {
-		return nil, fmt.Errorf("template name mismatch: file '%s' contains template '%s'", name, template.Name)
+		return nil, interrors.NewValidationError("template_name", template.Name, fmt.Sprintf("template name mismatch: file '%s' contains template '%s'", name, template.Name))
 	}
 
 	return &template, nil
@@ -78,7 +80,11 @@ func (tm *TemplateManager) ListTemplates() ([]string, error) {
 	// Read directory
 	files, err := ioutil.ReadDir(tm.templatesDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read templates directory: %w", err)
+		if os.IsNotExist(err) {
+			// No templates directory exists
+			return []string{}, nil
+		}
+		return nil, interrors.Wrap(err, "failed to read templates directory")
 	}
 
 	// Collect template names

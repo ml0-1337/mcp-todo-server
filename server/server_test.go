@@ -8,20 +8,18 @@ import (
 
 // Test 1: MCP server should start and register tools successfully
 func TestServerInitialization(t *testing.T) {
+	t.Helper()
+	
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "mcp-todo-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set environment variables to use temp directory
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
-	defer func() {
+	t.Cleanup(func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
-	}()
+	})
 
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
 	templatesDir := filepath.Join(tempDir, ".claude", "templates")
@@ -43,7 +41,9 @@ func TestServerInitialization(t *testing.T) {
 	}
 
 	// Clean up
-	defer server.Close()
+	t.Cleanup(func() {
+		server.Close()
+	})
 
 	// Get the list of registered tools
 	tools := server.ListTools()

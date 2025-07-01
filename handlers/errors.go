@@ -1,20 +1,21 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"github.com/mark3labs/mcp-go/mcp"
 	"os"
 	"strings"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
-// Common error types
+// Common error types - deprecated, use internal/errors package instead
 var (
-	ErrTodoNotFound   = errors.New("todo not found")
-	ErrInvalidID      = errors.New("invalid todo ID")
-	ErrSearchFailed   = errors.New("search operation failed")
-	ErrArchiveFailed  = errors.New("archive operation failed")
-	ErrTemplateFailed = errors.New("template operation failed")
+	ErrTodoNotFound   = interrors.ErrNotFound
+	ErrInvalidID      = interrors.ErrValidation
+	ErrSearchFailed   = interrors.ErrOperation
+	ErrArchiveFailed  = interrors.ErrOperation
+	ErrTemplateFailed = interrors.ErrOperation
 )
 
 // HandleError converts errors to appropriate MCP tool results
@@ -23,27 +24,43 @@ func HandleError(err error) *mcp.CallToolResult {
 		return nil
 	}
 
-	// Handle common error patterns
-	errStr := err.Error()
+	// Check for specific error types using our structured errors
 	switch {
+	case interrors.IsNotFound(err):
+		return mcp.NewToolResultError("Todo not found")
+		
+	case interrors.IsValidation(err):
+		// Extract specific validation message if available
+		var validErr *interrors.ValidationError
+		if interrors.As(err, &validErr) {
+			return mcp.NewToolResultError(fmt.Sprintf("Validation error: %s", validErr.Message))
+		}
+		return mcp.NewToolResultError("Invalid parameter or ID format")
+		
+	case interrors.IsOperation(err):
+		// Extract specific operation message if available
+		var opErr *interrors.OperationError
+		if interrors.As(err, &opErr) {
+			return mcp.NewToolResultError(fmt.Sprintf("%s operation failed: %s", opErr.Operation, opErr.Message))
+		}
+		return mcp.NewToolResultError("Operation failed")
+		
+	case interrors.IsPermission(err):
+		return mcp.NewToolResultError("Permission denied")
+		
+	case interrors.IsConflict(err):
+		return mcp.NewToolResultError("Resource conflict")
+		
+	case interrors.IsInternal(err):
+		return mcp.NewToolResultError("Internal server error")
+
+	// Legacy error handling for backward compatibility
 	case os.IsNotExist(err):
 		return mcp.NewToolResultError("Todo not found")
 
-	case strings.Contains(errStr, "not found"):
-		return mcp.NewToolResultError("Todo not found")
-
-	case strings.Contains(errStr, "validation error:"):
+	case strings.Contains(err.Error(), "validation error:"):
 		// Preserve validation errors with their specific messages
-		return mcp.NewToolResultError(errStr)
-
-	case strings.Contains(errStr, "invalid"):
-		return mcp.NewToolResultError("Invalid parameter or ID format")
-
-	case strings.Contains(errStr, "search"):
-		return mcp.NewToolResultError("Search operation failed")
-
-	case strings.Contains(errStr, "archive"):
-		return mcp.NewToolResultError("Archive operation failed")
+		return mcp.NewToolResultError(err.Error())
 
 	default:
 		// Generic error with details
@@ -54,7 +71,7 @@ func HandleError(err error) *mcp.CallToolResult {
 // ValidateRequiredParam checks if a required parameter is present
 func ValidateRequiredParam(param, name string) error {
 	if param == "" {
-		return fmt.Errorf("missing required parameter '%s'", name)
+		return interrors.NewValidationError(name, param, "missing required parameter")
 	}
 	return nil
 }
@@ -66,5 +83,5 @@ func ValidateEnum(value string, allowed []string, paramName string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid %s '%s', must be one of: %v", paramName, value, allowed)
+	return interrors.NewValidationError(paramName, value, fmt.Sprintf("must be one of: %v", allowed))
 }

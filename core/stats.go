@@ -1,13 +1,15 @@
 package core
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // TodoStats represents aggregated statistics about todos
@@ -241,7 +243,11 @@ func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
 	todosDir := filepath.Join(se.manager.basePath, ".claude", "todos")
 	files, err := ioutil.ReadDir(todosDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read todos directory: %w", err)
+		if os.IsNotExist(err) {
+			// No todos directory exists yet, return empty slice
+			return []*Todo{}, nil
+		}
+		return nil, interrors.Wrap(err, "failed to read todos directory")
 	}
 
 	var todos []*Todo

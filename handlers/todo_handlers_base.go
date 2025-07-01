@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"sync"
 
 	"github.com/user/mcp-todo-server/core"
 	"github.com/user/mcp-todo-server/internal/infrastructure/factory"
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // TodoHandlers contains handlers for all todo operations
@@ -30,7 +30,7 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
 	searchEngine, err := core.NewSearchEngine(indexPath, filepath.Join(todoPath, ".claude", "todos"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create search engine: %w", err)
+		return nil, interrors.Wrap(err, "failed to create search engine")
 	}
 
 	// Create stats engine with the default manager
@@ -71,7 +71,7 @@ func NewTodoHandlersWithRepository(todoPath, templatePath string) (*TodoHandlers
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
 	searchEngine, err := core.NewSearchEngine(indexPath, filepath.Join(todoPath, ".claude", "todos"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create search engine: %w", err)
+		return nil, interrors.Wrap(err, "failed to create search engine")
 	}
 
 	// Create a default manager for stats (temporary until stats is refactored)

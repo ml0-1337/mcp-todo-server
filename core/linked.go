@@ -1,11 +1,12 @@
 package core
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // TodoLinker handles linking related todos
@@ -25,12 +26,18 @@ func (tl *TodoLinker) LinkTodos(parentID, childID, linkType string) error {
 	// Validate both todos exist
 	_, err := tl.manager.ReadTodo(parentID)
 	if err != nil {
-		return fmt.Errorf("parent todo not found: %w", err)
+		if interrors.IsNotFound(err) {
+			return interrors.NewNotFoundError("parent todo", parentID)
+		}
+		return interrors.Wrap(err, "failed to read parent todo")
 	}
 
 	_, err = tl.manager.ReadTodo(childID)
 	if err != nil {
-		return fmt.Errorf("child todo not found: %w", err)
+		if interrors.IsNotFound(err) {
+			return interrors.NewNotFoundError("child todo", childID)
+		}
+		return interrors.Wrap(err, "failed to read child todo")
 	}
 
 	// For parent-child link, update the child's parent_id
@@ -43,7 +50,7 @@ func (tl *TodoLinker) LinkTodos(parentID, childID, linkType string) error {
 
 	// For other link types, could store in a separate links file or in metadata
 	// For now, only support parent-child
-	return fmt.Errorf("unsupported link type: %s", linkType)
+	return interrors.NewValidationError("linkType", linkType, "unsupported link type")
 }
 
 // CreateTodoWithParent creates a new todo with a parent reference
@@ -52,10 +59,10 @@ func (tm *TodoManager) CreateTodoWithParent(task, priority, todoType, parentID s
 	if parentID != "" {
 		_, err := tm.ReadTodo(parentID)
 		if err != nil {
-			if os.IsNotExist(err) || strings.Contains(err.Error(), "not found") {
-				return nil, fmt.Errorf("parent todo not found: %s", parentID)
+			if interrors.IsNotFound(err) {
+				return nil, interrors.NewNotFoundError("parent todo", parentID)
 			}
-			return nil, fmt.Errorf("failed to validate parent: %w", err)
+			return nil, interrors.Wrap(err, "failed to validate parent")
 		}
 	}
 
@@ -74,7 +81,7 @@ func (tm *TodoManager) CreateTodoWithParent(task, priority, todoType, parentID s
 		if err != nil {
 			// Clean up the created todo on failure
 			os.Remove(filepath.Join(tm.basePath, ".claude", "todos", todo.ID+".md"))
-			return nil, fmt.Errorf("failed to set parent_id: %w", err)
+			return nil, interrors.Wrap(err, "failed to set parent_id")
 		}
 		todo.ParentID = parentID
 	}
@@ -88,7 +95,11 @@ func (tm *TodoManager) GetChildren(parentID string) ([]*Todo, error) {
 	todosDir := filepath.Join(tm.basePath, ".claude", "todos")
 	files, err := ioutil.ReadDir(todosDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read todos directory: %w", err)
+		if os.IsNotExist(err) {
+			// No todos directory exists yet
+			return []*Todo{}, nil
+		}
+		return nil, interrors.Wrap(err, "failed to read todos directory")
 	}
 
 	var children []*Todo

@@ -7,6 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // HandleTodoUpdate handles the todo_update tool
@@ -35,7 +36,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	if len(metadataMap) > 0 {
 		err = manager.UpdateTodo(params.ID, "", "", "", metadataMap)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update metadata: %w", err)
+			return nil, interrors.Wrap(err, "failed to update metadata")
 		}
 
 		// Re-index if status changed
@@ -60,7 +61,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	if params.Section != "" {
 		err = manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, nil)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update section: %w", err)
+			return nil, interrors.Wrap(err, "failed to update section")
 		}
 
 		// Re-index after content update
@@ -81,7 +82,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' %s section %s", params.ID, params.Section, opDesc)), nil
 	}
 
-	return nil, fmt.Errorf("no update operation specified")
+	return nil, interrors.NewValidationError("operation", "", "no update operation specified")
 }
 
 // HandleTodoSections handles the todo_sections tool
@@ -89,7 +90,7 @@ func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallT
 	// Extract ID parameter
 	id, err := request.RequireString("id")
 	if err != nil {
-		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
+		return HandleError(interrors.NewValidationError("id", "", "missing required parameter")), nil
 	}
 
 	// Get the manager for this context
@@ -110,17 +111,17 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	// Extract parameters
 	id, err := request.RequireString("id")
 	if err != nil {
-		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
+		return HandleError(interrors.NewValidationError("id", "", "missing required parameter")), nil
 	}
 
 	key, err := request.RequireString("key")
 	if err != nil {
-		return HandleError(fmt.Errorf("missing required parameter 'key'")), nil
+		return HandleError(interrors.NewValidationError("key", "", "missing required parameter")), nil
 	}
 
 	title, err := request.RequireString("title")
 	if err != nil {
-		return HandleError(fmt.Errorf("missing required parameter 'title'")), nil
+		return HandleError(interrors.NewValidationError("title", "", "missing required parameter")), nil
 	}
 
 	schema := request.GetString("schema", "freeform")
@@ -138,7 +139,7 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	}
 
 	if !validSchemas[schema] {
-		return HandleError(fmt.Errorf("invalid schema: %s", schema)), nil
+		return HandleError(interrors.NewValidationError("schema", schema, "invalid schema type")), nil
 	}
 
 	// Get the context-aware manager
@@ -153,7 +154,7 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	// Check if section already exists
 	if todo.Sections != nil {
 		if _, exists := todo.Sections[key]; exists {
-			return HandleError(fmt.Errorf("section '%s' already exists", key)), nil
+			return HandleError(interrors.NewConflictError("section", key, "section already exists")), nil
 		}
 	} else {
 		// Initialize sections map if it doesn't exist
@@ -186,13 +187,13 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 	// Extract ID parameter
 	id, ok := args["id"].(string)
 	if !ok || id == "" {
-		return HandleError(fmt.Errorf("missing required parameter 'id'")), nil
+		return HandleError(interrors.NewValidationError("id", "", "missing required parameter")), nil
 	}
 
 	// Extract order parameter - should be a map of section keys to new order values
 	orderParam, ok := args["order"]
 	if !ok {
-		return HandleError(fmt.Errorf("missing required parameter 'order'")), nil
+		return HandleError(interrors.NewValidationError("order", nil, "missing required parameter")), nil
 	}
 
 	// Type assert order to map

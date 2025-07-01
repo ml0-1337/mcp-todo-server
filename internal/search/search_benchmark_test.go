@@ -17,11 +17,7 @@ func BenchmarkSearchEngine(b *testing.B) {
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("Size-%d", size), func(b *testing.B) {
 			// Setup
-			tempDir, err := os.MkdirTemp("", "search-bench-*")
-			if err != nil {
-				b.Fatalf("Failed to create temp directory: %v", err)
-			}
-			defer os.RemoveAll(tempDir)
+			tempDir := b.TempDir()
 			
 			// Create search engine
 			indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")

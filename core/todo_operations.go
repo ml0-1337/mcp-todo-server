@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // getDefaultSections returns the default sections for a new todo
@@ -76,7 +78,7 @@ func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error
 	// Write todo to file
 	err := tm.writeTodo(todo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to write todo: %w", err)
+		return nil, interrors.Wrap(err, "failed to write todo")
 	}
 
 	return todo, nil
@@ -91,7 +93,10 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 	filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
 	fileContent, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read todo: %w", err)
+		if os.IsNotExist(err) {
+			return interrors.NewNotFoundError("todo", id)
+		}
+		return interrors.Wrap(err, "failed to read todo")
 	}
 
 	// Handle metadata updates (like status changes)
@@ -99,7 +104,7 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		// Parse the file to get the todo
 		todo, err := tm.parseTodoFile(string(fileContent))
 		if err != nil {
-			return fmt.Errorf("failed to parse todo: %w", err)
+			return interrors.Wrap(err, "failed to parse todo")
 		}
 
 		// Update metadata fields
@@ -127,13 +132,13 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		// Update the frontmatter in the content while preserving the rest
 		updatedContent, err := updateFrontmatter(string(fileContent), todo)
 		if err != nil {
-			return fmt.Errorf("failed to update frontmatter: %w", err)
+			return interrors.Wrap(err, "failed to update frontmatter")
 		}
 		
 		// Write back the updated content
 		filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
 		if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
-			return fmt.Errorf("failed to write updated todo: %w", err)
+			return interrors.NewOperationError("write", "todo file", "failed to save changes", err)
 		}
 		
 		return nil
@@ -164,7 +169,7 @@ func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, co
 	// Write back to file
 	filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
 	if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
-		return fmt.Errorf("failed to write updated todo: %w", err)
+		return interrors.NewOperationError("write", "todo section", "failed to save section update", err)
 	}
 
 	return nil
@@ -175,13 +180,13 @@ func updateFrontmatter(content string, todo *Todo) (string, error) {
 	// Split the content into frontmatter and body
 	parts := strings.SplitN(content, "---", 3)
 	if len(parts) < 3 {
-		return "", fmt.Errorf("invalid markdown format: missing frontmatter delimiters")
+		return "", interrors.NewValidationError("content", content, "invalid markdown format: missing frontmatter delimiters")
 	}
 	
 	// Marshal the updated todo to YAML
 	yamlData, err := yaml.Marshal(todo)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal todo: %w", err)
+		return "", interrors.Wrap(err, "failed to marshal todo")
 	}
 	
 	// Reconstruct the content with updated frontmatter

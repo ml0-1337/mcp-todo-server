@@ -5,6 +5,8 @@ import (
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // SectionSchema represents the validation schema for a section
@@ -59,7 +61,7 @@ func ParseSectionDefinitions(yamlData []byte) (map[string]*SectionDefinition, er
 	// Validate schema types
 	for key, section := range frontmatter.Sections {
 		if !isValidSchema(section.Schema) {
-			return nil, fmt.Errorf("invalid schema type '%s' for section '%s'", section.Schema, key)
+			return nil, interrors.NewValidationError("schema", string(section.Schema), fmt.Sprintf("invalid schema type for section '%s'", key))
 		}
 	}
 
@@ -137,9 +139,9 @@ func (v *ChecklistValidator) Validate(content string) error {
 
 		if !hasValidPrefix {
 			if strings.HasPrefix(trimmed, "- []") || strings.HasPrefix(trimmed, "- [") {
-				return fmt.Errorf("invalid checkbox syntax")
+				return interrors.NewValidationError("checklist", trimmed, "invalid checkbox syntax")
 			}
-			return fmt.Errorf("non-checklist content found")
+			return interrors.NewValidationError("checklist", trimmed, "non-checklist content found")
 		}
 	}
 	return nil

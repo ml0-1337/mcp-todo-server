@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // GetQuarter returns the quarter in YYYY-QQ format for a given time
@@ -27,7 +29,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	// Check if todo has active children first (before locking)
 	children, err := tm.GetChildren(id)
 	if err != nil {
-		return fmt.Errorf("failed to check for children: %w", err)
+		return interrors.Wrap(err, "failed to check for children")
 	}
 
 	// Check for incomplete children
@@ -39,7 +41,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	}
 
 	if incompleteChildren > 0 {
-		return fmt.Errorf("cannot archive todo %s: has active children", id)
+		return interrors.NewOperationError("archive", "todo", fmt.Sprintf("cannot archive todo %s: has %d active children", id, incompleteChildren), nil)
 	}
 
 	// Now lock for the actual archive operation
@@ -51,27 +53,27 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 
 	// Check if todo exists
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
-		return fmt.Errorf("todo not found: %s", id)
+		return interrors.NewNotFoundError("todo", id)
 	}
 
 	// Read the todo file
 	content, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
-		return fmt.Errorf("failed to read todo file: %w", err)
+		return interrors.Wrap(err, "failed to read todo file")
 	}
 
 	// Parse the file to update completed timestamp
 	contentStr := string(content)
 	parts := strings.Split(contentStr, "---\n")
 	if len(parts) < 3 {
-		return fmt.Errorf("invalid markdown format: missing frontmatter delimiters")
+		return interrors.NewValidationError("content", contentStr, "invalid markdown format: missing frontmatter delimiters")
 	}
 
 	// Parse existing frontmatter
 	var frontmatter map[string]interface{}
 	err = yaml.Unmarshal([]byte(parts[1]), &frontmatter)
 	if err != nil {
-		return fmt.Errorf("failed to parse YAML frontmatter: %w", err)
+		return interrors.Wrap(err, "failed to parse YAML frontmatter")
 	}
 
 	// First, determine archive path and create directory
@@ -80,7 +82,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	// Parse the todo to get the started date
 	todo, err := tm.parseTodoFile(string(content))
 	if err != nil {
-		return fmt.Errorf("failed to parse todo for archive date: %w", err)
+		return interrors.Wrap(err, "failed to parse todo for archive date")
 	}
 
 	// Use the todo's started date for archiving
@@ -93,7 +95,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	archiveDir := filepath.Join(filepath.Dir(tm.basePath), "archive", archivePath)
 	err = os.MkdirAll(archiveDir, 0755)
 	if err != nil {
-		return fmt.Errorf("failed to create archive directory: %w", err)
+		return interrors.NewOperationError("create", "archive directory", "failed to create archive directory", err)
 	}
 
 	// Now update the frontmatter
@@ -103,7 +105,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	// Marshal back to YAML
 	yamlData, err := yaml.Marshal(frontmatter)
 	if err != nil {
-		return fmt.Errorf("failed to marshal YAML: %w", err)
+		return interrors.Wrap(err, "failed to marshal YAML")
 	}
 
 	// Reconstruct content with updated frontmatter
@@ -113,7 +115,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	tempPath := filepath.Join(archiveDir, id+".md.tmp")
 	err = ioutil.WriteFile(tempPath, []byte(updatedContent), 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write temp file: %w", err)
+		return interrors.NewOperationError("write", "temp archive file", "failed to write temp file", err)
 	}
 
 	// Rename temp file to final location
@@ -121,7 +123,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 	err = os.Rename(tempPath, finalPath)
 	if err != nil {
 		os.Remove(tempPath) // Clean up temp file
-		return fmt.Errorf("failed to rename temp file: %w", err)
+		return interrors.NewOperationError("rename", "archive file", "failed to finalize archive", err)
 	}
 
 	// Remove original file only after successful archive
@@ -130,7 +132,7 @@ func (tm *TodoManager) ArchiveTodo(id string, quarterOverride string) error {
 		// Archive succeeded but couldn't remove original
 		// Try to clean up the archive to maintain consistency
 		os.Remove(finalPath)
-		return fmt.Errorf("failed to remove original file: %w", err)
+		return interrors.NewOperationError("remove", "original todo file", "failed to remove original file after archive", err)
 	}
 
 	return nil
@@ -186,7 +188,7 @@ func (tm *TodoManager) ArchiveTodoWithCascade(id string, quarterOverride string,
 	// Get all children first
 	children, err := tm.GetChildren(id)
 	if err != nil {
-		return fmt.Errorf("failed to get children: %w", err)
+		return interrors.Wrap(err, "failed to get children")
 	}
 
 	// Archive all completed children first
@@ -194,7 +196,7 @@ func (tm *TodoManager) ArchiveTodoWithCascade(id string, quarterOverride string,
 		if child.Status == "completed" && !isArchived(tm.basePath, child.ID) {
 			err := tm.ArchiveTodo(child.ID, quarterOverride)
 			if err != nil {
-				return fmt.Errorf("failed to archive child %s: %w", child.ID, err)
+				return interrors.Wrapf(err, "failed to archive child %s", child.ID)
 			}
 		}
 	}

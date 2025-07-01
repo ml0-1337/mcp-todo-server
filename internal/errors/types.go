@@ -164,6 +164,35 @@ func NewOperationError(operation, resource, message string, cause error) *Operat
 	}
 }
 
+// ConflictError represents a resource conflict error
+type ConflictError struct {
+	Resource string
+	ID       string
+	Message  string
+}
+
+// Error implements the error interface
+func (e *ConflictError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("conflict for %s '%s': %s", e.Resource, e.ID, e.Message)
+	}
+	return fmt.Sprintf("conflict for %s '%s'", e.Resource, e.ID)
+}
+
+// Unwrap returns the underlying error
+func (e *ConflictError) Unwrap() error {
+	return ErrConflict
+}
+
+// NewConflictError creates a new ConflictError
+func NewConflictError(resource, id, message string) *ConflictError {
+	return &ConflictError{
+		Resource: resource,
+		ID:       id,
+		Message:  message,
+	}
+}
+
 // MultiError represents multiple errors
 type MultiError struct {
 	Errors []error

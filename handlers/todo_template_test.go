@@ -422,12 +422,10 @@ func TestHandleTodoTemplate(t *testing.T) {
 
 // TestHandleTodoTemplateGetBasePathForContext tests the context-aware base path functionality
 func TestHandleTodoTemplateGetBasePathForContext(t *testing.T) {
+	t.Helper()
+	
 	// Create temporary directories for testing
-	tempDir, err := os.MkdirTemp("", "template-base-path-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	defaultPath := filepath.Join(tempDir, "default")
 	workDir := filepath.Join(tempDir, "work", "dir")
