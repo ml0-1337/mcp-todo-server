@@ -31,8 +31,8 @@ func GetTodoPath(basePath, todoID string) string {
 
 // GetArchivePath returns the expected archive path for a todo
 func GetArchivePath(basePath string, todo *Todo, quarter string) string {
-	// Archives are stored one directory up from basePath
-	archiveBase := filepath.Join(filepath.Dir(basePath), "archive")
+	// Archives are stored within .claude directory structure
+	archiveBase := filepath.Join(basePath, ".claude", "archive")
 	
 	if quarter != "" {
 		return filepath.Join(archiveBase, quarter, todo.ID+".md")

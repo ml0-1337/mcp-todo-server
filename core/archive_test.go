@@ -50,10 +50,9 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 		}
 
 		// Verify file is in daily structure based on started date
-		now := time.Now()
-		dailyPath := filepath.Join(tempDir, "..", "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo2.ID+".md")
-		if _, err := os.Stat(dailyPath); os.IsNotExist(err) {
-			t.Errorf("Todo file should exist in daily archive at %s", dailyPath)
+		expectedArchivePath := GetArchivePath(tempDir, todo2, "")
+		if _, err := os.Stat(expectedArchivePath); os.IsNotExist(err) {
+			t.Errorf("Todo file should exist in daily archive at %s", expectedArchivePath)
 		}
 	})
 
@@ -219,7 +218,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 
 		// Create archive directory but make it read-only
 		now := time.Now()
-		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
+		archiveDir := filepath.Join(tempDir, ".claude", "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
 		os.MkdirAll(archiveDir, 0755)
 
 		// Make archive directory read-only to prevent writes
@@ -331,7 +330,7 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 
 	// Verify successful todos are actually archived
 	now := time.Now()
-	archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
+	archiveDir := filepath.Join(tempDir, ".claude", "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
 
 	for id, shouldSucceed := range expectedSuccess {
 		if shouldSucceed && id != "non-existent-id" {
@@ -347,4 +346,45 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 		t.Error("Failed todo3 should not exist in original location (was already deleted)")
 	}
+}
+
+// Test: Archive creates directory within .claude structure (not parent dir)
+func TestArchiveCreatesDirectoryWithinClaudeStructure(t *testing.T) {
+	// Setup test environment
+	manager, tempDir, cleanup := SetupTestTodoManager(t)
+	defer cleanup()
+
+	// Create a test todo
+	todo := CreateTestTodo(t, manager, "Test archive directory structure", "high", "feature")
+
+	// Archive the todo
+	err := manager.ArchiveTodo(todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to archive todo: %v", err)
+	}
+
+	// Check where archive was created - it should be within .claude structure
+	now := time.Now()
+	dailyPath := GetDailyPath(now)
+	
+	// Current behavior: archive is created one level up from basePath
+	currentArchivePath := filepath.Join(filepath.Dir(tempDir), "archive", dailyPath, todo.ID+".md")
+	
+	// Desired behavior: archive should be within .claude directory
+	desiredArchivePath := filepath.Join(tempDir, ".claude", "archive", dailyPath, todo.ID+".md")
+	
+	// Check that archive should be in .claude structure (this will fail initially)
+	if _, err := os.Stat(desiredArchivePath); os.IsNotExist(err) {
+		t.Errorf("Archive should be within .claude structure at: %s", desiredArchivePath)
+	}
+	
+	// Check that archive should NOT be in parent directory
+	if _, err := os.Stat(currentArchivePath); !os.IsNotExist(err) {
+		t.Errorf("Archive should NOT be in parent directory: %s", currentArchivePath)
+	}
+	
+	// Log paths for clarity
+	t.Logf("Base path: %s", tempDir)
+	t.Logf("Current archive path: %s", currentArchivePath)
+	t.Logf("Desired archive path: %s", desiredArchivePath)
 }

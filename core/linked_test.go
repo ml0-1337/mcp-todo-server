@@ -3,10 +3,8 @@ package core
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // Test 23: Linked todos should maintain referential integrity
@@ -150,22 +148,19 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		}
 
 		// Verify parent and children are archived
-		now := time.Now()
-		archiveDir := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"))
-
 		// Check parent archived
-		parentPath := filepath.Join(archiveDir, parent.ID+".md")
+		parentPath := GetArchivePath(tempDir, parent, "")
 		if _, err := os.Stat(parentPath); os.IsNotExist(err) {
 			t.Error("Parent should be archived")
 		}
 
 		// Check children archived
-		child1Path := filepath.Join(archiveDir, child1.ID+".md")
+		child1Path := GetArchivePath(tempDir, child1, "")
 		if _, err := os.Stat(child1Path); os.IsNotExist(err) {
 			t.Error("Child 1 should be archived with cascade")
 		}
 
-		child2Path := filepath.Join(archiveDir, child2.ID+".md")
+		child2Path := GetArchivePath(tempDir, child2, "")
 		if _, err := os.Stat(child2Path); os.IsNotExist(err) {
 			t.Error("Child 2 should be archived with cascade")
 		}

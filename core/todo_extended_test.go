@@ -444,7 +444,7 @@ func TestArchiveOldTodos(t *testing.T) {
 
 		// Check archive directory exists  
 		// The archive directory is created relative to the basePath
-		archivePath := filepath.Join(filepath.Dir(tempDir), "archive")
+		archivePath := filepath.Join(tempDir, ".claude", "archive")
 		
 		// With the current logic, only recentCompleted (5 days old) should be archived
 		// The older ones (15, 20 days) are NOT within last 7 days

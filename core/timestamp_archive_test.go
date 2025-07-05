@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -39,11 +40,7 @@ func TestArchiveTodoWithStandardTimestamp(t *testing.T) {
 	}
 
 	// Verify archive structure
-	now := time.Now()
-	year := now.Format("2006")
-	month := now.Format("01")
-	day := now.Format("02")
-	expectedArchivePath := filepath.Join(filepath.Dir(tempDir), "archive", year, month, day, todo.ID+".md")
+	expectedArchivePath := GetArchivePath(tempDir, todo, "")
 
 	if _, err := os.Stat(expectedArchivePath); os.IsNotExist(err) {
 		t.Errorf("Archive file not found at expected path: %s", expectedArchivePath)
@@ -100,7 +97,12 @@ This todo uses RFC3339 timestamp format to test archiving.
 	}
 
 	// Verify archive structure based on started date
-	expectedArchivePath := filepath.Join(filepath.Dir(tempDir), "archive", "2025", "01", "29", "test-rfc3339-archive.md")
+	// Create a todo object with the expected started date for path calculation
+	todo := &Todo{
+		ID: "test-rfc3339-archive",
+		Started: time.Date(2025, 1, 29, 10, 30, 0, 0, time.UTC),
+	}
+	expectedArchivePath := GetArchivePath(tempDir, todo, "")
 	if _, err := os.Stat(expectedArchivePath); os.IsNotExist(err) {
 		t.Errorf("Archive file not found at expected path: %s", expectedArchivePath)
 	}
@@ -112,7 +114,7 @@ This todo uses RFC3339 timestamp format to test archiving.
 	}
 
 	// Verify that completed timestamp was added
-	if !contains(string(archivedContent), "completed:") || contains(string(archivedContent), "completed:\n") {
+	if !strings.Contains(string(archivedContent), "completed:") || strings.Contains(string(archivedContent), "completed:\n") {
 		t.Error("Archived file should have a non-empty completed timestamp")
 	}
 }

@@ -82,8 +82,8 @@ func (tm *TodoManager) ArchiveTodo(id string) error {
 	// Use the todo's started date for archiving
 	archivePath := GetDailyPath(todo.Started)
 
-	// Create archive directory structure
-	archiveDir := filepath.Join(filepath.Dir(tm.basePath), "archive", archivePath)
+	// Create archive directory structure within .claude
+	archiveDir := filepath.Join(tm.basePath, ".claude", "archive", archivePath)
 	err = os.MkdirAll(archiveDir, 0755)
 	if err != nil {
 		return interrors.NewOperationError("create", "archive directory", "failed to create archive directory", err)

@@ -250,7 +250,7 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 		}
 
 		// Debug: Check archive directory structure
-		archiveBase := filepath.Join(filepath.Dir(tempDir), "archive")
+		archiveBase := filepath.Join(tempDir, ".claude", "archive")
 		filepath.Walk(archiveBase, func(path string, info os.FileInfo, err error) error {
 			if err == nil && !info.IsDir() {
 				t.Logf("Found archived file: %s", path)
