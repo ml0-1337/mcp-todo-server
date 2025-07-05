@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	
+	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // TestGenerateBaseID tests the generateBaseID function with various inputs
@@ -329,8 +331,8 @@ func TestArchiveTodoWithCascade(t *testing.T) {
 
 		// Try to archive again
 		err = archiveTodoWithCascadeWrapper(manager, todo.ID, false)
-		if err == nil || !strings.Contains(err.Error(), "todo not found") {
-			t.Errorf("Should get 'todo not found' error, got: %v", err)
+		if !interrors.IsNotFound(err) {
+			t.Errorf("Should get NotFoundError, got: %v", err)
 		}
 	})
 

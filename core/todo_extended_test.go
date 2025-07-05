@@ -448,21 +448,21 @@ func TestArchiveOldTodos(t *testing.T) {
 		
 		// With the current logic, only recentCompleted (5 days old) should be archived
 		// The older ones (15, 20 days) are NOT within last 7 days
-		if _, err := os.Stat(filepath.Join(tempDir, recentCompleted.ID+".md")); !os.IsNotExist(err) {
+		if _, err := os.Stat(GetTodoPath(tempDir, recentCompleted.ID)); !os.IsNotExist(err) {
 			t.Error("Recent completed (5 days old) should be archived")
 		}
 		
 		// These should NOT be archived (older than 7 days)
-		if _, err := os.Stat(filepath.Join(tempDir, oldCompleted1.ID+".md")); os.IsNotExist(err) {
+		if _, err := os.Stat(GetTodoPath(tempDir, oldCompleted1.ID)); os.IsNotExist(err) {
 			t.Error("Old completed todo 1 (15 days) should NOT be archived with current logic")
 		}
 
-		if _, err := os.Stat(filepath.Join(tempDir, oldCompleted2.ID+".md")); os.IsNotExist(err) {
+		if _, err := os.Stat(GetTodoPath(tempDir, oldCompleted2.ID)); os.IsNotExist(err) {
 			t.Error("Old completed todo 2 (20 days) should NOT be archived with current logic")
 		}
 
 		// In-progress todo should never be archived regardless of age
-		if _, err := os.Stat(filepath.Join(tempDir, oldInProgress.ID+".md")); os.IsNotExist(err) {
+		if _, err := os.Stat(GetTodoPath(tempDir, oldInProgress.ID)); os.IsNotExist(err) {
 			t.Error("Old in-progress todo should not be archived")
 		}
 		

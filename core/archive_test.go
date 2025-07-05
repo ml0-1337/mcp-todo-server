@@ -195,8 +195,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Verify todo was archived exactly once
-		now := time.Now()
-		archivePath := filepath.Join(filepath.Dir(tempDir), "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo.ID+".md")
+		archivePath := GetArchivePath(tempDir, todo, "")
 		if _, err := os.Stat(archivePath); os.IsNotExist(err) {
 			t.Error("Todo should be archived")
 		}
