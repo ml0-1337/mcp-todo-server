@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/user/mcp-todo-server/core"
@@ -24,7 +26,8 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 
 	// Create search engine
 	indexPath := filepath.Join(todoPath, "..", "index", "todos.bleve")
-	searchEngine, err := core.NewSearchEngine(indexPath, filepath.Join(todoPath, ".claude", "todos"))
+	fmt.Fprintf(os.Stderr, "Creating search engine with indexPath=%s, todoPath=%s\n", indexPath, todoPath)
+	searchEngine, err := core.NewSearchEngine(indexPath, todoPath)
 	if err != nil {
 		return nil, interrors.Wrap(err, "failed to create search engine")
 	}

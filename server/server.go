@@ -53,10 +53,12 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	}
 
 	// Create handlers with resolved paths
+	fmt.Fprintf(os.Stderr, "Creating handlers with todoPath=%s, templatePath=%s\n", todoPath, templatePath)
 	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handlers: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "Handlers created successfully\n")
 
 	// Create MCP server instance
 	s := server.NewMCPServer(
@@ -79,7 +81,9 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	}
 
 	// Register all tools
+	fmt.Fprintf(os.Stderr, "Registering MCP tools...\n")
 	ts.registerTools()
+	fmt.Fprintf(os.Stderr, "Tools registered successfully\n")
 
 	// Create HTTP server if needed
 	if ts.transport == "http" {
@@ -393,11 +397,12 @@ func (ts *TodoServer) Start() error {
 
 // StartStdio starts the MCP server in STDIO mode
 func (ts *TodoServer) StartStdio() error {
-	fmt.Fprintf(os.Stderr, "Starting STDIO server...\n")
+	fmt.Fprintf(os.Stderr, "StartStdio called, starting MCP STDIO server...\n")
 	err := server.ServeStdio(ts.mcpServer)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "STDIO server error: %v\n", err)
 	}
+	fmt.Fprintf(os.Stderr, "StartStdio returning\n")
 	return err
 }
 

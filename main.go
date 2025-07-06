@@ -67,7 +67,7 @@ func main() {
 		switch *transport {
 		case "stdio":
 			// Log to stderr in STDIO mode
-			log.Printf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
+			fmt.Fprintf(os.Stderr, "Starting MCP Todo Server v%s (STDIO mode)...\n", Version)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}

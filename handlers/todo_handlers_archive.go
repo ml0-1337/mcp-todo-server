@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -42,7 +43,7 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	err = h.search.DeleteTodo(params.ID)
 	if err != nil {
 		// Log but don't fail
-		fmt.Printf("Warning: failed to remove from search index: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: failed to remove from search index: %v\n", err)
 	}
 
 	return FormatTodoArchiveResponse(params.ID, archivePath), nil

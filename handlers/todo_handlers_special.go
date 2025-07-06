@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -42,7 +43,7 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 	content := fmt.Sprintf("# Task: %s\n\n", todo.Task) // Template content would be added
 	err = h.search.IndexTodo(todo, content)
 	if err != nil {
-		fmt.Printf("Warning: failed to index todo: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: failed to index todo: %v\n", err)
 	}
 
 	return FormatTodoTemplateResponse(todo, filePath), nil

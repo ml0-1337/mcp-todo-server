@@ -47,10 +47,12 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	}
 
 	// Index existing todos
+	fmt.Fprintf(os.Stderr, "Indexing existing todos...\n")
 	err = engine.indexExistingTodos()
 	if err != nil {
 		return nil, fmt.Errorf("failed to index existing todos: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "Finished indexing existing todos\n")
 
 	return engine, nil
 }
@@ -58,14 +60,17 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 // indexExistingTodos indexes all existing todo files
 func (e *Engine) indexExistingTodos() error {
 	// Read all .md files in basePath
+	fmt.Fprintf(os.Stderr, "Reading todos directory: %s\n", e.basePath)
 	files, err := ioutil.ReadDir(e.basePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No todos directory yet, that's OK
+			fmt.Fprintf(os.Stderr, "Todos directory doesn't exist yet, skipping indexing\n")
 			return nil
 		}
 		return fmt.Errorf("failed to read todos directory: %w", err)
 	}
+	fmt.Fprintf(os.Stderr, "Found %d files in todos directory\n", len(files))
 
 	// Create a batch for efficient indexing
 	batch := e.index.NewBatch()

@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -41,7 +41,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 			err = linker.LinkTodos(params.ParentID, todo.ID, "parent-child")
 			if err != nil {
 				// Log but don't fail
-				log.Printf("Warning: failed to create parent-child link: %v", err)
+				fmt.Fprintf(os.Stderr, "Warning: failed to create parent-child link: %v\n", err)
 			}
 		}
 	}
@@ -51,7 +51,7 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		content, _ := h.manager.ReadTodoContent(todo.ID)
 		if err := h.search.IndexTodo(todo, content); err != nil {
 			// Log but don't fail
-			fmt.Printf("Warning: failed to index todo %s: %v\n", todo.ID, err)
+			fmt.Fprintf(os.Stderr, "Warning: failed to index todo %s: %v\n", todo.ID, err)
 		}
 	}
 
@@ -83,7 +83,7 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 	if h.search != nil {
 		content, _ := h.manager.ReadTodoContent(parentTodo.ID)
 		if err := h.search.IndexTodo(parentTodo, content); err != nil {
-			log.Printf("Warning: failed to index parent todo %s: %v", parentTodo.ID, err)
+			fmt.Fprintf(os.Stderr, "Warning: failed to index parent todo %s: %v\n", parentTodo.ID, err)
 		}
 	}
 
@@ -102,21 +102,21 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 			childType,
 		)
 		if err != nil {
-			log.Printf("Failed to create child todo '%s': %v", childParam.Task, err)
+			fmt.Fprintf(os.Stderr, "Failed to create child todo '%s': %v\n", childParam.Task, err)
 			continue
 		}
 
 		// Set parent ID
 		childTodo.ParentID = parentTodo.ID
 		if err := h.manager.SaveTodo(childTodo); err != nil {
-			log.Printf("Failed to update child todo with parent_id: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to update child todo with parent_id: %v\n", err)
 		}
 
 		// Create parent-child link
 		if h.baseManager != nil {
 			linker := core.NewTodoLinker(h.baseManager)
 			if err := linker.LinkTodos(parentTodo.ID, childTodo.ID, "parent-child"); err != nil {
-				log.Printf("Warning: failed to create parent-child link: %v", err)
+				fmt.Fprintf(os.Stderr, "Warning: failed to create parent-child link: %v\n", err)
 			}
 		}
 
@@ -124,7 +124,7 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 		if h.search != nil {
 			content, _ := h.manager.ReadTodoContent(childTodo.ID)
 			if err := h.search.IndexTodo(childTodo, content); err != nil {
-				log.Printf("Warning: failed to index child todo %s: %v", childTodo.ID, err)
+				fmt.Fprintf(os.Stderr, "Warning: failed to index child todo %s: %v\n", childTodo.ID, err)
 			}
 		}
 
