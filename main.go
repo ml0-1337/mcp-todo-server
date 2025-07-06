@@ -14,6 +14,9 @@ import (
 const Version = "2.0.0"
 
 func main() {
+	// Immediately log to stderr to debug startup
+	fmt.Fprintf(os.Stderr, "MCP Todo Server starting...\n")
+	
 	// Parse command line flags
 	var (
 		transport = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
@@ -50,7 +53,8 @@ func main() {
 	go func() {
 		switch *transport {
 		case "stdio":
-			// No logging to stdout in STDIO mode
+			// Log to stderr in STDIO mode
+			log.Printf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}

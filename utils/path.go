@@ -61,7 +61,8 @@ func FindProjectRoot(startPath string) (string, error) {
 func ResolveTodoPath() (string, error) {
 	// 1. Check for override (rare, but supported)
 	if customPath := GetEnv("CLAUDE_TODO_PATH", ""); customPath != "" {
-		log.Printf("Using custom todo path: %s", customPath)
+		// Use fmt.Fprintf to stderr to avoid stdout pollution
+		fmt.Fprintf(os.Stderr, "Using custom todo path: %s\n", customPath)
 		return customPath, nil
 	}
 
@@ -75,10 +76,10 @@ func ResolveTodoPath() (string, error) {
 	projectRoot, err := FindProjectRoot(cwd)
 	if err != nil {
 		// No project markers found, use current directory
-		log.Printf("No project root found, using current directory: %s", cwd)
+		fmt.Fprintf(os.Stderr, "No project root found, using current directory: %s\n", cwd)
 		projectRoot = cwd
 	} else {
-		log.Printf("Found project root: %s", projectRoot)
+		fmt.Fprintf(os.Stderr, "Found project root: %s\n", projectRoot)
 	}
 
 	// 4. Build todo path (ALWAYS project-level)
@@ -89,7 +90,7 @@ func ResolveTodoPath() (string, error) {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
 
-	log.Printf("Using todo directory: %s", todoPath)
+	fmt.Fprintf(os.Stderr, "Using todo directory: %s\n", todoPath)
 	return todoPath, nil
 }
 
@@ -103,7 +104,7 @@ func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
 	
-	log.Printf("Using todo directory from working dir: %s", todoPath)
+	fmt.Fprintf(os.Stderr, "Using todo directory from working dir: %s\n", todoPath)
 	return todoPath, nil
 }
 
@@ -111,7 +112,7 @@ func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
 func ResolveTemplatePath() (string, error) {
 	// 1. Check for explicit override
 	if customPath := GetEnv("CLAUDE_TEMPLATE_PATH", ""); customPath != "" {
-		log.Printf("Using custom template path: %s", customPath)
+		fmt.Fprintf(os.Stderr, "Using custom template path: %s\n", customPath)
 		return customPath, nil
 	}
 

@@ -39,6 +39,8 @@ func WithTransport(transport string) ServerOption {
 
 // NewTodoServer creates a new MCP todo server with all tools registered
 func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
+	log.Printf("Creating new TodoServer...")
+	
 	// Resolve paths dynamically
 	todoPath, err := utils.ResolveTodoPath()
 	if err != nil {
@@ -391,7 +393,12 @@ func (ts *TodoServer) Start() error {
 
 // StartStdio starts the MCP server in STDIO mode
 func (ts *TodoServer) StartStdio() error {
-	return server.ServeStdio(ts.mcpServer)
+	log.Printf("Starting STDIO server...")
+	err := server.ServeStdio(ts.mcpServer)
+	if err != nil {
+		log.Printf("STDIO server error: %v", err)
+	}
+	return err
 }
 
 // StartHTTP starts the MCP server in HTTP mode
