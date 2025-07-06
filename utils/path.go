@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -123,7 +122,7 @@ func ResolveTemplatePath() (string, error) {
 	// 3. Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Printf("Warning: Could not get working directory: %v", err)
+		fmt.Fprintf(os.Stderr, "Warning: Could not get working directory: %v\n", err)
 		cwd = "."
 	}
 
@@ -159,7 +158,7 @@ func ResolveTemplatePath() (string, error) {
 
 		// For hybrid mode, we'd need to modify the template manager
 		// to handle multiple directories
-		log.Printf("Hybrid mode: checking project (%s) and user (%s)", projectPath, userPath)
+		fmt.Fprintf(os.Stderr, "Hybrid mode: checking project (%s) and user (%s)\n", projectPath, userPath)
 
 		// For now, use project if exists, otherwise user
 		if IsDirectory(projectPath) {
@@ -167,7 +166,7 @@ func ResolveTemplatePath() (string, error) {
 		}
 		return userPath, nil
 	default:
-		log.Printf("Unknown CLAUDE_TEMPLATE_MODE: %s, using 'auto'", mode)
+		fmt.Fprintf(os.Stderr, "Unknown CLAUDE_TEMPLATE_MODE: %s, using 'auto'\n", mode)
 		mode = "auto"
 		return ResolveTemplatePath() // Recursive call with auto mode
 	}
@@ -175,18 +174,18 @@ func ResolveTemplatePath() (string, error) {
 	// 6. Find first existing directory
 	for _, path := range candidates {
 		if debug {
-			log.Printf("[DEBUG] Checking template path: %s", path)
+			fmt.Fprintf(os.Stderr, "[DEBUG] Checking template path: %s\n", path)
 		}
 		if IsDirectory(path) {
-			log.Printf("Using template directory: %s", path)
+			fmt.Fprintf(os.Stderr, "Using template directory: %s\n", path)
 			return path, nil
 		}
 	}
 
 	// 7. No directory found - show helpful error
-	log.Printf("Warning: No template directory found. Searched:")
+	fmt.Fprintf(os.Stderr, "Warning: No template directory found. Searched:\n")
 	for _, path := range candidates {
-		log.Printf("  - %s", path)
+		fmt.Fprintf(os.Stderr, "  - %s\n", path)
 	}
 
 	// Return first candidate as default (will be created if needed)

@@ -14,7 +14,26 @@ import (
 const Version = "2.0.0"
 
 func main() {
-	// Immediately log to stderr to debug startup
+	// Check if running in STDIO mode before ANY output
+	args := os.Args[1:]
+	isStdio := false
+	for i, arg := range args {
+		if arg == "-transport" && i+1 < len(args) && args[i+1] == "stdio" {
+			isStdio = true
+			break
+		}
+		if arg == "-transport=stdio" {
+			isStdio = true
+			break
+		}
+	}
+	
+	// Redirect ALL logging to stderr immediately if STDIO mode
+	if isStdio {
+		log.SetOutput(os.Stderr)
+	}
+	
+	// Now safe to log
 	fmt.Fprintf(os.Stderr, "MCP Todo Server starting...\n")
 	
 	// Parse command line flags
@@ -30,12 +49,6 @@ func main() {
 	if *version {
 		fmt.Printf("MCP Todo Server v%s\n", Version)
 		os.Exit(0)
-	}
-
-	// For STDIO mode, redirect all logging to stderr BEFORE server initialization
-	if *transport == "stdio" {
-		// Redirect log output to stderr to avoid interfering with STDIO protocol
-		log.SetOutput(os.Stderr)
 	}
 
 	// Create server with transport type

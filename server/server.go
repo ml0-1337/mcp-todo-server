@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -39,7 +39,7 @@ func WithTransport(transport string) ServerOption {
 
 // NewTodoServer creates a new MCP todo server with all tools registered
 func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
-	log.Printf("Creating new TodoServer...")
+	fmt.Fprintf(os.Stderr, "Creating new TodoServer...\n")
 	
 	// Resolve paths dynamically
 	todoPath, err := utils.ResolveTodoPath()
@@ -393,10 +393,10 @@ func (ts *TodoServer) Start() error {
 
 // StartStdio starts the MCP server in STDIO mode
 func (ts *TodoServer) StartStdio() error {
-	log.Printf("Starting STDIO server...")
+	fmt.Fprintf(os.Stderr, "Starting STDIO server...\n")
 	err := server.ServeStdio(ts.mcpServer)
 	if err != nil {
-		log.Printf("STDIO server error: %v", err)
+		fmt.Fprintf(os.Stderr, "STDIO server error: %v\n", err)
 	}
 	return err
 }
@@ -421,7 +421,7 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 		IdleTimeout:  120 * time.Second,
 	}
 	
-	log.Printf("Starting HTTP server with middleware on %s", addr)
+	fmt.Fprintf(os.Stderr, "Starting HTTP server with middleware on %s\n", addr)
 	return server.ListenAndServe()
 }
 
@@ -455,6 +455,6 @@ func (ts *TodoServer) handleHealthCheck(w http.ResponseWriter, r *http.Request) 
 	
 	// Write response
 	if err := json.NewEncoder(w).Encode(health); err != nil {
-		log.Printf("Error encoding health response: %v", err)
+		fmt.Fprintf(os.Stderr, "Error encoding health response: %v\n", err)
 	}
 }

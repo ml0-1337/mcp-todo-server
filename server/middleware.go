@@ -2,8 +2,9 @@ package server
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -44,7 +45,7 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 		
 		// Update working directory if provided
 		if workingDir != "" && session.WorkingDirectory != workingDir {
-			log.Printf("Updating working directory for session %s: %s -> %s", 
+			fmt.Fprintf(os.Stderr, "Updating working directory for session %s: %s -> %s\n", 
 				sessionID, session.WorkingDirectory, workingDir)
 			session.WorkingDirectory = workingDir
 		}
@@ -58,7 +59,7 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 		LastActivity:     now,
 	}
 	sm.sessions[sessionID] = session
-	log.Printf("Created new session %s with working directory: %s", sessionID, workingDir)
+	fmt.Fprintf(os.Stderr, "Created new session %s with working directory: %s\n", sessionID, workingDir)
 	return session
 }
 
@@ -69,7 +70,7 @@ func (sm *SessionManager) RemoveSession(sessionID string) {
 	
 	if _, exists := sm.sessions[sessionID]; exists {
 		delete(sm.sessions, sessionID)
-		log.Printf("Removed session %s", sessionID)
+		fmt.Fprintf(os.Stderr, "Removed session %s\n", sessionID)
 	}
 }
 
@@ -85,12 +86,12 @@ func (sm *SessionManager) CleanupStaleSessions(inactivityTimeout time.Duration) 
 		if now.Sub(session.LastActivity) > inactivityTimeout {
 			delete(sm.sessions, id)
 			removedCount++
-			log.Printf("Removed stale session %s (inactive for %v)", id, now.Sub(session.LastActivity))
+			fmt.Fprintf(os.Stderr, "Removed stale session %s (inactive for %v)\n", id, now.Sub(session.LastActivity))
 		}
 	}
 	
 	if removedCount > 0 {
-		log.Printf("Cleaned up %d stale sessions", removedCount)
+		fmt.Fprintf(os.Stderr, "Cleaned up %d stale sessions\n", removedCount)
 	}
 	
 	return removedCount
@@ -110,7 +111,7 @@ func HTTPMiddleware(sessionManager *SessionManager) func(http.Handler) http.Hand
 			// Extract working directory from header
 			workingDir := r.Header.Get("X-Working-Directory")
 			if workingDir != "" {
-				log.Printf("Received X-Working-Directory header: %s", workingDir)
+				fmt.Fprintf(os.Stderr, "Received X-Working-Directory header: %s\n", workingDir)
 			}
 			
 			// Extract session ID from header
@@ -211,10 +212,10 @@ func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 		case <-ticker.C:
 			removed := w.sessionManager.CleanupStaleSessions(sessionTimeout)
 			if removed > 0 {
-				log.Printf("Session cleanup: removed %d stale sessions", removed)
+				fmt.Fprintf(os.Stderr, "Session cleanup: removed %d stale sessions\n", removed)
 			}
 		case <-w.cleanupStop:
-			log.Println("Stopping session cleanup routine")
+			fmt.Fprintln(os.Stderr, "Stopping session cleanup routine")
 			return
 		}
 	}
@@ -229,12 +230,12 @@ func (w *StreamableHTTPServerWrapper) Stop() {
 // LoggingMiddleware logs incoming requests (optional, for debugging)
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("HTTP %s %s", r.Method, r.URL.Path)
+		fmt.Fprintf(os.Stderr, "HTTP %s %s\n", r.Method, r.URL.Path)
 		
 		// Log interesting headers
 		for name, values := range r.Header {
 			if strings.HasPrefix(name, "X-") || strings.HasPrefix(name, "Mcp-") {
-				log.Printf("  Header %s: %s", name, strings.Join(values, ", "))
+				fmt.Fprintf(os.Stderr, "  Header %s: %s\n", name, strings.Join(values, ", "))
 			}
 		}
 		

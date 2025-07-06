@@ -1,83 +1,229 @@
-# MCP Todo Server - Development Guidelines
+# CLAUDE.md
 
-## Critical Guidelines for STDIO Mode Compatibility
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-### Log Output Interference Prevention
+## Project Overview
+
+MCP Todo Server is a Go-based Model Context Protocol (MCP) server that replaces Claude Code's native todo system with a comprehensive task management solution. It maintains full compatibility with the existing `.claude/todos/` markdown file structure while providing enhanced capabilities like search, templates, and analytics.
+
+## Critical Guidelines
+
+### STDIO Mode Compatibility
 
 **CRITICAL**: In STDIO mode, the server communicates via JSON-RPC protocol over stdin/stdout. ANY output to stdout that is not valid JSON-RPC will corrupt the protocol and cause connection timeouts.
 
-#### Rules for Logging
-
+#### Logging Rules
 1. **NEVER use stdout for logging** - No `fmt.Println()`, `log.Print()`, or any stdout writes
 2. **Always redirect logs to stderr** - Use `fmt.Fprintf(os.Stderr, ...)` or `log.SetOutput(os.Stderr)`
 3. **Check all packages** - Ensure utils, core, handlers, and server packages follow these rules
 4. **Init-time logging** - Be especially careful with initialization code that runs before main()
-
-#### Safe Logging Patterns
-
-```go
-// ✅ GOOD - Logs to stderr
-fmt.Fprintf(os.Stderr, "Debug message: %s\n", value)
-log.SetOutput(os.Stderr)
-log.Printf("This goes to stderr")
-
-// ❌ BAD - Corrupts STDIO protocol
-fmt.Println("This breaks STDIO mode")
-log.Print("This also breaks STDIO mode")
-fmt.Printf("Don't do this either")
-```
-
-#### Testing STDIO Mode
-
-When testing STDIO mode:
-1. Always check stderr for logs: `./mcp-todo-server -transport=stdio 2>stderr.log`
-2. Ensure stdout only contains JSON-RPC messages
-3. Test with proper initialization: `echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{...}}' | ./mcp-todo-server -transport=stdio`
-
-## Project-Specific Guidelines
 
 ### Archive Directory Structure
 
 - Archives are stored in `.claude/archive/YYYY/MM/DD/` within the project directory
 - When `CLAUDE_TODO_PATH` is set, archives remain within that directory structure
 - Never use `filepath.Dir(basePath)` for archive paths - always use `filepath.Join(basePath, ".claude", "archive")`
-
-### Testing Guidelines
-
-- Run `make test` before committing
-- Use `make test-verbose` for detailed output
-- Edge case tests are important - fix them when they fail
-- Archive operations should be atomic (use rename, not copy+delete)
+- Daily archives optimize for high-volume usage (20-50 todos/day)
 
 ### Build Process
 
-- Use `make build` to create binaries with version info
-- Binary is output to `./build/mcp-todo-server`
-- If STDIO mode hangs with no output, check if binary is corrupted (compare with build/ version)
+- Always use `make build` to create binaries with version info
+- Binary outputs to `./build/mcp-todo-server`
+- If STDIO mode hangs, check if binary is corrupted (compare with build/ version)
+- Copy binary from build/ after successful compilation: `cp build/mcp-todo-server .`
 
-## Development Workflow
+## Development Commands
 
-1. Make changes
-2. Run tests: `make test`
-3. Build: `make build`
-4. Test STDIO mode: `./build/mcp-todo-server -transport=stdio 2>stderr.log`
-5. Test HTTP mode: `./build/mcp-todo-server -transport=http`
-6. Copy binary: `cp build/mcp-todo-server .`
-7. Commit changes with semantic commit messages
+### Building
+```bash
+make build              # Build server binary with version info
+make build-all          # Build for multiple platforms
+make install            # Build and install to $GOPATH/bin
+```
 
-## Common Issues and Solutions
+### Testing
+```bash
+make test-claude        # Best for Claude Code - clean output, fast execution (20s timeout)
+make test               # Standard test suite with race detector (30s timeout)
+make test-quick         # Quick tests without race detector (20s timeout)
+make test-coverage      # Generate HTML coverage report
+make test-e2e           # Run comprehensive end-to-end tests
+```
 
-### STDIO Mode Timeout
-- **Symptom**: "MCP server for mcp-todo-server failed to respond within 30000ms"
-- **Cause**: Log output to stdout corrupting JSON-RPC protocol
-- **Solution**: Check all code for stdout writes, redirect to stderr
+### Running
+```bash
+make server-http        # Start HTTP server on port 8080 (recommended)
+make server-stdio       # Start STDIO server (legacy)
+make run                # Build and run in HTTP mode
+```
 
-### Binary Hangs on Startup
-- **Symptom**: No output even to stderr, process in uninterruptible sleep (UE)
-- **Cause**: Corrupted binary or macOS quarantine attributes
-- **Solution**: Rebuild with `make build` and copy fresh binary from build/
+### Development
+```bash
+make lint               # Run golangci-lint
+make fmt                # Format code with go fmt
+make vet                # Run go vet for static analysis
+make check              # Run all checks (fmt, vet, lint, test)
+make mod-tidy           # Clean up go.mod dependencies
+```
 
-### Archive Files in Wrong Location
-- **Symptom**: Archives created outside project directory
-- **Cause**: Using `filepath.Dir(basePath)` in archive path calculation
-- **Solution**: Use `filepath.Join(basePath, ".claude", "archive", ...)`
+## High-Level Architecture
+
+### Transport Layer
+- **HTTP Mode** (recommended): Supports multiple instances, context-aware todo creation
+- **STDIO Mode**: Legacy single-instance mode, requires careful stdout handling
+- Both modes use the MCP protocol for communication
+
+### Handler Layer (`handlers/`)
+- Processes MCP tool requests
+- Parameter extraction and validation
+- Business logic orchestration
+- Error conversion to MCP responses
+
+Key interfaces:
+- `TodoManager` - Core todo operations
+- `SearchEngine` - Full-text search with Bleve
+- `StatsEngine` - Analytics operations
+- `TemplateManager` - Template operations
+
+### Core Layer (`core/`)
+- Todo lifecycle management
+- Search indexing with Bleve (sub-50ms for 2400+ todos)
+- Statistics calculation
+- Template processing
+- Multi-phase project linking
+
+### Storage Layer (`storage/`)
+- File system operations
+- Path resolution and validation
+- Archive management
+- Directory structure maintenance
+
+## Code Organization
+
+### Package Structure
+```
+server/         # MCP server setup and tool registration
+handlers/       # MCP tool handlers with clean interfaces
+core/           # Business logic implementation
+internal/       # Shared utilities
+  errors/       # Structured error types
+  validation/   # Centralized validation
+  testutil/     # Test helpers and fixtures
+storage/        # File system operations
+```
+
+### Interface Conventions
+Following Go idioms, interfaces don't have "Interface" suffix:
+- `TodoManager` (not TodoManagerInterface)
+- `SearchEngine` (not SearchEngineInterface)
+
+### Error Handling
+```go
+// In core layer
+if os.IsNotExist(err) {
+    return interrors.NewNotFoundError("todo", id)
+}
+
+// In handler layer
+if interrors.IsNotFound(err) {
+    return mcp.NewToolResultError("Todo not found")
+}
+```
+
+### Testing Strategy
+- Unit tests with mocked interfaces
+- Integration tests with real file system
+- Test utilities in `internal/testutil`
+- Use temporary directories to avoid conflicts
+
+## Transport Modes
+
+### HTTP Mode (Recommended)
+```bash
+# Start server
+./mcp-todo-server -transport http -port 8080
+
+# Configure Claude Code
+claude mcp add --transport http todo http://localhost:8080/mcp
+```
+
+**Context-Aware Todo Creation**: HTTP mode automatically creates todos in the project where Claude Code is running through the `X-Working-Directory` header.
+
+### STDIO Mode Considerations
+```bash
+# Start server (with logging to stderr)
+./mcp-todo-server -transport stdio 2>server.log
+
+# Configure Claude Code
+claude mcp add todo /path/to/mcp-todo-server --args "-transport" "stdio"
+```
+
+## Common Development Tasks
+
+### Adding a New MCP Tool
+1. Define handler method in `handlers/todo_handlers_*.go`
+2. Add parameter extraction in `handlers/params_*.go`
+3. Add response formatting in `handlers/responses_*.go`
+4. Register tool in `server/server.go`
+5. Add tests for handler, params, and responses
+
+### Running Specific Tests
+```bash
+# Single test
+go test -run TestSpecificFunction -v
+
+# Pattern matching
+go test -run "TestTodo.*" -v
+
+# Package tests
+go test ./handlers -v
+```
+
+### Debugging Test Failures
+1. Use `make test-verbose` for detailed output
+2. Check for blocking operations or missing mocks
+3. Ensure temp directories are used in tests
+4. Verify timeouts are appropriate
+
+### Working with Todos
+- Todos stored in `.claude/todos/` directory
+- Archives in `.claude/archive/YYYY/MM/DD/`
+- Use MCP tools, never direct file manipulation
+- Test with real file operations for integration
+
+## CI/CD Integration
+
+### GitHub Actions Workflow
+- **Lint**: golangci-lint on all code
+- **Test Matrix**: Ubuntu/macOS/Windows × Go 1.22/1.23/1.24
+- **Build**: Multi-platform binaries
+- **Integration**: End-to-end tests
+- **Security**: Trivy vulnerability scanning
+
+### Running CI Locally
+```bash
+# Test workflows with act
+make workflow-test
+
+# Lint workflow files
+make workflow-lint
+```
+
+## Quick Reference
+
+### Key Files
+- `Makefile` - All build/test/run commands
+- `TRANSPORT_GUIDE.md` - Transport mode details
+- `docs/testing.md` - Comprehensive testing guide
+- `docs/development/architecture.md` - Detailed architecture
+
+### Performance Targets
+- Response time: <100ms for all operations
+- Search latency: <50ms for 2400+ todos
+- Startup time: <500ms with full index load
+- Memory usage: ~20MB base + 10KB per 1000 todos
+
+### Dependencies
+- `github.com/mark3labs/mcp-go` - MCP protocol implementation
+- `github.com/blevesearch/bleve/v2` - Full-text search engine
+- Go 1.21+ required (uses Go 1.23 in CI)
