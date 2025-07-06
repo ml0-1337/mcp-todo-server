@@ -29,6 +29,12 @@ func main() {
 		os.Exit(0)
 	}
 
+	// For STDIO mode, redirect all logging to stderr BEFORE server initialization
+	if *transport == "stdio" {
+		// Redirect log output to stderr to avoid interfering with STDIO protocol
+		log.SetOutput(os.Stderr)
+	}
+
 	// Create server with transport type
 	todoServer, err := server.NewTodoServer(server.WithTransport(*transport))
 	if err != nil {
@@ -44,7 +50,7 @@ func main() {
 	go func() {
 		switch *transport {
 		case "stdio":
-			log.Printf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
+			// No logging to stdout in STDIO mode
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}
