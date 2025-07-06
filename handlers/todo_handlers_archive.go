@@ -18,11 +18,17 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		return nil, err
 	}
 
+	// Get managers for the current context
+	manager, search, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
+	}
+
 	// Read todo BEFORE archiving to get its metadata
-	todo, readErr := h.manager.ReadTodo(params.ID)
+	todo, readErr := manager.ReadTodo(params.ID)
 
 	// Archive todo
-	err = h.manager.ArchiveTodo(params.ID)
+	err = manager.ArchiveTodo(params.ID)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -40,7 +46,7 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	}
 
 	// Remove from search index
-	err = h.search.DeleteTodo(params.ID)
+	err = search.DeleteTodo(params.ID)
 	if err != nil {
 		// Log but don't fail
 		fmt.Fprintf(os.Stderr, "Warning: failed to remove from search index: %v\n", err)
@@ -51,6 +57,12 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 
 // HandleTodoClean performs cleanup operations
 func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Get managers for the current context
+	manager, _, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
+	}
+
 	// Get operation type
 	operation := request.GetString("operation", "archive_old")
 
@@ -58,7 +70,7 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 	case "archive_old":
 		// Archive todos older than specified days
 		days := request.GetInt("days", 90)
-		count, err := h.manager.ArchiveOldTodos(days)
+		count, err := manager.ArchiveOldTodos(days)
 		if err != nil {
 			return HandleError(err), nil
 		}
@@ -66,7 +78,7 @@ func (h *TodoHandlers) HandleTodoClean(ctx context.Context, request mcp.CallTool
 
 	case "find_duplicates":
 		// Find duplicate todos
-		duplicates, err := h.manager.FindDuplicateTodos()
+		duplicates, err := manager.FindDuplicateTodos()
 		if err != nil {
 			return HandleError(err), nil
 		}

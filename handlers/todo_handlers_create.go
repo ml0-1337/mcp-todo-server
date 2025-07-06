@@ -20,8 +20,14 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		return HandleError(err), nil
 	}
 
+	// Get managers for the current context
+	manager, search, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, interrors.Wrap(err, "failed to get context-aware managers")
+	}
+
 	// Create todo
-	todo, err := h.manager.CreateTodo(params.Task, params.Priority, params.Type)
+	todo, err := manager.CreateTodo(params.Task, params.Priority, params.Type)
 	if err != nil {
 		return nil, interrors.Wrap(err, "failed to create todo")
 	}
@@ -30,14 +36,15 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	if params.ParentID != "" {
 		// Update the todo with parent_id
 		todo.ParentID = params.ParentID
-		err = h.manager.SaveTodo(todo)
+		err = manager.SaveTodo(todo)
 		if err != nil {
 			return nil, interrors.Wrap(err, "failed to update todo with parent_id")
 		}
 
 		// Create the link using the TodoLinker
-		if h.baseManager != nil {
-			linker := core.NewTodoLinker(h.baseManager)
+		// Need to use a concrete TodoManager for linking
+		if concreteManager, ok := manager.(*core.TodoManager); ok {
+			linker := core.NewTodoLinker(concreteManager)
 			err = linker.LinkTodos(params.ParentID, todo.ID, "parent-child")
 			if err != nil {
 				// Log but don't fail
@@ -47,16 +54,16 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 	}
 
 	// Index the todo for search
-	if h.search != nil {
-		content, _ := h.manager.ReadTodoContent(todo.ID)
-		if err := h.search.IndexTodo(todo, content); err != nil {
+	if search != nil {
+		content, _ := manager.ReadTodoContent(todo.ID)
+		if err := search.IndexTodo(todo, content); err != nil {
 			// Log but don't fail
 			fmt.Fprintf(os.Stderr, "Warning: failed to index todo %s: %v\n", todo.ID, err)
 		}
 	}
 
 	// Create response with parent context if applicable
-	filePath := filepath.Join(h.manager.GetBasePath(), todo.ID+".md")
+	filePath := filepath.Join(manager.GetBasePath(), todo.ID+".md")
 	// Create the tool result with formatted response
 	return FormatTodoCreateResponse(todo, filePath), nil
 }
@@ -69,8 +76,14 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 		return nil, err
 	}
 
+	// Get managers for the current context
+	manager, search, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, interrors.Wrap(err, "failed to get context-aware managers")
+	}
+
 	// Create parent todo first
-	parentTodo, err := h.manager.CreateTodo(
+	parentTodo, err := manager.CreateTodo(
 		params.Parent.Task,
 		params.Parent.Priority,
 		params.Parent.Type,
@@ -80,9 +93,9 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 	}
 
 	// Index parent todo
-	if h.search != nil {
-		content, _ := h.manager.ReadTodoContent(parentTodo.ID)
-		if err := h.search.IndexTodo(parentTodo, content); err != nil {
+	if search != nil {
+		content, _ := manager.ReadTodoContent(parentTodo.ID)
+		if err := search.IndexTodo(parentTodo, content); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to index parent todo %s: %v\n", parentTodo.ID, err)
 		}
 	}
@@ -96,7 +109,7 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 			childType = "phase"
 		}
 
-		childTodo, err := h.manager.CreateTodo(
+		childTodo, err := manager.CreateTodo(
 			childParam.Task,
 			childParam.Priority,
 			childType,
@@ -108,22 +121,22 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 
 		// Set parent ID
 		childTodo.ParentID = parentTodo.ID
-		if err := h.manager.SaveTodo(childTodo); err != nil {
+		if err := manager.SaveTodo(childTodo); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to update child todo with parent_id: %v\n", err)
 		}
 
 		// Create parent-child link
-		if h.baseManager != nil {
-			linker := core.NewTodoLinker(h.baseManager)
+		if concreteManager, ok := manager.(*core.TodoManager); ok {
+			linker := core.NewTodoLinker(concreteManager)
 			if err := linker.LinkTodos(parentTodo.ID, childTodo.ID, "parent-child"); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to create parent-child link: %v\n", err)
 			}
 		}
 
 		// Index child todo
-		if h.search != nil {
-			content, _ := h.manager.ReadTodoContent(childTodo.ID)
-			if err := h.search.IndexTodo(childTodo, content); err != nil {
+		if search != nil {
+			content, _ := manager.ReadTodoContent(childTodo.ID)
+			if err := search.IndexTodo(childTodo, content); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to index child todo %s: %v\n", childTodo.ID, err)
 			}
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
+	ctxkeys "github.com/user/mcp-todo-server/internal/context"
 	"github.com/user/mcp-todo-server/utils"
 )
 
@@ -87,7 +88,24 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 
 	// Create HTTP server if needed
 	if ts.transport == "http" {
-		ts.httpServer = server.NewStreamableHTTPServer(s)
+		// Create HTTP server with context function to pass through request context
+		ts.httpServer = server.NewStreamableHTTPServer(s,
+			server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
+				// Extract working directory from header
+				workingDir := r.Header.Get("X-Working-Directory")
+				if workingDir != "" {
+					ctx = context.WithValue(ctx, ctxkeys.WorkingDirectoryKey, workingDir)
+				}
+				
+				// Extract session ID from header
+				sessionID := r.Header.Get("Mcp-Session-Id")
+				if sessionID != "" {
+					ctx = context.WithValue(ctx, ctxkeys.SessionIDKey, sessionID)
+				}
+				
+				return ctx
+			}),
+		)
 		// Wrap with middleware for header extraction
 		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.httpServer)
 	}

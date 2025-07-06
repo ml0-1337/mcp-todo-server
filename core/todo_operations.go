@@ -437,6 +437,7 @@ func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, er
 	defer tm.mu.Unlock()
 
 	todosDir := filepath.Join(tm.basePath, ".claude", "todos")
+	fmt.Fprintf(os.Stderr, "ListTodos: Reading from %s\n", todosDir)
 	files, err := ioutil.ReadDir(todosDir)
 	if err != nil {
 		if os.IsNotExist(err) {

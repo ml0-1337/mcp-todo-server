@@ -18,6 +18,12 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		return nil, err
 	}
 
+	// Get managers for the current context
+	manager, search, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
+	}
+
 	// Handle metadata updates
 	metadataMap := make(map[string]string)
 	if params.Metadata.Status != "" {
@@ -31,17 +37,17 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 	}
 
 	if len(metadataMap) > 0 {
-		err = h.manager.UpdateTodo(params.ID, "", "", "", metadataMap)
+		err = manager.UpdateTodo(params.ID, "", "", "", metadataMap)
 		if err != nil {
 			return nil, interrors.Wrap(err, "failed to update metadata")
 		}
 
 		// Re-index if status changed
-		if _, hasStatus := metadataMap["status"]; hasStatus && h.search != nil {
-			todo, _ := h.manager.ReadTodo(params.ID)
+		if _, hasStatus := metadataMap["status"]; hasStatus && search != nil {
+			todo, _ := manager.ReadTodo(params.ID)
 			if todo != nil {
-				content, _ := h.manager.ReadTodoContent(params.ID)
-				h.search.IndexTodo(todo, content)
+				content, _ := manager.ReadTodoContent(params.ID)
+				search.IndexTodo(todo, content)
 			}
 		}
 
@@ -56,17 +62,17 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 
 	// Handle section updates
 	if params.Section != "" {
-		err = h.manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, nil)
+		err = manager.UpdateTodo(params.ID, params.Section, params.Operation, params.Content, nil)
 		if err != nil {
 			return nil, interrors.Wrap(err, "failed to update section")
 		}
 
 		// Re-index after content update
-		if h.search != nil {
-			todo, _ := h.manager.ReadTodo(params.ID)
+		if search != nil {
+			todo, _ := manager.ReadTodo(params.ID)
 			if todo != nil {
-				content, _ := h.manager.ReadTodoContent(params.ID)
-				h.search.IndexTodo(todo, content)
+				content, _ := manager.ReadTodoContent(params.ID)
+				search.IndexTodo(todo, content)
 			}
 		}
 
@@ -90,8 +96,14 @@ func (h *TodoHandlers) HandleTodoSections(ctx context.Context, request mcp.CallT
 		return HandleError(interrors.NewValidationError("id", "", "missing required parameter")), nil
 	}
 
+	// Get managers for the current context
+	manager, _, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
+	}
+
 	// Read the todo
-	todo, content, err := h.manager.ReadTodoWithContent(id)
+	todo, content, err := manager.ReadTodoWithContent(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -122,6 +134,12 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	required := request.GetBool("required", false)
 	order := request.GetInt("order", 100) // Default to high order (end of sections)
 
+	// Get managers for the current context
+	manager, _, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
+	}
+
 	// Validate schema
 	validSchemas := map[string]bool{
 		"freeform":   true,
@@ -137,7 +155,7 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	}
 
 	// Read the todo
-	todo, err := h.manager.ReadTodo(id)
+	todo, err := manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -161,7 +179,7 @@ func (h *TodoHandlers) HandleTodoAddSection(ctx context.Context, request mcp.Cal
 	}
 
 	// Save the todo with the new section
-	err = h.manager.SaveTodo(todo)
+	err = manager.SaveTodo(todo)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -193,8 +211,14 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 		return HandleError(fmt.Errorf("'order' must be an object mapping section keys to order values")), nil
 	}
 
+	// Get managers for the current context
+	manager, _, _, _, err := h.factory.GetManagers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
+	}
+
 	// Read the todo
-	todo, err := h.manager.ReadTodo(id)
+	todo, err := manager.ReadTodo(id)
 	if err != nil {
 		return HandleError(err), nil
 	}
@@ -228,7 +252,7 @@ func (h *TodoHandlers) HandleTodoReorderSections(ctx context.Context, request mc
 	}
 
 	// Save the todo with updated section orders
-	err = h.manager.SaveTodo(todo)
+	err = manager.SaveTodo(todo)
 	if err != nil {
 		return HandleError(err), nil
 	}
