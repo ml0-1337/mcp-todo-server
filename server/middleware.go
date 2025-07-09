@@ -169,16 +169,18 @@ func GetSessionIDFromContext(ctx context.Context) (string, bool) {
 type StreamableHTTPServerWrapper struct {
 	server         http.Handler
 	sessionManager *SessionManager
+	sessionTimeout time.Duration
 	cleanupStop    chan struct{}
 	cleanupDone    chan struct{}
 }
 
 // NewStreamableHTTPServerWrapper creates a new wrapper with middleware
-func NewStreamableHTTPServerWrapper(streamableServer http.Handler) *StreamableHTTPServerWrapper {
+func NewStreamableHTTPServerWrapper(streamableServer http.Handler, sessionTimeout time.Duration) *StreamableHTTPServerWrapper {
 	sessionManager := NewSessionManager()
 	wrapper := &StreamableHTTPServerWrapper{
 		server:         streamableServer,
 		sessionManager: sessionManager,
+		sessionTimeout: sessionTimeout,
 		cleanupStop:    make(chan struct{}),
 		cleanupDone:    make(chan struct{}),
 	}
@@ -204,13 +206,16 @@ func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	
-	// Session timeout is 10 minutes
-	sessionTimeout := 10 * time.Minute
+	// Use configured session timeout (0 means no cleanup)
+	if w.sessionTimeout == 0 {
+		fmt.Fprintln(os.Stderr, "Session cleanup disabled (timeout=0)")
+		return
+	}
 	
 	for {
 		select {
 		case <-ticker.C:
-			removed := w.sessionManager.CleanupStaleSessions(sessionTimeout)
+			removed := w.sessionManager.CleanupStaleSessions(w.sessionTimeout)
 			if removed > 0 {
 				fmt.Fprintf(os.Stderr, "Session cleanup: removed %d stale sessions\n", removed)
 			}

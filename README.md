@@ -14,13 +14,22 @@ This MCP server maintains full compatibility with the existing `.claude/todos/` 
 - ⚡ **<100ms response time** for all operations
 - 🌐 **HTTP transport** for multi-instance support
 
-## 🆕 New: HTTP Transport Support
+## 🆕 New Features
+
+### HTTP Transport Support
 
 The server now supports both STDIO and HTTP transports. HTTP is recommended as it allows:
 - Multiple Claude Code instances to connect simultaneously
 - Running multiple server instances on different ports
 - Better debugging with standard HTTP tools
 - **Context-aware todo creation** - todos are created in the project where Claude Code is running
+
+### Configurable Session & Manager Timeouts
+
+New in v2.1.0: Configure how long sessions and manager sets stay in memory:
+- **Session timeout**: Controls HTTP session cleanup (default: 7 days)
+- **Manager timeout**: Controls manager set cleanup (default: 24 hours)
+- Set to `0` to disable cleanup entirely
 
 ### HTTP Header-Based Working Directory
 
@@ -30,9 +39,14 @@ See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for transport details and [docs/htt
 
 ## Current Status
 
-**Version**: 2.0.0 (Release Candidate)  
+**Version**: 2.1.0  
 **Test Coverage**: 85-90% across most packages  
 **Production Ready**: Yes - All critical functionality tested and working
+
+### Major Improvements in v2.1.0
+- ✅ Configurable session and manager timeouts
+- ✅ Support for long-running Claude Code sessions
+- ✅ Health check endpoint for monitoring
 
 ### Major Improvements in v2.0.0
 - ✅ Complete codebase refactoring following Go best practices
@@ -123,6 +137,44 @@ claude mcp add todo /Users/macbook/Programming/go_projects/mcp-todo-server/mcp-t
 # 2. Server will start automatically when Claude Code connects
 ```
 
+### Session Management & Timeouts
+
+The server manages two types of resources with configurable timeouts:
+
+#### Sessions (HTTP only)
+- Lightweight connection tracking (~100 bytes each)
+- Track Claude Code instances and their working directories
+- Default timeout: 7 days
+- Cleaned up every 5 minutes
+
+#### Manager Sets
+- Heavyweight service instances (5-20MB each)
+- Contains TodoManager, SearchEngine, StatsEngine, TemplateManager
+- One set per unique working directory
+- Default timeout: 24 hours
+- Cleaned up every 10 minutes
+
+#### Timeout Configuration
+
+```bash
+# Default: sessions expire after 7 days, managers after 24 hours
+./mcp-todo-server -transport http
+
+# Keep sessions forever (for long-running Claude Code)
+./mcp-todo-server -transport http -session-timeout 0
+
+# Custom timeouts
+./mcp-todo-server -transport http -session-timeout 30d -manager-timeout 3d
+
+# Show available flags
+./mcp-todo-server -h
+```
+
+**Common Use Cases:**
+- **Long-running development**: `-session-timeout 0 -manager-timeout 24h`
+- **Memory-constrained systems**: `-session-timeout 1h -manager-timeout 30m`
+- **Production servers**: Default values are recommended
+
 ### Running Tests
 
 ```bash
@@ -207,6 +259,27 @@ This structure optimizes for high-volume usage (20-50 todos/day) while maintaini
 - **Startup time**: <500ms with full index load
 - **Memory usage**: ~20MB base + 10KB per 1000 todos
 
+### 🏥 Health Monitoring
+
+The server provides a health check endpoint for monitoring:
+
+```bash
+curl http://localhost:8080/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "uptime": "2h15m30s",
+  "uptimeMs": 8130000,
+  "serverTime": "2025-07-02T15:30:45Z",
+  "transport": "http",
+  "version": "2.1.0",
+  "sessions": 3
+}
+```
+
 ### 🧪 Test Coverage
 - **Overall**: ~88% coverage
 - **Core packages**: 85-90% coverage
@@ -225,6 +298,17 @@ Following strict TDD with RGRC (Red-Green-Refactor-Commit) cycle:
 Each test cycle is tracked in `.claude/todos/implement-mcp-todo-server.md`.
 
 ## Configuration
+
+### Command-Line Flags
+
+```bash
+-transport string     Transport type: stdio, http (default: http)
+-host string         Host for HTTP transport (default: localhost)
+-port string         Port for HTTP transport (default: 8080)
+-session-timeout     Session timeout duration (default: 7d, 0 to disable)
+-manager-timeout     Manager set timeout duration (default: 24h, 0 to disable)
+-version            Print version and exit
+```
 
 ### MCP Server Configuration
 

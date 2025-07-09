@@ -15,13 +15,15 @@ type TodoHandlers struct {
 	factory *ManagerFactory
 	// Direct reference to TodoManager for linker creation
 	baseManager *core.TodoManager
+	// Manager timeout configuration
+	managerTimeout time.Duration
 	// Cleanup routine control
 	cleanupStop chan struct{}
 	cleanupDone chan struct{}
 }
 
 // NewTodoHandlers creates new todo handlers with dependencies
-func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
+func NewTodoHandlers(todoPath, templatePath string, managerTimeout time.Duration) (*TodoHandlers, error) {
 	// Create a simple todo manager without context wrapper
 	baseManager := core.NewTodoManager(todoPath)
 
@@ -43,10 +45,11 @@ func NewTodoHandlers(todoPath, templatePath string) (*TodoHandlers, error) {
 	factory := NewManagerFactory(baseManager, searchEngine, stats, templates)
 
 	h := &TodoHandlers{
-		factory:     factory,
-		baseManager: baseManager,
-		cleanupStop: make(chan struct{}),
-		cleanupDone: make(chan struct{}),
+		factory:        factory,
+		baseManager:    baseManager,
+		managerTimeout: managerTimeout,
+		cleanupStop:    make(chan struct{}),
+		cleanupDone:    make(chan struct{}),
 	}
 
 	// Start cleanup routine
@@ -94,13 +97,16 @@ func (h *TodoHandlers) cleanupRoutine() {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	
-	// Manager timeout is 15 minutes
-	managerTimeout := 15 * time.Minute
+	// Use configured manager timeout (0 means no cleanup)
+	if h.managerTimeout == 0 {
+		fmt.Fprintln(os.Stderr, "Manager cleanup disabled (timeout=0)")
+		return
+	}
 	
 	for {
 		select {
 		case <-ticker.C:
-			removed := h.factory.CleanupStale(managerTimeout)
+			removed := h.factory.CleanupStale(h.managerTimeout)
 			if removed > 0 {
 				fmt.Fprintf(os.Stderr, "Manager cleanup: removed %d stale manager sets\n", removed)
 			}

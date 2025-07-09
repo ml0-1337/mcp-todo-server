@@ -17,15 +17,17 @@ import (
 
 // TodoServer represents the MCP server for todo management
 type TodoServer struct {
-	mcpServer     *server.MCPServer
-	handlers      *handlers.TodoHandlers
-	transport     string
-	httpServer    *server.StreamableHTTPServer
-	httpWrapper   *StreamableHTTPServerWrapper
-	startTime     time.Time
+	mcpServer      *server.MCPServer
+	handlers       *handlers.TodoHandlers
+	transport      string
+	httpServer     *server.StreamableHTTPServer
+	httpWrapper    *StreamableHTTPServerWrapper
+	startTime      time.Time
+	sessionTimeout time.Duration
+	managerTimeout time.Duration
 	
-	closeMu       sync.Mutex
-	closed        bool
+	closeMu        sync.Mutex
+	closed         bool
 }
 
 // ServerOption is a function that configures a TodoServer
@@ -35,6 +37,20 @@ type ServerOption func(*TodoServer)
 func WithTransport(transport string) ServerOption {
 	return func(s *TodoServer) {
 		s.transport = transport
+	}
+}
+
+// WithSessionTimeout sets the session timeout duration
+func WithSessionTimeout(timeout time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.sessionTimeout = timeout
+	}
+}
+
+// WithManagerTimeout sets the manager timeout duration
+func WithManagerTimeout(timeout time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.managerTimeout = timeout
 	}
 }
 
@@ -53,14 +69,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		return nil, fmt.Errorf("failed to resolve template path: %w", err)
 	}
 
-	// Create handlers with resolved paths
-	fmt.Fprintf(os.Stderr, "Creating handlers with todoPath=%s, templatePath=%s\n", todoPath, templatePath)
-	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create handlers: %w", err)
-	}
-	fmt.Fprintf(os.Stderr, "Handlers created successfully\n")
-
+	// Don't create handlers yet - we need to apply options first to get timeout values
 	// Create MCP server instance
 	s := server.NewMCPServer(
 		"MCP Todo Server",
@@ -70,16 +79,26 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 
 	// Create todo server wrapper with default transport
 	ts := &TodoServer{
-		mcpServer: s,
-		handlers:  todoHandlers,
-		transport: "stdio",
-		startTime: time.Now(),
+		mcpServer:      s,
+		transport:      "stdio",
+		startTime:      time.Now(),
+		sessionTimeout: 7 * 24 * time.Hour, // Default: 7 days
+		managerTimeout: 24 * time.Hour,     // Default: 24 hours
 	}
 
 	// Apply options
 	for _, opt := range opts {
 		opt(ts)
 	}
+
+	// Now create handlers with the configured manager timeout
+	fmt.Fprintf(os.Stderr, "Creating handlers with todoPath=%s, templatePath=%s, managerTimeout=%v\n", todoPath, templatePath, ts.managerTimeout)
+	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath, ts.managerTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create handlers: %w", err)
+	}
+	ts.handlers = todoHandlers
+	fmt.Fprintf(os.Stderr, "Handlers created successfully\n")
 
 	// Register all tools
 	fmt.Fprintf(os.Stderr, "Registering MCP tools...\n")
@@ -107,7 +126,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 			}),
 		)
 		// Wrap with middleware for header extraction
-		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.httpServer)
+		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.httpServer, ts.sessionTimeout)
 	}
 
 	return ts, nil
