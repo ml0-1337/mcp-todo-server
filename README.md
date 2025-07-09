@@ -29,7 +29,8 @@ The server now supports both STDIO and HTTP transports. HTTP is recommended as i
 New in v2.1.0: Configure how long sessions and manager sets stay in memory:
 - **Session timeout**: Controls HTTP session cleanup (default: 7 days)
 - **Manager timeout**: Controls manager set cleanup (default: 24 hours)
-- Set to `0` to disable cleanup entirely
+- **Heartbeat interval**: Prevents connection drops (default: 30 seconds)
+- Set any timeout to `0` to disable
 
 ### HTTP Header-Based Working Directory
 
@@ -47,6 +48,7 @@ See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for transport details and [docs/htt
 - ✅ Configurable session and manager timeouts
 - ✅ Support for long-running Claude Code sessions
 - ✅ Health check endpoint for monitoring
+- ✅ HTTP heartbeat support to prevent connection drops
 
 ### Major Improvements in v2.0.0
 - ✅ Complete codebase refactoring following Go best practices
@@ -175,6 +177,34 @@ The server manages two types of resources with configurable timeouts:
 - **Memory-constrained systems**: `-session-timeout 1h -manager-timeout 30m`
 - **Production servers**: Default values are recommended
 
+### HTTP Heartbeat Configuration
+
+The server sends periodic heartbeat messages through the SSE connection to prevent network infrastructure from closing idle connections.
+
+#### Why Heartbeats Matter
+- Network equipment (NAT, proxies, firewalls) often close idle TCP connections
+- Without heartbeats, Claude Code may lose connection after 5-30 minutes of inactivity
+- Heartbeats keep the connection alive by sending periodic ping messages
+
+#### Configuration
+```bash
+# Default: 30-second heartbeat interval
+./mcp-todo-server -transport http
+
+# Custom heartbeat interval
+./mcp-todo-server -transport http -heartbeat-interval 15s
+
+# Disable heartbeats (not recommended)
+./mcp-todo-server -transport http -heartbeat-interval 0
+```
+
+**Recommended Values:**
+- **Corporate networks**: 15-20 seconds (stricter firewalls)
+- **Home networks**: 30-60 seconds (default is usually fine)
+- **Direct connection**: Can use longer intervals or disable
+
+**Note**: Heartbeats only apply to HTTP transport. STDIO transport doesn't need them.
+
 ### Running Tests
 
 ```bash
@@ -302,12 +332,13 @@ Each test cycle is tracked in `.claude/todos/implement-mcp-todo-server.md`.
 ### Command-Line Flags
 
 ```bash
--transport string     Transport type: stdio, http (default: http)
--host string         Host for HTTP transport (default: localhost)
--port string         Port for HTTP transport (default: 8080)
--session-timeout     Session timeout duration (default: 7d, 0 to disable)
--manager-timeout     Manager set timeout duration (default: 24h, 0 to disable)
--version            Print version and exit
+-transport string      Transport type: stdio, http (default: http)
+-host string          Host for HTTP transport (default: localhost)
+-port string          Port for HTTP transport (default: 8080)
+-session-timeout      Session timeout duration (default: 7d, 0 to disable)
+-manager-timeout      Manager set timeout duration (default: 24h, 0 to disable)
+-heartbeat-interval   HTTP heartbeat interval (default: 30s, 0 to disable)
+-version             Print version and exit
 ```
 
 ### MCP Server Configuration

@@ -17,17 +17,18 @@ import (
 
 // TodoServer represents the MCP server for todo management
 type TodoServer struct {
-	mcpServer      *server.MCPServer
-	handlers       *handlers.TodoHandlers
-	transport      string
-	httpServer     *server.StreamableHTTPServer
-	httpWrapper    *StreamableHTTPServerWrapper
-	startTime      time.Time
-	sessionTimeout time.Duration
-	managerTimeout time.Duration
+	mcpServer         *server.MCPServer
+	handlers          *handlers.TodoHandlers
+	transport         string
+	httpServer        *server.StreamableHTTPServer
+	httpWrapper       *StreamableHTTPServerWrapper
+	startTime         time.Time
+	sessionTimeout    time.Duration
+	managerTimeout    time.Duration
+	heartbeatInterval time.Duration
 	
-	closeMu        sync.Mutex
-	closed         bool
+	closeMu           sync.Mutex
+	closed            bool
 }
 
 // ServerOption is a function that configures a TodoServer
@@ -51,6 +52,13 @@ func WithSessionTimeout(timeout time.Duration) ServerOption {
 func WithManagerTimeout(timeout time.Duration) ServerOption {
 	return func(s *TodoServer) {
 		s.managerTimeout = timeout
+	}
+}
+
+// WithHeartbeatInterval sets the heartbeat interval duration
+func WithHeartbeatInterval(interval time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.heartbeatInterval = interval
 	}
 }
 
@@ -79,11 +87,12 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 
 	// Create todo server wrapper with default transport
 	ts := &TodoServer{
-		mcpServer:      s,
-		transport:      "stdio",
-		startTime:      time.Now(),
-		sessionTimeout: 7 * 24 * time.Hour, // Default: 7 days
-		managerTimeout: 24 * time.Hour,     // Default: 24 hours
+		mcpServer:         s,
+		transport:         "stdio",
+		startTime:         time.Now(),
+		sessionTimeout:    7 * 24 * time.Hour, // Default: 7 days
+		managerTimeout:    24 * time.Hour,     // Default: 24 hours
+		heartbeatInterval: 30 * time.Second,    // Default: 30 seconds
 	}
 
 	// Apply options
@@ -108,7 +117,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	// Create HTTP server if needed
 	if ts.transport == "http" {
 		// Create HTTP server with context function to pass through request context
-		ts.httpServer = server.NewStreamableHTTPServer(s,
+		options := []server.StreamableHTTPOption{
 			server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
 				// Extract working directory from header
 				workingDir := r.Header.Get("X-Working-Directory")
@@ -124,7 +133,17 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 				
 				return ctx
 			}),
-		)
+		}
+		
+		// Add heartbeat interval if configured
+		if ts.heartbeatInterval > 0 {
+			fmt.Fprintf(os.Stderr, "Configuring heartbeat interval: %v\n", ts.heartbeatInterval)
+			options = append(options, server.WithHeartbeatInterval(ts.heartbeatInterval))
+		} else {
+			fmt.Fprintf(os.Stderr, "Heartbeat disabled (interval=0)\n")
+		}
+		
+		ts.httpServer = server.NewStreamableHTTPServer(s, options...)
 		// Wrap with middleware for header extraction
 		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.httpServer, ts.sessionTimeout)
 	}

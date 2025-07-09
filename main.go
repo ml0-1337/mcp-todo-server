@@ -39,12 +39,13 @@ func main() {
 	
 	// Parse command line flags
 	var (
-		transport       = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
-		port            = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
-		host            = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
-		version         = flag.Bool("version", false, "Print version and exit")
-		sessionTimeout  = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
-		managerTimeout  = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
+		transport        = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
+		port             = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
+		host             = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
+		version          = flag.Bool("version", false, "Print version and exit")
+		sessionTimeout   = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
+		managerTimeout   = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
+		heartbeatInterval = flag.Duration("heartbeat-interval", 30*time.Second, "HTTP heartbeat interval (default: 30s, 0 to disable)")
 	)
 	flag.Parse()
 
@@ -59,6 +60,7 @@ func main() {
 		server.WithTransport(*transport),
 		server.WithSessionTimeout(*sessionTimeout),
 		server.WithManagerTimeout(*managerTimeout),
+		server.WithHeartbeatInterval(*heartbeatInterval),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
@@ -75,14 +77,14 @@ func main() {
 		case "stdio":
 			// Log to stderr in STDIO mode
 			fmt.Fprintf(os.Stderr, "Starting MCP Todo Server v%s (STDIO mode)...\n", Version)
-			fmt.Fprintf(os.Stderr, "Session timeout: %v, Manager timeout: %v\n", *sessionTimeout, *managerTimeout)
+			fmt.Fprintf(os.Stderr, "Session timeout: %v, Manager timeout: %v, Heartbeat: %v\n", *sessionTimeout, *managerTimeout, *heartbeatInterval)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}
 		case "http":
 			addr := fmt.Sprintf("%s:%s", *host, *port)
 			log.Printf("Starting MCP Todo Server v%s (HTTP mode) on %s...", Version, addr)
-			log.Printf("Session timeout: %v, Manager timeout: %v", *sessionTimeout, *managerTimeout)
+			log.Printf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)
 			if err := todoServer.StartHTTP(addr); err != nil {
 				errChan <- err
 			}
