@@ -154,8 +154,18 @@ lsof -i :8080
 kill <PID>
 ```
 
+### Multiple Instance Prevention
+**New in v2.1.0**: The server automatically prevents multiple instances from running on the same port using file locking.
+
+If you try to start a second instance, you'll see:
+```
+Failed to acquire server lock: another instance is already running on this port
+```
+
+This prevents conflicts and ensures only one server instance per port.
+
 ### Multiple Zombie Processes
-The HTTP transport prevents zombie processes since each instance runs on its own port.
+The HTTP transport prevents zombie processes since each instance runs on its own port, and file locking prevents accidental duplicate instances.
 
 ### Connection Refused
 - Ensure the server is running: `ps aux | grep mcp-todo-server`

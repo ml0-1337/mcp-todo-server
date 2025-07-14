@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/user/mcp-todo-server/internal/lock"
 	"github.com/user/mcp-todo-server/server"
 )
 
@@ -55,6 +56,23 @@ func main() {
 		os.Exit(0)
 	}
 
+	// For HTTP transport, acquire exclusive lock to prevent multiple instances
+	var serverLock *lock.ServerLock
+	var err error
+	if *transport == "http" {
+		serverLock, err = lock.NewServerLock(*port)
+		if err != nil {
+			log.Fatalf("Failed to create server lock: %v", err)
+		}
+		
+		err = serverLock.TryLock()
+		if err != nil {
+			log.Fatalf("Failed to acquire server lock: %v", err)
+		}
+		
+		fmt.Fprintf(os.Stderr, "Acquired exclusive lock for port %s\n", *port)
+	}
+
 	// Create server with transport type and timeout options
 	todoServer, err := server.NewTodoServer(
 		server.WithTransport(*transport),
@@ -63,6 +81,9 @@ func main() {
 		server.WithHeartbeatInterval(*heartbeatInterval),
 	)
 	if err != nil {
+		if serverLock != nil {
+			serverLock.Unlock()
+		}
 		log.Fatalf("Failed to create server: %v", err)
 	}
 
@@ -96,11 +117,23 @@ func main() {
 	// Wait for shutdown signal or error
 	select {
 	case err := <-errChan:
+		if serverLock != nil {
+			if unlockErr := serverLock.Unlock(); unlockErr != nil {
+				log.Printf("Error releasing server lock: %v", unlockErr)
+			}
+		}
 		log.Fatalf("Server error: %v", err)
 	case sig := <-sigChan:
 		fmt.Fprintf(os.Stderr, "\nReceived signal %v, shutting down...\n", sig)
 		if err := todoServer.Close(); err != nil {
 			log.Printf("Error closing server: %v", err)
+		}
+		if serverLock != nil {
+			if err := serverLock.Unlock(); err != nil {
+				log.Printf("Error releasing server lock: %v", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Released server lock\n")
+			}
 		}
 		os.Exit(0)
 	}
