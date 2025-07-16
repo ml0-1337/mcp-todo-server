@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,10 +19,20 @@ import (
 type Engine struct {
 	index    bleve.Index
 	basePath string
+	lock     *IndexLock
 }
 
 // NewEngine creates or opens a search index
 func NewEngine(indexPath, todosPath string) (*Engine, error) {
+	// Create index lock to prevent concurrent access
+	indexLock := NewIndexLock(indexPath)
+	
+	// Try to acquire lock with timeout
+	err := indexLock.TryLock(10 * time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire index lock (index may be in use by another process): %w", err)
+	}
+	
 	// Check if index exists
 	index, err := bleve.Open(indexPath)
 	if err == bleve.ErrorIndexPathDoesNotExist {
@@ -44,17 +55,49 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	engine := &Engine{
 		index:    index,
 		basePath: todosPath,
+		lock:     indexLock,
 	}
 
-	// Index existing todos
+	// Index existing todos with timeout
 	fmt.Fprintf(os.Stderr, "Indexing existing todos...\n")
-	err = engine.indexExistingTodos()
+	indexCtx, indexCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer indexCancel()
+	
+	err = engine.indexExistingTodosWithTimeout(indexCtx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to index existing todos: %w", err)
+		fmt.Fprintf(os.Stderr, "Warning: Failed to index existing todos: %v. Search may have incomplete results.\n", err)
+		// Don't fail engine creation - continue with empty index
+	} else {
+		fmt.Fprintf(os.Stderr, "Finished indexing existing todos\n")
 	}
-	fmt.Fprintf(os.Stderr, "Finished indexing existing todos\n")
 
 	return engine, nil
+}
+
+// indexExistingTodosWithTimeout indexes all existing todo files with timeout protection
+func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
+	// Channel to receive result from goroutine
+	type result struct {
+		err error
+	}
+	resultCh := make(chan result, 1)
+	
+	// Run indexing in goroutine to enable timeout
+	go func() {
+		err := e.indexExistingTodos()
+		resultCh <- result{err: err}
+	}()
+	
+	// Wait for either completion or timeout
+	select {
+	case res := <-resultCh:
+		return res.err
+	case <-ctx.Done():
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("indexing existing todos timed out after 30 seconds")
+		}
+		return ctx.Err()
+	}
 }
 
 // indexExistingTodos indexes all existing todo files
@@ -115,10 +158,28 @@ func (e *Engine) indexExistingTodos() error {
 		batch.Index(todoID, doc)
 	}
 
-	// Execute batch
-	err = e.index.Batch(batch)
-	if err != nil {
-		return fmt.Errorf("failed to index batch: %w", err)
+	// Execute batch with timeout protection
+	batchCtx, batchCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer batchCancel()
+	
+	// Channel to receive batch result
+	type batchResult struct {
+		err error
+	}
+	batchCh := make(chan batchResult, 1)
+	
+	go func() {
+		err := e.index.Batch(batch)
+		batchCh <- batchResult{err: err}
+	}()
+	
+	select {
+	case res := <-batchCh:
+		if res.err != nil {
+			return fmt.Errorf("failed to index batch: %w", res.err)
+		}
+	case <-batchCtx.Done():
+		return fmt.Errorf("batch indexing timed out after 10 seconds")
 	}
 
 	return nil
@@ -126,6 +187,13 @@ func (e *Engine) indexExistingTodos() error {
 
 // Close closes the search index
 func (e *Engine) Close() error {
+	defer func() {
+		if e.lock != nil {
+			if err := e.lock.Unlock(); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to unlock index: %v\n", err)
+			}
+		}
+	}()
 	return e.index.Close()
 }
 

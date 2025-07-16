@@ -45,6 +45,9 @@ func NewManagerFactory(baseManager TodoManager, baseSearch SearchEngine, baseSta
 
 // GetManagers returns the appropriate managers for the given context
 func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEngine, StatsEngine, TemplateManager, error) {
+	// Add timeout for manager creation to prevent hanging
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 	// Try to get working directory from context
 	workingDir, ok := ctx.Value(ctxkeys.WorkingDirectoryKey).(string)
 	if !ok || workingDir == "" {
@@ -96,9 +99,12 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 	// Create managers - TodoManager expects the working directory, not the todos path
 	manager := core.NewTodoManager(workingDir)
 	
-	search, err := core.NewSearchEngine(indexPath, todoPath)
+	// Create search engine with timeout and graceful fallback
+	search, err := f.createSearchEngineWithTimeout(ctx, indexPath, todoPath)
 	if err != nil {
-		return nil, nil, nil, nil, interrors.Wrap(err, "failed to create search engine")
+		// Log error but continue without search functionality
+		fmt.Fprintf(os.Stderr, "Warning: Failed to create search engine for %s: %v. Continuing without search functionality.\n", workingDir, err)
+		search = nil // Will be handled gracefully by handlers
 	}
 
 	stats := core.NewStatsEngine(manager)
@@ -151,4 +157,31 @@ func (f *ManagerFactory) GetActiveCount() int {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return len(f.managers)
+}
+
+// createSearchEngineWithTimeout creates a search engine with timeout protection
+func (f *ManagerFactory) createSearchEngineWithTimeout(ctx context.Context, indexPath, todoPath string) (SearchEngine, error) {
+	// Channel to receive result from goroutine
+	type result struct {
+		engine SearchEngine
+		err    error
+	}
+	resultCh := make(chan result, 1)
+	
+	// Start search engine creation in goroutine
+	go func() {
+		engine, err := core.NewSearchEngine(indexPath, todoPath)
+		resultCh <- result{engine: engine, err: err}
+	}()
+	
+	// Wait for either completion or timeout
+	select {
+	case res := <-resultCh:
+		return res.engine, res.err
+	case <-ctx.Done():
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("search engine creation timed out after 30 seconds")
+		}
+		return nil, ctx.Err()
+	}
 }

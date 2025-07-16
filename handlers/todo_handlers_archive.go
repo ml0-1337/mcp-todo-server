@@ -45,11 +45,13 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		archivePath = filepath.Join(".claude", "archive", params.ID+".md")
 	}
 
-	// Remove from search index
-	err = search.DeleteTodo(params.ID)
-	if err != nil {
-		// Log but don't fail
-		fmt.Fprintf(os.Stderr, "Warning: failed to remove from search index: %v\n", err)
+	// Remove from search index if available
+	if search != nil {
+		err = search.DeleteTodo(params.ID)
+		if err != nil {
+			// Log but don't fail
+			fmt.Fprintf(os.Stderr, "Warning: failed to remove from search index: %v\n", err)
+		}
 	}
 
 	return FormatTodoArchiveResponse(params.ID, archivePath), nil

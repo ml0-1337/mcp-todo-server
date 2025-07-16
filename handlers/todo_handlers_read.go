@@ -95,6 +95,11 @@ func (h *TodoHandlers) HandleTodoSearch(ctx context.Context, request mcp.CallToo
 		filterMap["date_to"] = params.Filters.DateTo
 	}
 
+	// Check if search is available
+	if search == nil {
+		return nil, fmt.Errorf("search functionality is currently unavailable (index may be locked or corrupted)")
+	}
+
 	// Perform search
 	results, err := search.SearchTodos(params.Query, filterMap, params.Limit)
 	if err != nil {
