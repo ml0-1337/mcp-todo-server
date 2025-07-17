@@ -135,3 +135,68 @@ func TestHTTPMiddleware_SessionCleanup(t *testing.T) {
 		t.Error("Session was not removed after DELETE request")
 	}
 }
+
+func TestSessionManager_MultipleSessionsSameDirectory(t *testing.T) {
+	sm := NewSessionManager()
+	workingDir := "/test/project"
+	
+	// Create first session
+	session1 := sm.GetOrCreateSession("session-1", workingDir)
+	if session1.ID != "session-1" {
+		t.Errorf("Expected session ID 'session-1', got '%s'", session1.ID)
+	}
+	if session1.WorkingDirectory != workingDir {
+		t.Errorf("Expected working directory '%s', got '%s'", workingDir, session1.WorkingDirectory)
+	}
+	
+	// Create second session with same working directory
+	session2 := sm.GetOrCreateSession("session-2", workingDir)
+	if session2.ID != "session-2" {
+		t.Errorf("Expected session ID 'session-2', got '%s'", session2.ID)
+	}
+	if session2.WorkingDirectory != workingDir {
+		t.Errorf("Expected working directory '%s', got '%s'", workingDir, session2.WorkingDirectory)
+	}
+	
+	// Verify they are different sessions
+	if session1 == session2 {
+		t.Error("Expected different session objects for different session IDs")
+	}
+	
+	// Verify both sessions exist
+	if sm.GetActiveSessions() != 2 {
+		t.Errorf("Expected 2 active sessions, got %d", sm.GetActiveSessions())
+	}
+	
+	// Verify sessions for directory returns both
+	sessions := sm.GetSessionsForDirectory(workingDir)
+	if len(sessions) != 2 {
+		t.Errorf("Expected 2 sessions for directory, got %d", len(sessions))
+	}
+}
+
+func TestSessionManager_IndependentSessions(t *testing.T) {
+	sm := NewSessionManager()
+	
+	// Create sessions for different directories
+	session1 := sm.GetOrCreateSession("session-1", "/project/a")
+	session2 := sm.GetOrCreateSession("session-2", "/project/b")
+	
+	if session1.WorkingDirectory == session2.WorkingDirectory {
+		t.Error("Sessions should have different working directories")
+	}
+	
+	// Remove one session
+	sm.RemoveSession("session-1")
+	
+	// Verify only one session remains
+	if sm.GetActiveSessions() != 1 {
+		t.Errorf("Expected 1 active session after removal, got %d", sm.GetActiveSessions())
+	}
+	
+	// Verify session-2 still exists
+	session2Again := sm.GetOrCreateSession("session-2", "/project/b")
+	if session2Again != session2 {
+		t.Error("Expected to get existing session-2")
+	}
+}

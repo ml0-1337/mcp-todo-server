@@ -21,64 +21,34 @@ type SessionInfo struct {
 
 // SessionManager manages session information
 type SessionManager struct {
-	sessions       map[string]*SessionInfo
-	dirToSession   map[string]string  // working directory -> session ID mapping
-	mu             sync.RWMutex
+	sessions map[string]*SessionInfo
+	mu       sync.RWMutex
 }
 
 // NewSessionManager creates a new session manager
 func NewSessionManager() *SessionManager {
 	return &SessionManager{
-		sessions:     make(map[string]*SessionInfo),
-		dirToSession: make(map[string]string),
+		sessions: make(map[string]*SessionInfo),
 	}
 }
 
-// GetOrCreateSession retrieves or creates a session with working directory deduplication
+// GetOrCreateSession retrieves or creates a session
 func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string) *SessionInfo {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	
 	now := time.Now()
 	
-	// First check if we already have a session for this working directory
-	if workingDir != "" {
-		if existingSessionID, exists := sm.dirToSession[workingDir]; exists {
-			if existingSession, sessionExists := sm.sessions[existingSessionID]; sessionExists {
-				// Update last activity on existing session
-				existingSession.LastActivity = now
-				
-				// If this is a different session ID, we're reusing the session
-				if existingSessionID != sessionID {
-					fmt.Fprintf(os.Stderr, "Reusing existing session %s for working directory: %s (requested session: %s)\n", 
-						existingSessionID, workingDir, sessionID)
-				}
-				return existingSession
-			} else {
-				// Clean up stale directory mapping
-				delete(sm.dirToSession, workingDir)
-			}
-		}
-	}
-	
-	// Check if session ID already exists (but for different directory)
+	// Check if session ID already exists
 	if session, exists := sm.sessions[sessionID]; exists {
 		// Update last activity
 		session.LastActivity = now
 		
 		// Update working directory if provided and different
 		if workingDir != "" && session.WorkingDirectory != workingDir {
-			// Remove old directory mapping
-			if session.WorkingDirectory != "" {
-				delete(sm.dirToSession, session.WorkingDirectory)
-			}
-			
 			fmt.Fprintf(os.Stderr, "Updating working directory for session %s: %s -> %s\n", 
 				sessionID, session.WorkingDirectory, workingDir)
 			session.WorkingDirectory = workingDir
-			
-			// Add new directory mapping
-			sm.dirToSession[workingDir] = sessionID
 		}
 		return session
 	}
@@ -91,11 +61,6 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 	}
 	sm.sessions[sessionID] = session
 	
-	// Add directory mapping if working directory provided
-	if workingDir != "" {
-		sm.dirToSession[workingDir] = sessionID
-	}
-	
 	fmt.Fprintf(os.Stderr, "Created new session %s with working directory: %s\n", sessionID, workingDir)
 	return session
 }
@@ -105,11 +70,7 @@ func (sm *SessionManager) RemoveSession(sessionID string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	
-	if session, exists := sm.sessions[sessionID]; exists {
-		// Remove directory mapping
-		if session.WorkingDirectory != "" {
-			delete(sm.dirToSession, session.WorkingDirectory)
-		}
+	if _, exists := sm.sessions[sessionID]; exists {
 		delete(sm.sessions, sessionID)
 		fmt.Fprintf(os.Stderr, "Removed session %s\n", sessionID)
 	}
@@ -125,10 +86,6 @@ func (sm *SessionManager) CleanupStaleSessions(inactivityTimeout time.Duration) 
 	
 	for id, session := range sm.sessions {
 		if now.Sub(session.LastActivity) > inactivityTimeout {
-			// Remove directory mapping
-			if session.WorkingDirectory != "" {
-				delete(sm.dirToSession, session.WorkingDirectory)
-			}
 			delete(sm.sessions, id)
 			removedCount++
 			fmt.Fprintf(os.Stderr, "Removed stale session %s (inactive for %v)\n", id, now.Sub(session.LastActivity))
@@ -163,17 +120,6 @@ func (sm *SessionManager) GetSessionsForDirectory(workingDir string) []*SessionI
 	return sessions
 }
 
-// GetDirectoryMappings returns a copy of the directory to session mappings
-func (sm *SessionManager) GetDirectoryMappings() map[string]string {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-	
-	mappings := make(map[string]string)
-	for dir, sessionID := range sm.dirToSession {
-		mappings[dir] = sessionID
-	}
-	return mappings
-}
 
 // GetSessionStats returns detailed session statistics
 func (sm *SessionManager) GetSessionStats() map[string]interface{} {
@@ -182,7 +128,6 @@ func (sm *SessionManager) GetSessionStats() map[string]interface{} {
 	
 	stats := make(map[string]interface{})
 	stats["total_sessions"] = len(sm.sessions)
-	stats["total_directories"] = len(sm.dirToSession)
 	
 	// Count sessions per directory
 	dirCount := make(map[string]int)
