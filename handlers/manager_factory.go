@@ -21,6 +21,12 @@ type ManagerFactory struct {
 	baseSearch    SearchEngine
 	baseStats     StatsEngine
 	baseTemplates TemplateManager
+	
+	// Circuit breaker for manager creation
+	creationAttempts  map[string]int
+	lastFailureTime   map[string]time.Time
+	maxCreationAttempts int
+	backoffDuration   time.Duration
 }
 
 // managerSet contains all managers for a specific directory
@@ -35,11 +41,15 @@ type managerSet struct {
 // NewManagerFactory creates a new manager factory with a base manager for fallback
 func NewManagerFactory(baseManager TodoManager, baseSearch SearchEngine, baseStats StatsEngine, baseTemplates TemplateManager) *ManagerFactory {
 	return &ManagerFactory{
-		managers:      make(map[string]*managerSet),
-		baseManager:   baseManager,
-		baseSearch:    baseSearch,
-		baseStats:     baseStats,
-		baseTemplates: baseTemplates,
+		managers:            make(map[string]*managerSet),
+		baseManager:         baseManager,
+		baseSearch:          baseSearch,
+		baseStats:           baseStats,
+		baseTemplates:       baseTemplates,
+		creationAttempts:    make(map[string]int),
+		lastFailureTime:     make(map[string]time.Time),
+		maxCreationAttempts: 3,
+		backoffDuration:     30 * time.Second,
 	}
 }
 
@@ -77,6 +87,12 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 		return set.manager, set.search, set.stats, set.templates, nil
 	}
 
+	// Circuit breaker: Check if we should allow manager creation
+	if f.shouldBlockManagerCreation(workingDir) {
+		fmt.Fprintf(os.Stderr, "Circuit breaker: Blocking manager creation for %s (too many recent failures)\n", workingDir)
+		return f.baseManager, f.baseSearch, f.baseStats, f.baseTemplates, nil
+	}
+
 	// Create new manager set for this directory
 	fmt.Fprintf(os.Stderr, "Creating new manager set for working directory: %s\n", workingDir)
 	
@@ -87,12 +103,15 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 
 	// Ensure directories exist
 	if err := os.MkdirAll(todoPath, 0755); err != nil {
+		f.recordManagerCreationFailure(workingDir)
 		return nil, nil, nil, nil, interrors.Wrap(err, "failed to create todo directory")
 	}
 	if err := os.MkdirAll(templatePath, 0755); err != nil {
+		f.recordManagerCreationFailure(workingDir)
 		return nil, nil, nil, nil, interrors.Wrap(err, "failed to create template directory")
 	}
 	if err := os.MkdirAll(filepath.Dir(indexPath), 0755); err != nil {
+		f.recordManagerCreationFailure(workingDir)
 		return nil, nil, nil, nil, interrors.Wrap(err, "failed to create index directory")
 	}
 
@@ -118,6 +137,9 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 		templates:    templates,
 		lastAccessed: time.Now(),
 	}
+
+	// Record successful creation to reset circuit breaker
+	f.recordManagerCreationSuccess(workingDir)
 
 	fmt.Fprintf(os.Stderr, "Created manager set for %s (total cached: %d)\n", workingDir, len(f.managers))
 	return manager, search, stats, templates, nil
@@ -184,4 +206,40 @@ func (f *ManagerFactory) createSearchEngineWithTimeout(ctx context.Context, inde
 		}
 		return nil, ctx.Err()
 	}
+}
+
+// shouldBlockManagerCreation checks if manager creation should be blocked due to circuit breaker
+func (f *ManagerFactory) shouldBlockManagerCreation(workingDir string) bool {
+	attempts := f.creationAttempts[workingDir]
+	lastFailure := f.lastFailureTime[workingDir]
+	
+	// If we haven't exceeded max attempts, allow creation
+	if attempts < f.maxCreationAttempts {
+		return false
+	}
+	
+	// If we've exceeded max attempts, check if enough time has passed
+	if time.Since(lastFailure) > f.backoffDuration {
+		// Reset the circuit breaker
+		f.creationAttempts[workingDir] = 0
+		delete(f.lastFailureTime, workingDir)
+		return false
+	}
+	
+	// Block creation - still in backoff period
+	return true
+}
+
+// recordManagerCreationFailure records a failure for circuit breaker purposes
+func (f *ManagerFactory) recordManagerCreationFailure(workingDir string) {
+	f.creationAttempts[workingDir]++
+	f.lastFailureTime[workingDir] = time.Now()
+	fmt.Fprintf(os.Stderr, "Recorded manager creation failure for %s (attempt %d/%d)\n", 
+		workingDir, f.creationAttempts[workingDir], f.maxCreationAttempts)
+}
+
+// recordManagerCreationSuccess resets the circuit breaker on success
+func (f *ManagerFactory) recordManagerCreationSuccess(workingDir string) {
+	delete(f.creationAttempts, workingDir)
+	delete(f.lastFailureTime, workingDir)
 }
