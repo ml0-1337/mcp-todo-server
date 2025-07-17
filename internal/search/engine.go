@@ -17,9 +17,10 @@ import (
 
 // Engine manages the bleve search index
 type Engine struct {
-	index    bleve.Index
-	basePath string
-	lock     *IndexLock
+	index           bleve.Index
+	basePath        string
+	lock            *IndexLock
+	circuitBreaker  *CircuitBreaker
 }
 
 // NewEngine creates or opens a search index
@@ -53,9 +54,10 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	}
 
 	engine := &Engine{
-		index:    index,
-		basePath: todosPath,
-		lock:     indexLock,
+		index:          index,
+		basePath:       todosPath,
+		lock:           indexLock,
+		circuitBreaker: NewCircuitBreaker(3, 15*time.Second, 30*time.Second),
 	}
 
 	// Index existing todos with timeout
@@ -168,9 +170,35 @@ func (e *Engine) indexExistingTodos() error {
 	}
 	batchCh := make(chan batchResult, 1)
 	
+	// Channel to signal goroutine to stop
+	done := make(chan struct{})
+	defer close(done)
+	
 	go func() {
-		err := e.index.Batch(batch)
-		batchCh <- batchResult{err: err}
+		defer func() {
+			// Recover from any panics in batch operation
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "PANIC in batch indexing: %v\n", r)
+				batchCh <- batchResult{err: fmt.Errorf("batch operation panicked: %v", r)}
+			}
+		}()
+		
+		select {
+		case <-done:
+			// Context cancelled, exit gracefully
+			return
+		default:
+			// Proceed with batch operation
+			err := e.index.Batch(batch)
+			
+			// Only send result if context is still active
+			select {
+			case batchCh <- batchResult{err: err}:
+			case <-done:
+				// Context cancelled while trying to send result
+				return
+			}
+		}
 	}()
 	
 	select {
@@ -195,6 +223,34 @@ func (e *Engine) Close() error {
 		}
 	}()
 	return e.index.Close()
+}
+
+// HealthCheck returns the health status of the search engine
+func (e *Engine) HealthCheck() map[string]interface{} {
+	health := make(map[string]interface{})
+	
+	// Check circuit breaker state
+	health["circuit_breaker_state"] = e.circuitBreaker.GetState()
+	health["circuit_breaker_failures"] = e.circuitBreaker.GetFailureCount()
+	
+	// Check index lock status
+	if e.lock != nil {
+		health["index_locked"] = e.lock.IsLocked()
+		health["lock_path"] = e.lock.GetLockPath()
+	}
+	
+	// Test basic index functionality
+	testQuery := bleve.NewMatchAllQuery()
+	testRequest := bleve.NewSearchRequest(testQuery)
+	testRequest.Size = 1
+	
+	_, err := e.index.Search(testRequest)
+	health["index_healthy"] = err == nil
+	if err != nil {
+		health["index_error"] = err.Error()
+	}
+	
+	return health
 }
 
 // GetIndexedCount returns the number of indexed documents
@@ -321,8 +377,13 @@ func (e *Engine) Search(queryStr string, filters map[string]string, limit int) (
 	searchRequest.Fields = []string{"task", "id", "started", "status"}
 	searchRequest.Highlight = bleve.NewHighlight() // Enable snippets
 
-	// Execute search
-	searchResults, err := e.index.Search(searchRequest)
+	// Execute search with circuit breaker protection
+	var searchResults *bleve.SearchResult
+	err := e.circuitBreaker.Execute(context.Background(), func() error {
+		var searchErr error
+		searchResults, searchErr = e.index.Search(searchRequest)
+		return searchErr
+	})
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
@@ -374,10 +435,14 @@ func (e *Engine) Index(todo *domain.Todo, content string) error {
 	doc.Findings = extractSection(content, "## Findings & Research")
 	doc.Tests = extractSection(content, "## Test Cases")
 
-	return e.index.Index(todo.ID, doc)
+	return e.circuitBreaker.Execute(context.Background(), func() error {
+		return e.index.Index(todo.ID, doc)
+	})
 }
 
 // Delete removes a todo from the index
 func (e *Engine) Delete(id string) error {
-	return e.index.Delete(id)
+	return e.circuitBreaker.Execute(context.Background(), func() error {
+		return e.index.Delete(id)
+	})
 }

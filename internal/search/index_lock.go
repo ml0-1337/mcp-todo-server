@@ -51,8 +51,22 @@ func (il *IndexLock) TryLock(timeout time.Duration) error {
 
 // Unlock releases the lock
 func (il *IndexLock) Unlock() error {
+	if il.flock == nil {
+		return nil
+	}
+	
 	if il.flock.Locked() {
-		return il.flock.Unlock()
+		err := il.flock.Unlock()
+		if err != nil {
+			return fmt.Errorf("failed to unlock index lock: %w", err)
+		}
+		
+		// Clean up lock file if it exists
+		if _, statErr := os.Stat(il.lockPath); statErr == nil {
+			if removeErr := os.Remove(il.lockPath); removeErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to remove lock file %s: %v\n", il.lockPath, removeErr)
+			}
+		}
 	}
 	return nil
 }
