@@ -474,6 +474,10 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 	// Add health check endpoint
 	http.HandleFunc("/health", ts.handleHealthCheck)
 	
+	// Add debug endpoints
+	http.HandleFunc("/debug/connections", ts.handleDebugConnections)
+	http.HandleFunc("/debug/sessions", ts.handleDebugSessions)
+	
 	// Configure server with proper timeouts for connection resilience
 	server := &http.Server{
 		Addr:         addr,
@@ -518,4 +522,64 @@ func (ts *TodoServer) handleHealthCheck(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(health); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding health response: %v\n", err)
 	}
+}
+
+// handleDebugConnections shows active connection information
+func (ts *TodoServer) handleDebugConnections(w http.ResponseWriter, r *http.Request) {
+	if ts.httpWrapper == nil || ts.httpWrapper.sessionManager == nil {
+		http.Error(w, "Debug endpoint only available in HTTP mode", http.StatusNotImplemented)
+		return
+	}
+	
+	// Get session stats
+	stats := ts.httpWrapper.sessionManager.GetSessionStats()
+	
+	// Add server info
+	debug := map[string]interface{}{
+		"server": map[string]interface{}{
+			"uptime":     time.Since(ts.startTime).String(),
+			"startTime":  ts.startTime.Format(time.RFC3339),
+			"transport":  ts.transport,
+		},
+		"sessions": stats,
+		"request": map[string]interface{}{
+			"remoteAddr": r.RemoteAddr,
+			"userAgent":  r.Header.Get("User-Agent"),
+			"headers":    r.Header,
+		},
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(debug)
+}
+
+// handleDebugSessions shows detailed session information
+func (ts *TodoServer) handleDebugSessions(w http.ResponseWriter, r *http.Request) {
+	if ts.httpWrapper == nil || ts.httpWrapper.sessionManager == nil {
+		http.Error(w, "Debug endpoint only available in HTTP mode", http.StatusNotImplemented)
+		return
+	}
+	
+	sm := ts.httpWrapper.sessionManager
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	
+	sessions := make([]map[string]interface{}, 0)
+	for id, session := range sm.sessions {
+		sessions = append(sessions, map[string]interface{}{
+			"id":               id,
+			"workingDirectory": session.WorkingDirectory,
+			"lastActivity":     session.LastActivity.Format(time.RFC3339),
+			"inactiveDuration": time.Since(session.LastActivity).String(),
+		})
+	}
+	
+	response := map[string]interface{}{
+		"totalSessions": len(sessions),
+		"sessions":      sessions,
+		"serverTime":    time.Now().Format(time.RFC3339),
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

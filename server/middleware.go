@@ -145,14 +145,26 @@ func (sm *SessionManager) GetSessionStats() map[string]interface{} {
 func HTTPMiddleware(sessionManager *SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Log incoming request details
+			fmt.Fprintf(os.Stderr, "[Connection] %s %s from %s\n", r.Method, r.URL.Path, r.RemoteAddr)
+			
 			// Extract working directory from header
 			workingDir := r.Header.Get("X-Working-Directory")
 			if workingDir != "" {
-				fmt.Fprintf(os.Stderr, "Received X-Working-Directory header: %s\n", workingDir)
+				fmt.Fprintf(os.Stderr, "[Header] X-Working-Directory: %s\n", workingDir)
 			}
 			
 			// Extract session ID from header
 			sessionID := r.Header.Get("Mcp-Session-Id")
+			if sessionID != "" {
+				fmt.Fprintf(os.Stderr, "[Header] Mcp-Session-Id: %s\n", sessionID)
+			}
+			
+			// Log other relevant headers
+			userAgent := r.Header.Get("User-Agent")
+			if userAgent != "" {
+				fmt.Fprintf(os.Stderr, "[Header] User-Agent: %s\n", userAgent)
+			}
 			
 			// If we have both, manage the session
 			if sessionID != "" && workingDir != "" {
