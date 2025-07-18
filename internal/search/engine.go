@@ -25,7 +25,10 @@ type Engine struct {
 
 // NewEngine creates or opens a search index
 func NewEngine(indexPath, todosPath string) (*Engine, error) {
+	startTime := time.Now()
+	
 	// Create index lock to prevent concurrent access
+	lockStart := time.Now()
 	indexLock := NewIndexLock(indexPath)
 	
 	// Try to acquire lock with timeout
@@ -33,11 +36,15 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire index lock (index may be in use by another process): %w", err)
 	}
+	lockTime := time.Since(lockStart)
+	fmt.Fprintf(os.Stderr, "[TIMING] Index lock acquisition took %v\n", lockTime)
 	
 	// Check if index exists
+	openStart := time.Now()
 	index, err := bleve.Open(indexPath)
 	if err == bleve.ErrorIndexPathDoesNotExist {
 		// Create new index
+		fmt.Fprintf(os.Stderr, "[TIMING] Index does not exist, creating new index at %s\n", indexPath)
 		mapping := buildIndexMapping()
 		index, err = bleve.New(indexPath, mapping)
 		if err != nil {
@@ -45,6 +52,7 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 		}
 	} else if err != nil {
 		// Try to handle corruption by recreating
+		fmt.Fprintf(os.Stderr, "[TIMING] Index corrupted, recreating at %s\n", indexPath)
 		os.RemoveAll(indexPath)
 		mapping := buildIndexMapping()
 		index, err = bleve.New(indexPath, mapping)
@@ -52,6 +60,8 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 			return nil, fmt.Errorf("failed to recreate corrupted index: %w", err)
 		}
 	}
+	openTime := time.Since(openStart)
+	fmt.Fprintf(os.Stderr, "[TIMING] Index open/create took %v\n", openTime)
 
 	engine := &Engine{
 		index:          index,
@@ -61,17 +71,24 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	}
 
 	// Index existing todos with timeout
-	fmt.Fprintf(os.Stderr, "Indexing existing todos...\n")
-	indexCtx, indexCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	indexingStart := time.Now()
+	fmt.Fprintf(os.Stderr, "Indexing existing todos from %s...\n", todosPath)
+	indexCtx, indexCancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer indexCancel()
 	
 	err = engine.indexExistingTodosWithTimeout(indexCtx)
+	indexingTime := time.Since(indexingStart)
+	
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to index existing todos: %v. Search may have incomplete results.\n", err)
+		fmt.Fprintf(os.Stderr, "Warning: Failed to index existing todos after %v: %v. Search may have incomplete results.\n", indexingTime, err)
 		// Don't fail engine creation - continue with empty index
 	} else {
-		fmt.Fprintf(os.Stderr, "Finished indexing existing todos\n")
+		fmt.Fprintf(os.Stderr, "Finished indexing existing todos in %v\n", indexingTime)
 	}
+	
+	totalTime := time.Since(startTime)
+	fmt.Fprintf(os.Stderr, "[TIMING] Total NewEngine time: %v (lock: %v, open: %v, indexing: %v)\n", 
+		totalTime, lockTime, openTime, indexingTime)
 
 	return engine, nil
 }
@@ -86,7 +103,8 @@ func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
 	
 	// Run indexing in goroutine to enable timeout
 	go func() {
-		err := e.indexExistingTodos()
+		// Use parallel indexing for better performance
+		err := e.indexExistingTodosParallel()
 		resultCh <- result{err: err}
 	}()
 	
@@ -96,7 +114,7 @@ func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
 		return res.err
 	case <-ctx.Done():
 		if ctx.Err() == context.DeadlineExceeded {
-			return fmt.Errorf("indexing existing todos timed out after 30 seconds")
+			return fmt.Errorf("indexing existing todos timed out after 60 seconds")
 		}
 		return ctx.Err()
 	}
@@ -104,7 +122,10 @@ func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
 
 // indexExistingTodos indexes all existing todo files
 func (e *Engine) indexExistingTodos() error {
+	totalStart := time.Now()
+	
 	// Read all .md files in basePath
+	readStart := time.Now()
 	fmt.Fprintf(os.Stderr, "Reading todos directory: %s\n", e.basePath)
 	files, err := ioutil.ReadDir(e.basePath)
 	if err != nil {
@@ -115,28 +136,56 @@ func (e *Engine) indexExistingTodos() error {
 		}
 		return fmt.Errorf("failed to read todos directory: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "Found %d files in todos directory\n", len(files))
+	readTime := time.Since(readStart)
+	fmt.Fprintf(os.Stderr, "Found %d files in todos directory (readdir took %v)\n", len(files), readTime)
+
+	// Count markdown files
+	mdCount := 0
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".md") {
+			mdCount++
+		}
+	}
+	fmt.Fprintf(os.Stderr, "[TIMING] Found %d markdown files out of %d total files\n", mdCount, len(files))
 
 	// Create a batch for efficient indexing
 	batch := e.index.NewBatch()
 
+	// Process files
+	processStart := time.Now()
+	processedCount := 0
+	skippedCount := 0
+	totalFileSize := int64(0)
+	
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), ".md") {
 			continue
+		}
+
+		// Log progress every 10 files
+		if processedCount > 0 && processedCount%10 == 0 {
+			elapsed := time.Since(processStart)
+			rate := float64(processedCount) / elapsed.Seconds()
+			fmt.Fprintf(os.Stderr, "[PROGRESS] Indexed %d/%d files (%.1f files/sec)\n", 
+				processedCount, mdCount, rate)
 		}
 
 		// Read and parse todo file
 		todoID := strings.TrimSuffix(file.Name(), ".md")
 		filePath := filepath.Join(e.basePath, file.Name())
 
+		fileStart := time.Now()
 		content, err := ioutil.ReadFile(filePath)
 		if err != nil {
+			skippedCount++
 			continue // Skip files we can't read
 		}
+		totalFileSize += int64(len(content))
 
 		// Parse todo to get structured data
 		todo, err := parseTodoFile(todoID, string(content))
 		if err != nil {
+			skippedCount++
 			continue // Skip malformed files
 		}
 
@@ -158,9 +207,23 @@ func (e *Engine) indexExistingTodos() error {
 
 		// Add to batch
 		batch.Index(todoID, doc)
+		processedCount++
+		
+		// Log slow files
+		fileTime := time.Since(fileStart)
+		if fileTime > 100*time.Millisecond {
+			fmt.Fprintf(os.Stderr, "[TIMING] Slow file %s: %v (size: %d bytes)\n", 
+				file.Name(), fileTime, len(content))
+		}
 	}
+	
+	processTime := time.Since(processStart)
+	avgFileSize := totalFileSize / int64(processedCount)
+	fmt.Fprintf(os.Stderr, "[TIMING] Processed %d files in %v (skipped %d, avg size: %d bytes)\n", 
+		processedCount, processTime, skippedCount, avgFileSize)
 
 	// Execute batch with timeout protection
+	batchStart := time.Now()
 	batchCtx, batchCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer batchCancel()
 	
@@ -203,12 +266,18 @@ func (e *Engine) indexExistingTodos() error {
 	
 	select {
 	case res := <-batchCh:
+		batchTime := time.Since(batchStart)
 		if res.err != nil {
-			return fmt.Errorf("failed to index batch: %w", res.err)
+			return fmt.Errorf("failed to index batch after %v: %w", batchTime, res.err)
 		}
+		fmt.Fprintf(os.Stderr, "[TIMING] Batch commit took %v\n", batchTime)
 	case <-batchCtx.Done():
 		return fmt.Errorf("batch indexing timed out after 10 seconds")
 	}
+
+	totalTime := time.Since(totalStart)
+	fmt.Fprintf(os.Stderr, "[TIMING] Total indexExistingTodos time: %v (readdir: %v, process: %v, batch: %v)\n",
+		totalTime, readTime, processTime, time.Since(batchStart))
 
 	return nil
 }

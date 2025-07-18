@@ -2,6 +2,8 @@ package search
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -282,6 +284,117 @@ func BenchmarkIndexingPerformance(b *testing.B) {
 	
 	// Report indexing rate
 	b.ReportMetric(float64(b.N)/b.Elapsed().Seconds(), "todos/sec")
+}
+
+// BenchmarkInitialBulkIndexing tests the performance of indexing existing todos on startup
+func BenchmarkInitialBulkIndexing(b *testing.B) {
+	todoCounts := []int{10, 50, 65, 100, 200}
+	
+	for _, count := range todoCounts {
+		b.Run(fmt.Sprintf("TodoCount-%d", count), func(b *testing.B) {
+			// Create temp directory structure
+			tempDir := b.TempDir()
+			todosDir := filepath.Join(tempDir, ".claude", "todos")
+			indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
+			
+			// Pre-create todo files on disk
+			b.Logf("Creating %d todo files...", count)
+			setupStart := time.Now()
+			
+			err := os.MkdirAll(todosDir, 0755)
+			if err != nil {
+				b.Fatalf("Failed to create todos directory: %v", err)
+			}
+			
+			for i := 0; i < count; i++ {
+				todoID := fmt.Sprintf("todo-%05d", i)
+				content := fmt.Sprintf(`---
+todo_id: %s
+started: "%s"
+status: in_progress
+priority: %s
+type: %s
+---
+
+# Task: %s
+
+## Findings & Research
+This is a test todo for benchmarking initial indexing performance.
+It contains various keywords like %s, %s, and %s.
+
+## Test Strategy
+- Unit tests for %s
+- Integration tests for %s
+- Performance tests for %s
+
+## Checklist
+- [ ] Task 1
+- [x] Task 2
+- [>] Task 3
+`,
+					todoID,
+					time.Now().Add(time.Duration(-i)*time.Hour).Format(time.RFC3339),
+					[]string{"high", "medium", "low"}[i%3],
+					[]string{"feature", "bug", "refactor"}[i%3],
+					fmt.Sprintf("Benchmark task %d: %s", i, generateSearchTerms(i)),
+					generateTechnicalTerm(i),
+					generateBusinessTerm(i),
+					generateRandomTerm(i),
+					generateFeatureName(i),
+					generateModuleName(i),
+					generateComponentName(i),
+				)
+				
+				todoPath := filepath.Join(todosDir, todoID+".md")
+				err := ioutil.WriteFile(todoPath, []byte(content), 0644)
+				if err != nil {
+					b.Fatalf("Failed to write todo file: %v", err)
+				}
+			}
+			
+			setupTime := time.Since(setupStart)
+			b.Logf("Created %d todo files in %v", count, setupTime)
+			
+			// Benchmark the initial indexing
+			b.ResetTimer()
+			
+			for n := 0; n < b.N; n++ {
+				// Remove any existing index
+				os.RemoveAll(indexPath)
+				
+				// Create new engine (which triggers indexing)
+				start := time.Now()
+				engine, err := NewEngine(indexPath, todosDir)
+				if err != nil {
+					b.Fatalf("Failed to create search engine: %v", err)
+				}
+				
+				indexTime := time.Since(start)
+				
+				// Verify indexing completed
+				docCount, err := engine.GetIndexedCount()
+				if err != nil {
+					b.Fatalf("Failed to get indexed count: %v", err)
+				}
+				
+				if docCount != uint64(count) {
+					b.Errorf("Expected %d indexed documents, got %d", count, docCount)
+				}
+				
+				engine.Close()
+				
+				// Report per-iteration metrics
+				if n == 0 {
+					b.Logf("Initial indexing of %d todos took %v (%.2f todos/sec)", 
+						count, indexTime, float64(count)/indexTime.Seconds())
+				}
+			}
+			
+			// Report overall metrics
+			b.ReportMetric(float64(count), "todos")
+			b.ReportMetric(float64(count)/b.Elapsed().Seconds()*float64(b.N), "todos/sec")
+		})
+	}
 }
 
 // Helper functions for generating test data
