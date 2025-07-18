@@ -22,6 +22,7 @@ type TodoServer struct {
 	transport         string
 	httpServer        *server.StreamableHTTPServer
 	httpWrapper       *StreamableHTTPServerWrapper
+	stableTransport   *StableHTTPTransport
 	startTime         time.Time
 	sessionTimeout    time.Duration
 	managerTimeout    time.Duration
@@ -144,8 +145,17 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		}
 		
 		ts.httpServer = server.NewStreamableHTTPServer(s, options...)
+		
+		// Create stable transport wrapper
+		ts.stableTransport = NewStableHTTPTransport(
+			ts.httpServer,
+			WithRequestTimeout(30*time.Second),
+			WithConnectionTimeout(ts.sessionTimeout),
+			WithMaxRequestsPerConnection(1000),
+		)
+		
 		// Wrap with middleware for header extraction
-		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.httpServer, ts.sessionTimeout)
+		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.stableTransport, ts.sessionTimeout)
 	}
 
 	return ts, nil
@@ -430,6 +440,15 @@ func (ts *TodoServer) Close() error {
 		ts.httpWrapper.Stop()
 	}
 	
+	// Shutdown stable transport if present
+	if ts.stableTransport != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := ts.stableTransport.Shutdown(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "Error shutting down stable transport: %v\n", err)
+		}
+	}
+	
 	// Shutdown HTTP server if present
 	if ts.httpServer != nil {
 		ctx := context.Background()
@@ -474,9 +493,13 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 	// Add health check endpoint
 	http.HandleFunc("/health", ts.handleHealthCheck)
 	
+	// Add heartbeat endpoint for stable transport
+	http.HandleFunc("/mcp/heartbeat", ts.handleHeartbeat)
+	
 	// Add debug endpoints
 	http.HandleFunc("/debug/connections", ts.handleDebugConnections)
 	http.HandleFunc("/debug/sessions", ts.handleDebugSessions)
+	http.HandleFunc("/debug/transport", ts.handleDebugTransport)
 	
 	// Configure server with proper timeouts for connection resilience
 	server := &http.Server{
@@ -582,4 +605,28 @@ func (ts *TodoServer) handleDebugSessions(w http.ResponseWriter, r *http.Request
 	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// handleDebugTransport shows stable transport metrics
+func (ts *TodoServer) handleDebugTransport(w http.ResponseWriter, r *http.Request) {
+	if ts.stableTransport == nil {
+		http.Error(w, "Stable transport not available", http.StatusNotImplemented)
+		return
+	}
+	
+	metrics := ts.stableTransport.GetMetrics()
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(metrics)
+}
+
+// handleHeartbeat handles heartbeat requests for the stable transport
+func (ts *TodoServer) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
+	// This is handled by the stable transport's ServeHTTP method
+	// Just forward it through the transport
+	if ts.stableTransport != nil {
+		ts.stableTransport.ServeHTTP(w, r)
+	} else {
+		http.Error(w, "Heartbeat not available", http.StatusNotImplemented)
+	}
 }
