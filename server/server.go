@@ -20,9 +20,12 @@ type TodoServer struct {
 	mcpServer         *server.MCPServer
 	handlers          *handlers.TodoHandlers
 	transport         string
-	httpServer        *server.StreamableHTTPServer
-	httpWrapper       *StreamableHTTPServerWrapper
-	stableTransport   *StableHTTPTransport
+	
+	// HTTP transport layers (each serves a specific purpose):
+	httpServer        *server.StreamableHTTPServer    // Base MCP HTTP server from mark3labs/mcp-go
+	stableTransport   *StableHTTPTransport            // Stability wrapper - fixes connection issues, adds queuing & heartbeats
+	httpWrapper       *StreamableHTTPServerWrapper    // Middleware layer - adds session management & header extraction
+	
 	startTime         time.Time
 	sessionTimeout    time.Duration
 	managerTimeout    time.Duration
@@ -117,6 +120,11 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 
 	// Create HTTP server if needed
 	if ts.transport == "http" {
+		// HTTP mode uses a 3-layer architecture for stability:
+		// 1. Base StreamableHTTPServer (MCP protocol implementation)
+		// 2. StableHTTPTransport (fixes connection stability issues)
+		// 3. StreamableHTTPServerWrapper (adds session management)
+		
 		// Create HTTP server with context function to pass through request context
 		options := []server.StreamableHTTPOption{
 			server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
@@ -465,10 +473,6 @@ func (ts *TodoServer) Close() error {
 	return nil
 }
 
-// Start starts the MCP server (deprecated - use StartStdio or StartHTTP)
-func (ts *TodoServer) Start() error {
-	return ts.StartStdio()
-}
 
 // StartStdio starts the MCP server in STDIO mode
 func (ts *TodoServer) StartStdio() error {
