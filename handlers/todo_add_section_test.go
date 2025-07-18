@@ -177,7 +177,7 @@ func TestAddCustomSectionToExistingTodo(t *testing.T) {
 				}
 
 				// Verify section was added by reading todo
-				todo, err := handlers.manager.ReadTodo(todoID)
+				todo, err := mockManager.ReadTodo(todoID)
 				if err != nil {
 					t.Fatalf("Failed to read todo: %v", err)
 				}

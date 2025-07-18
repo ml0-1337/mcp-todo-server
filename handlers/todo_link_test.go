@@ -405,11 +405,12 @@ func TestHandleTodoLink(t *testing.T) {
 			var mockLinker *MockTodoLinker
 
 			// Create handlers
-			handlers := &TodoHandlers{
-				manager: mockManager,
-				// Set baseManager to nil for these tests since we can't use the mock
-				baseManager: nil,
-			}
+			handlers := NewTodoHandlersWithDependencies(
+				mockManager,
+				nil, // search not needed for this test
+				nil, // stats not needed for this test
+				nil, // templates not needed for this test
+			)
 
 			// For these tests, we'll mock the linking behavior directly
 			if tt.createLinker != nil {
@@ -454,11 +455,12 @@ func TestHandleTodoLinkIntegration(t *testing.T) {
 		return nil
 	}
 
-	handlers := &TodoHandlers{
-		manager: mockManager,
-		// baseManager is nil for this test since we're testing the error case
-		baseManager: nil,
-	}
+	handlers := NewTodoHandlersWithDependencies(
+		mockManager,
+		nil, // search not needed for this test
+		nil, // stats not needed for this test
+		nil, // templates not needed for this test
+	)
 
 	request := &MockCallToolRequest{
 		Arguments: map[string]interface{}{
@@ -486,11 +488,12 @@ func TestHandleTodoLinkIntegration(t *testing.T) {
 func TestHandleTodoLinkWithoutBaseManager(t *testing.T) {
 	mockManager := NewMockTodoManager()
 	
-	handlers := &TodoHandlers{
-		manager: mockManager,
-		// baseManager is nil to test error handling
-		baseManager: nil,
-	}
+	handlers := NewTodoHandlersWithDependencies(
+		mockManager,
+		nil, // search not needed for this test
+		nil, // stats not needed for this test
+		nil, // templates not needed for this test
+	)
 
 	request := &MockCallToolRequest{
 		Arguments: map[string]interface{}{

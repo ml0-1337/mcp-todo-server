@@ -92,10 +92,12 @@ Some notes here.`
 	}
 
 	mockSearch := NewMockSearchEngine()
-	handlers := &TodoHandlers{
-		manager: mockManager,
-		search:  mockSearch,
-	}
+	handlers := NewTodoHandlersWithDependencies(
+		mockManager,
+		mockSearch,
+		nil, // stats not needed for this test
+		nil, // templates not needed for this test
+	)
 
 	tests := []struct {
 		name           string

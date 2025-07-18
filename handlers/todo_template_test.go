@@ -392,11 +392,12 @@ func TestHandleTodoTemplate(t *testing.T) {
 			}
 
 			// Create handlers
-			handlers := &TodoHandlers{
-				manager:   mockManager,
-				search:    mockSearch,
-				templates: mockTemplates,
-			}
+			handlers := NewTodoHandlersWithDependencies(
+				mockManager,
+				mockSearch,
+				nil, // stats not needed for this test
+				mockTemplates,
+			)
 
 			// Call handler
 			result, err := handlers.HandleTodoTemplate(tt.context, tt.request.ToCallToolRequest())
