@@ -198,9 +198,14 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 		}
 
 		// Verify the message format
-		expectedPrefix := "Todo 'test-archive-path' status updated to completed and archived to"
+		expectedPrefix := "Todo 'test-archive-path' has been completed and archived to"
 		if !strings.HasPrefix(textContent.Text, expectedPrefix) {
 			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
+		}
+		
+		// Verify it contains the reflection prompt
+		if !strings.Contains(textContent.Text, "Task completed successfully") {
+			t.Error("Response should contain task completion prompt")
 		}
 	})
 
@@ -308,10 +313,15 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 			t.Errorf("Response should not mention archiving when auto-archive is disabled, got: %s", textContent.Text)
 		}
 
-		// Verify standard update message
-		expectedMessage := "Todo 'test-no-auto-archive' metadata updated: status: completed"
-		if textContent.Text != expectedMessage {
-			t.Errorf("Expected response '%s', got: %s", expectedMessage, textContent.Text)
+		// Verify standard update message with completion prompt
+		expectedPrefix := "Todo 'test-no-auto-archive' metadata updated: status: completed"
+		if !strings.HasPrefix(textContent.Text, expectedPrefix) {
+			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
+		}
+		
+		// Verify it contains the reflection prompt
+		if !strings.Contains(textContent.Text, "Task marked as completed") {
+			t.Error("Response should contain task completion prompt")
 		}
 	})
 }

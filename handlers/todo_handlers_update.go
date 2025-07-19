@@ -75,7 +75,18 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 			
 			// Create response with archive information
 			if archiveErr == nil && archivePath != "" {
-				return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' status updated to completed and archived to %s", params.ID, archivePath)), nil
+				return mcp.NewToolResultText(fmt.Sprintf(
+					"Todo '%s' has been completed and archived to %s.\n\n"+
+					"Task completed successfully. To maintain project momentum and capitalize on fresh insights, "+
+					"take a moment to reflect on this completion and plan your next steps.\n\n"+
+					"Consider the following:\n"+
+					"- What specific knowledge or insights were gained from completing this task?\n"+
+					"- Are there any immediate follow-up tasks that would benefit from your current context?\n"+
+					"- Should any learnings be documented to prevent knowledge loss or help future similar work?\n"+
+					"- Who might benefit from knowing about this completion or its outcomes?\n\n"+
+					"Based on your reflection, what is the single most valuable action to take next? "+
+					"Be specific and actionable in your recommendation.",
+					params.ID, archivePath)), nil
 			}
 		}
 		
@@ -92,6 +103,20 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		updates := []string{}
 		for key, value := range metadataMap {
 			updates = append(updates, fmt.Sprintf("%s: %s", key, value))
+		}
+		
+		// Check if status was set to completed (when auto-archive is disabled)
+		if newStatus, hasStatus := metadataMap["status"]; hasStatus && newStatus == "completed" {
+			return mcp.NewToolResultText(fmt.Sprintf(
+				"Todo '%s' metadata updated: %s\n\n"+
+				"Task marked as completed. This is an opportunity to leverage your current momentum and context. "+
+				"Please analyze what you've accomplished and determine the most effective next action.\n\n"+
+				"Key questions for your analysis:\n"+
+				"- What concrete outcomes or deliverables resulted from this task?\n"+
+				"- Which related tasks could benefit from immediate attention while context is fresh?\n"+
+				"- What specific learnings should be captured for future reference?\n\n"+
+				"Provide a clear, actionable recommendation for the next step that maximizes the value of this completion.",
+				params.ID, strings.Join(updates, ", "))), nil
 		}
 		
 		return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' metadata updated: %s", params.ID, strings.Join(updates, ", "))), nil
