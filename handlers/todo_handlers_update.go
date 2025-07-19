@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -42,7 +44,42 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 			return nil, interrors.Wrap(err, "failed to update metadata")
 		}
 
-		// Re-index if status changed
+		// Check if status is being set to completed for auto-archive
+		if newStatus, hasStatus := metadataMap["status"]; hasStatus && newStatus == "completed" && !h.noAutoArchive {
+			// Read todo to get its metadata for archive path
+			todo, readErr := manager.ReadTodo(params.ID)
+			
+			// Perform auto-archive
+			archiveErr := manager.ArchiveTodo(params.ID)
+			if archiveErr != nil {
+				// Log the error but don't fail the update
+				fmt.Fprintf(os.Stderr, "Warning: failed to auto-archive todo: %v\n", archiveErr)
+			}
+			
+			// Construct archive path
+			var archivePath string
+			if readErr == nil && todo != nil && archiveErr == nil {
+				// Use the todo's started date for archive path
+				dayPath := core.GetDailyPath(todo.Started)
+				archivePath = filepath.Join(".claude", "archive", dayPath, params.ID+".md")
+			}
+			
+			// Remove from search index if archived successfully
+			if archiveErr == nil && search != nil {
+				deleteErr := search.DeleteTodo(params.ID)
+				if deleteErr != nil {
+					// Log but don't fail
+					fmt.Fprintf(os.Stderr, "Warning: failed to remove from search index: %v\n", deleteErr)
+				}
+			}
+			
+			// Create response with archive information
+			if archiveErr == nil && archivePath != "" {
+				return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' status updated to completed and archived to %s", params.ID, archivePath)), nil
+			}
+		}
+		
+		// Re-index if status changed (for non-completed statuses)
 		if _, hasStatus := metadataMap["status"]; hasStatus && search != nil {
 			todo, _ := manager.ReadTodo(params.ID)
 			if todo != nil {

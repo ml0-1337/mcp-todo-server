@@ -72,7 +72,7 @@ Temporary notes and ideas.
 	}
 
 	// Create handlers with test dependencies
-	handlers, err := NewTodoHandlers(tempDir, "", 0) // 0 timeout for tests
+	handlers, err := NewTodoHandlers(tempDir, "", 0, false) // 0 timeout for tests, auto-archive enabled
 	if err != nil {
 		t.Fatalf("Failed to create handlers: %v", err)
 	}
@@ -247,7 +247,7 @@ Bug investigation results.
 	}
 
 	// Create handlers
-	handlers, err := NewTodoHandlers(tempDir, "", 0) // 0 timeout for tests
+	handlers, err := NewTodoHandlers(tempDir, "", 0, false) // 0 timeout for tests, auto-archive enabled
 	if err != nil {
 		t.Fatalf("Failed to create handlers: %v", err)
 	}

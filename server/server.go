@@ -31,6 +31,7 @@ type TodoServer struct {
 	sessionTimeout    time.Duration
 	managerTimeout    time.Duration
 	heartbeatInterval time.Duration
+	noAutoArchive     bool
 	
 	closeMu           sync.Mutex
 	closed            bool
@@ -64,6 +65,13 @@ func WithManagerTimeout(timeout time.Duration) ServerOption {
 func WithHeartbeatInterval(interval time.Duration) ServerOption {
 	return func(s *TodoServer) {
 		s.heartbeatInterval = interval
+	}
+}
+
+// WithNoAutoArchive sets whether to disable auto-archiving of completed todos
+func WithNoAutoArchive(noAutoArchive bool) ServerOption {
+	return func(s *TodoServer) {
+		s.noAutoArchive = noAutoArchive
 	}
 }
 
@@ -106,8 +114,8 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	}
 
 	// Now create handlers with the configured manager timeout
-	logging.Infof("Creating handlers with todoPath=%s, templatePath=%s, managerTimeout=%v", todoPath, templatePath, ts.managerTimeout)
-	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath, ts.managerTimeout)
+	logging.Infof("Creating handlers with todoPath=%s, templatePath=%s, managerTimeout=%v, noAutoArchive=%v", todoPath, templatePath, ts.managerTimeout, ts.noAutoArchive)
+	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath, ts.managerTimeout, ts.noAutoArchive)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handlers: %w", err)
 	}
@@ -180,12 +188,20 @@ func (ts *TodoServer) ListTools() []mcp.Tool {
 		mcp.NewTool("todo_read", mcp.WithDescription("Read todo(s)")),
 		mcp.NewTool("todo_update", mcp.WithDescription("Update a todo")),
 		mcp.NewTool("todo_search", mcp.WithDescription("Search todos")),
-		mcp.NewTool("todo_archive", mcp.WithDescription("Archive a todo")),
+	}
+	
+	// Only include todo_archive if auto-archive is disabled
+	if ts.noAutoArchive {
+		tools = append(tools, mcp.NewTool("todo_archive", mcp.WithDescription("Archive a todo")))
+	}
+	
+	tools = append(tools, []mcp.Tool{
 		mcp.NewTool("todo_template", mcp.WithDescription("Create from template")),
 		mcp.NewTool("todo_link", mcp.WithDescription("Link related todos")),
 		mcp.NewTool("todo_stats", mcp.WithDescription("Get todo statistics")),
 		mcp.NewTool("todo_clean", mcp.WithDescription("Clean up todos")),
-	}
+	}...)
+	
 	return tools
 }
 
@@ -359,16 +375,18 @@ func (ts *TodoServer) registerTools() {
 		ts.handlers.HandleTodoSearch,
 	)
 
-	// Register todo_archive
-	ts.mcpServer.AddTool(
-		mcp.NewTool("todo_archive",
-			mcp.WithDescription("Archive completed todo to daily folder"),
-			mcp.WithString("id",
-				mcp.Required(),
-				mcp.Description("Todo ID to archive")),
-		),
-		ts.handlers.HandleTodoArchive,
-	)
+	// Register todo_archive only if auto-archive is disabled
+	if ts.noAutoArchive {
+		ts.mcpServer.AddTool(
+			mcp.NewTool("todo_archive",
+				mcp.WithDescription("Archive completed todo to daily folder"),
+				mcp.WithString("id",
+					mcp.Required(),
+					mcp.Description("Todo ID to archive")),
+			),
+			ts.handlers.HandleTodoArchive,
+		)
+	}
 
 	// Register todo_template
 	ts.mcpServer.AddTool(

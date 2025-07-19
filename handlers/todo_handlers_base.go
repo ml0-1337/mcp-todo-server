@@ -20,10 +20,12 @@ type TodoHandlers struct {
 	// Cleanup routine control
 	cleanupStop chan struct{}
 	cleanupDone chan struct{}
+	// Auto-archive configuration
+	noAutoArchive bool
 }
 
 // NewTodoHandlers creates new todo handlers with dependencies
-func NewTodoHandlers(todoPath, templatePath string, managerTimeout time.Duration) (*TodoHandlers, error) {
+func NewTodoHandlers(todoPath, templatePath string, managerTimeout time.Duration, noAutoArchive bool) (*TodoHandlers, error) {
 	// Create a simple todo manager without context wrapper
 	baseManager := core.NewTodoManager(todoPath)
 
@@ -50,6 +52,7 @@ func NewTodoHandlers(todoPath, templatePath string, managerTimeout time.Duration
 		managerTimeout: managerTimeout,
 		cleanupStop:    make(chan struct{}),
 		cleanupDone:    make(chan struct{}),
+		noAutoArchive:  noAutoArchive,
 	}
 
 	// Start cleanup routine

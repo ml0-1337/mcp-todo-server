@@ -48,6 +48,7 @@ func main() {
 		sessionTimeout   = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
 		managerTimeout   = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
 		heartbeatInterval = flag.Duration("heartbeat-interval", 30*time.Second, "HTTP heartbeat interval (default: 30s, 0 to disable)")
+		noAutoArchive    = flag.Bool("no-auto-archive", false, "Disable automatic archiving when todo status is set to completed")
 	)
 	flag.Parse()
 
@@ -55,6 +56,13 @@ func main() {
 	if *version {
 		fmt.Printf("MCP Todo Server v%s\n", Version)
 		os.Exit(0)
+	}
+
+	// Check environment variable for auto-archive override
+	if envNoAutoArchive := os.Getenv("CLAUDE_TODO_NO_AUTO_ARCHIVE"); envNoAutoArchive != "" {
+		if envNoAutoArchive == "true" || envNoAutoArchive == "1" {
+			*noAutoArchive = true
+		}
 	}
 
 	// For HTTP transport, acquire exclusive lock to prevent multiple instances
@@ -80,6 +88,7 @@ func main() {
 		server.WithSessionTimeout(*sessionTimeout),
 		server.WithManagerTimeout(*managerTimeout),
 		server.WithHeartbeatInterval(*heartbeatInterval),
+		server.WithNoAutoArchive(*noAutoArchive),
 	)
 	if err != nil {
 		if serverLock != nil {
