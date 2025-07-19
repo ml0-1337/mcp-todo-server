@@ -211,7 +211,7 @@ Creates a new todo with full metadata and optional template.
 **ID Generation Logic:**
 - Converts task to kebab-case
 - Removes special characters
-- Limits to 50 characters
+- Limits to 100 characters
 - Appends number if duplicate exists
 
 ### 2. todo_read

@@ -131,7 +131,7 @@ Creates a new todo with metadata and optional template.
 1. Convert to lowercase
 2. Replace spaces with hyphens
 3. Remove special characters
-4. Limit to 50 characters
+4. Limit to 100 characters
 5. Append number if duplicate exists
 
 Examples:
