@@ -203,4 +203,115 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
 		}
 	})
+
+	t.Run("no-auto-archive flag should disable auto-archiving", func(t *testing.T) {
+		// Setup mocks
+		mockManager := NewMockTodoManager()
+		mockSearch := NewMockSearchEngine()
+		mockStats := NewMockStatsEngine()
+		mockTemplates := NewMockTemplateManager()
+
+		// Create handlers with auto-archive disabled
+		handlers := &TodoHandlers{
+			factory:       NewManagerFactory(mockManager, mockSearch, mockStats, mockTemplates),
+			noAutoArchive: true, // Simulate --no-auto-archive flag
+		}
+
+		// Test todo
+		testTodo := &core.Todo{
+			ID:       "test-no-auto-archive",
+			Task:     "Test with auto-archive disabled",
+			Status:   "in_progress",
+			Priority: "high",
+			Type:     "feature",
+			Started:  time.Now(),
+		}
+
+		// Mock ReadTodo
+		mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
+			if id == "test-no-auto-archive" {
+				return testTodo, nil
+			}
+			return nil, fmt.Errorf("todo not found")
+		}
+
+		// Track if ArchiveTodo was called
+		archiveCalled := false
+		mockManager.ArchiveTodoFunc = func(id string) error {
+			archiveCalled = true
+			return nil
+		}
+
+		// Mock UpdateTodo
+		mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
+			if metadata != nil && metadata["status"] == "completed" {
+				testTodo.Status = "completed"
+				return nil
+			}
+			return fmt.Errorf("unexpected update")
+		}
+
+		// Mock search engine - should re-index since not archiving
+		indexCalled := false
+		mockSearch.IndexTodoFunc = func(todo *core.Todo, content string) error {
+			if todo.ID == "test-no-auto-archive" {
+				indexCalled = true
+				return nil
+			}
+			return fmt.Errorf("unexpected todo")
+		}
+
+		// Mock ReadTodoContent for re-indexing
+		mockManager.ReadTodoContentFunc = func(id string) (string, error) {
+			return "# Test Todo Content", nil
+		}
+
+		// Create update request
+		ctx := context.Background()
+		request := &MockCallToolRequest{
+			Arguments: map[string]interface{}{
+				"id": "test-no-auto-archive",
+				"metadata": map[string]interface{}{
+					"status": "completed",
+				},
+			},
+		}
+
+		// Execute update
+		result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
+		if err != nil {
+			t.Fatalf("HandleTodoUpdate failed: %v", err)
+		}
+
+		// Check response
+		if result == nil || len(result.Content) == 0 {
+			t.Fatal("Expected result with content")
+		}
+
+		textContent, ok := result.Content[0].(mcp.TextContent)
+		if !ok {
+			t.Fatal("Expected TextContent in result")
+		}
+
+		// Verify ArchiveTodo was NOT called
+		if archiveCalled {
+			t.Error("ArchiveTodo should not have been called when noAutoArchive is true")
+		}
+
+		// Verify search index was updated (re-indexed, not deleted)
+		if !indexCalled {
+			t.Error("Search index should have been updated when auto-archive is disabled")
+		}
+
+		// Verify response does NOT mention archiving
+		if strings.Contains(textContent.Text, "archived") {
+			t.Errorf("Response should not mention archiving when auto-archive is disabled, got: %s", textContent.Text)
+		}
+
+		// Verify standard update message
+		expectedMessage := "Todo 'test-no-auto-archive' metadata updated: status: completed"
+		if textContent.Text != expectedMessage {
+			t.Errorf("Expected response '%s', got: %s", expectedMessage, textContent.Text)
+		}
+	})
 }

@@ -38,6 +38,17 @@ When using HTTP transport, the server automatically detects where Claude Code is
 
 See [docs/guides/transport-guide.md](docs/guides/transport-guide.md) for transport details and [docs/guides/http-headers.md](docs/guides/http-headers.md) for working directory resolution.
 
+### Auto-Archive Completed Todos
+
+New in v2.1.0: When a todo's status is set to "completed", it's automatically archived to `.claude/archive/YYYY/MM/DD/`. This keeps your active todo list clean and focused.
+
+**Features:**
+- Automatic archiving is enabled by default
+- Archive path is included in the response message
+- Use `--no-auto-archive` flag to disable
+- Set `CLAUDE_TODO_NO_AUTO_ARCHIVE=true` environment variable to disable
+- When disabled, the `todo_archive` tool becomes available for manual archiving
+
 ## Current Status
 
 **Version**: 2.1.0  
@@ -48,6 +59,7 @@ See [docs/guides/transport-guide.md](docs/guides/transport-guide.md) for transpo
 - ✅ Configurable session and manager timeouts
 - ✅ Support for long-running Claude Code sessions
 - ✅ Health check endpoint for monitoring
+- ✅ Auto-archive completed todos by default
 - ✅ HTTP heartbeat support to prevent connection drops
 
 ### Major Improvements in v2.0.0
@@ -338,6 +350,7 @@ Each test cycle is tracked in `.claude/todos/implement-mcp-todo-server.md`.
 -session-timeout      Session timeout duration (default: 7d, 0 to disable)
 -manager-timeout      Manager set timeout duration (default: 24h, 0 to disable)
 -heartbeat-interval   HTTP heartbeat interval (default: 30s, 0 to disable)
+-no-auto-archive     Disable automatic archiving when todo status is set to completed
 -version             Print version and exit
 ```
 
