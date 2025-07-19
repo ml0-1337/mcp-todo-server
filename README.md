@@ -180,6 +180,9 @@ The server manages two types of resources with configurable timeouts:
 # Custom timeouts
 ./mcp-todo-server -transport http -session-timeout 30d -manager-timeout 3d
 
+# Increased timeouts for devcontainer environments
+./mcp-todo-server -transport http -request-timeout 2m -http-read-timeout 3m -http-write-timeout 3m -http-idle-timeout 5m
+
 # Show available flags
 ./mcp-todo-server -h
 ```
@@ -188,6 +191,7 @@ The server manages two types of resources with configurable timeouts:
 - **Long-running development**: `-session-timeout 0 -manager-timeout 24h`
 - **Memory-constrained systems**: `-session-timeout 1h -manager-timeout 30m`
 - **Production servers**: Default values are recommended
+- **Devcontainer/slow startup**: `-request-timeout 2m -http-read-timeout 3m`
 
 ### HTTP Heartbeat Configuration
 
@@ -216,6 +220,35 @@ The server sends periodic heartbeat messages through the SSE connection to preve
 - **Direct connection**: Can use longer intervals or disable
 
 **Note**: Heartbeats only apply to HTTP transport. STDIO transport doesn't need them.
+
+### HTTP Timeout Configuration
+
+For environments with slower startup times (like devcontainers), the server provides configurable HTTP timeouts:
+
+```bash
+# Default timeouts (suitable for most environments)
+./mcp-todo-server -transport http
+# Request timeout: 60s, Read/Write: 120s, Idle: 120s
+
+# Increased timeouts for devcontainer environments
+./mcp-todo-server -transport http \
+  -request-timeout 2m \
+  -http-read-timeout 3m \
+  -http-write-timeout 3m \
+  -http-idle-timeout 5m
+```
+
+**Timeout Flags:**
+- `-request-timeout`: MCP request processing timeout (default: 60s)
+- `-http-read-timeout`: HTTP server read timeout (default: 120s)
+- `-http-write-timeout`: HTTP server write timeout (default: 120s)
+- `-http-idle-timeout`: HTTP connection idle timeout (default: 120s)
+
+**When to Increase Timeouts:**
+- **Devcontainers**: Container startup and initialization can be slow
+- **Remote development**: High latency or unstable connections
+- **Large workspaces**: Initial indexing may take longer
+- **Resource-constrained environments**: Slower processing times
 
 ### Running Tests
 

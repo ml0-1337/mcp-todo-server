@@ -33,6 +33,12 @@ type TodoServer struct {
 	heartbeatInterval time.Duration
 	noAutoArchive     bool
 	
+	// HTTP timeout configurations
+	requestTimeout    time.Duration
+	httpReadTimeout   time.Duration
+	httpWriteTimeout  time.Duration
+	httpIdleTimeout   time.Duration
+	
 	closeMu           sync.Mutex
 	closed            bool
 }
@@ -75,6 +81,34 @@ func WithNoAutoArchive(noAutoArchive bool) ServerOption {
 	}
 }
 
+// WithHTTPRequestTimeout sets the HTTP request timeout
+func WithHTTPRequestTimeout(timeout time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.requestTimeout = timeout
+	}
+}
+
+// WithHTTPReadTimeout sets the HTTP server read timeout
+func WithHTTPReadTimeout(timeout time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.httpReadTimeout = timeout
+	}
+}
+
+// WithHTTPWriteTimeout sets the HTTP server write timeout
+func WithHTTPWriteTimeout(timeout time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.httpWriteTimeout = timeout
+	}
+}
+
+// WithHTTPIdleTimeout sets the HTTP server idle timeout
+func WithHTTPIdleTimeout(timeout time.Duration) ServerOption {
+	return func(s *TodoServer) {
+		s.httpIdleTimeout = timeout
+	}
+}
+
 // NewTodoServer creates a new MCP todo server with all tools registered
 func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	logging.Infof("Creating new TodoServer...")
@@ -106,6 +140,10 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		sessionTimeout:    7 * 24 * time.Hour, // Default: 7 days
 		managerTimeout:    24 * time.Hour,     // Default: 24 hours
 		heartbeatInterval: 30 * time.Second,    // Default: 30 seconds
+		requestTimeout:    60 * time.Second,    // Default: 60 seconds (increased from 30s)
+		httpReadTimeout:   120 * time.Second,   // Default: 120 seconds (increased from 60s)
+		httpWriteTimeout:  120 * time.Second,   // Default: 120 seconds (increased from 60s)
+		httpIdleTimeout:   120 * time.Second,   // Default: 120 seconds (unchanged)
 	}
 
 	// Apply options
@@ -166,7 +204,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		// Create stable transport wrapper
 		ts.stableTransport = NewStableHTTPTransport(
 			ts.httpServer,
-			WithRequestTimeout(30*time.Second),
+			WithRequestTimeout(ts.requestTimeout),
 			WithConnectionTimeout(ts.sessionTimeout),
 			WithMaxRequestsPerConnection(1000),
 		)
@@ -527,9 +565,9 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 	// Configure server with proper timeouts for connection resilience
 	server := &http.Server{
 		Addr:         addr,
-		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  ts.httpReadTimeout,
+		WriteTimeout: ts.httpWriteTimeout,
+		IdleTimeout:  ts.httpIdleTimeout,
 	}
 	
 	logging.Infof("Starting HTTP server with middleware on %s", addr)

@@ -49,6 +49,10 @@ func main() {
 		managerTimeout   = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
 		heartbeatInterval = flag.Duration("heartbeat-interval", 30*time.Second, "HTTP heartbeat interval (default: 30s, 0 to disable)")
 		noAutoArchive    = flag.Bool("no-auto-archive", false, "Disable automatic archiving when todo status is set to completed")
+		requestTimeout   = flag.Duration("request-timeout", 60*time.Second, "HTTP request timeout (default: 60s, 0 to disable)")
+		httpReadTimeout  = flag.Duration("http-read-timeout", 120*time.Second, "HTTP server read timeout (default: 120s)")
+		httpWriteTimeout = flag.Duration("http-write-timeout", 120*time.Second, "HTTP server write timeout (default: 120s)")
+		httpIdleTimeout  = flag.Duration("http-idle-timeout", 120*time.Second, "HTTP server idle timeout (default: 120s)")
 	)
 	flag.Parse()
 
@@ -89,6 +93,10 @@ func main() {
 		server.WithManagerTimeout(*managerTimeout),
 		server.WithHeartbeatInterval(*heartbeatInterval),
 		server.WithNoAutoArchive(*noAutoArchive),
+		server.WithHTTPRequestTimeout(*requestTimeout),
+		server.WithHTTPReadTimeout(*httpReadTimeout),
+		server.WithHTTPWriteTimeout(*httpWriteTimeout),
+		server.WithHTTPIdleTimeout(*httpIdleTimeout),
 	)
 	if err != nil {
 		if serverLock != nil {
