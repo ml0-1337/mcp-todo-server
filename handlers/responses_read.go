@@ -60,6 +60,7 @@ func formatSingleTodoWithContent(todo *core.Todo, content string, format string)
 		data["sections"] = sectionData
 
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
+		// For full JSON format, return pure JSON without guidance
 		return mcp.NewToolResultText(string(jsonData))
 	}
 
@@ -89,11 +90,13 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 		}
 
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
+		// For full JSON format, return pure JSON without guidance
 		return mcp.NewToolResultText(string(jsonData))
 	}
 
-	// Summary format
-	return mcp.NewToolResultText(formatTodoSummaryLine(todo))
+	// Summary format - add guidance for non-JSON formats
+	summaryLine := formatTodoSummaryLine(todo)
+	return addSingleTodoGuidance(summaryLine, todo)
 }
 
 // formatTodosFull formats multiple todos in full format
@@ -209,7 +212,8 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 			}
 		}
 		
-		return mcp.NewToolResultText(strings.Join(lines, "\n"))
+		result := strings.Join(lines, "\n")
+		return addMultiTodoGuidance(result, todos)
 	}
 
 	// No hierarchy - use grouped view
@@ -234,7 +238,8 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 		}
 	}
 
-	return mcp.NewToolResultText(strings.Join(lines, "\n"))
+	result := strings.Join(lines, "\n")
+	return addMultiTodoGuidance(result, todos)
 }
 
 // formatTodoSummaryLine formats a single todo as a summary line
@@ -336,4 +341,99 @@ func FormatTodoSearchResponse(results []core.SearchResult) *mcp.CallToolResult {
 
 	header := fmt.Sprintf("Found %d matching todos:\n", len(results))
 	return mcp.NewToolResultText(header + strings.Join(lines, "\n\n"))
+}
+
+// addMultiTodoGuidance adds contextual guidance for multiple todos view
+func addMultiTodoGuidance(todoList string, todos []*core.Todo) *mcp.CallToolResult {
+	var guidance strings.Builder
+	guidance.WriteString(todoList)
+	guidance.WriteString("\n\n")
+	
+	// Count todos by status
+	statusCounts := make(map[string]int)
+	var blockedTodos []string
+	var oldestInProgress *core.Todo
+	
+	for _, todo := range todos {
+		statusCounts[todo.Status]++
+		if todo.Status == "blocked" {
+			blockedTodos = append(blockedTodos, todo.ID)
+		}
+		if todo.Status == "in_progress" && (oldestInProgress == nil || todo.Started.Before(oldestInProgress.Started)) {
+			oldestInProgress = todo
+		}
+	}
+	
+	inProgressCount := statusCounts["in_progress"]
+	blockedCount := statusCounts["blocked"]
+	
+	guidance.WriteString(fmt.Sprintf("Current workload: %d active tasks", inProgressCount))
+	if blockedCount > 0 {
+		guidance.WriteString(fmt.Sprintf(", %d blocked", blockedCount))
+	}
+	guidance.WriteString("\n\n")
+	
+	guidance.WriteString("Workflow suggestions:\n")
+	
+	// Priority guidance based on workload
+	if blockedCount > 0 {
+		guidance.WriteString(fmt.Sprintf("- Address blocked items first to unblock progress: %s\n", strings.Join(blockedTodos, ", ")))
+	}
+	
+	if inProgressCount > 3 {
+		guidance.WriteString("- Consider completing existing work before starting new tasks (high WIP detected)\n")
+		if oldestInProgress != nil {
+			guidance.WriteString(fmt.Sprintf("- Focus on '%s' - it's been in progress the longest\n", oldestInProgress.ID))
+		}
+	} else if inProgressCount == 0 && len(todos) > 0 {
+		guidance.WriteString("- No tasks currently in progress. Choose the highest priority item to start\n")
+	}
+	
+	// Check for priority issues
+	highPriorityCount := 0
+	for _, todo := range todos {
+		if todo.Priority == "high" && todo.Status == "in_progress" {
+			highPriorityCount++
+		}
+	}
+	
+	if highPriorityCount > 1 {
+		guidance.WriteString("- Multiple high-priority items in progress. Consider if they're all truly urgent\n")
+	}
+	
+	guidance.WriteString("\nWhich task requires your immediate attention?")
+	
+	return mcp.NewToolResultText(guidance.String())
+}
+
+// addSingleTodoGuidance adds contextual guidance for single todo view
+func addSingleTodoGuidance(todoInfo string, todo *core.Todo) *mcp.CallToolResult {
+	var guidance strings.Builder
+	guidance.WriteString(todoInfo)
+	guidance.WriteString("\n\n")
+	
+	switch todo.Status {
+	case "in_progress":
+		guidance.WriteString("Task is in progress. To maintain momentum:\n")
+		guidance.WriteString("- Focus on the current test or next checklist item\n")
+		guidance.WriteString("- Document findings as you work\n")
+		guidance.WriteString("- Avoid context switching until a logical stopping point\n\n")
+		guidance.WriteString("What specific progress can you make on this task right now?")
+		
+	case "blocked":
+		guidance.WriteString("Task is blocked. To resolve efficiently:\n")
+		guidance.WriteString("- Document the specific blocker in the findings section\n")
+		guidance.WriteString("- Identify who can help or what information is needed\n")
+		guidance.WriteString("- Consider if there's a workaround or alternative approach\n\n")
+		guidance.WriteString("Can you describe the blocker in detail?")
+		
+	default: // new/not started
+		guidance.WriteString("Task ready to begin. To start effectively:\n")
+		guidance.WriteString("- Review the task description and any existing notes\n")
+		guidance.WriteString("- Add acceptance criteria or break down into concrete steps\n")
+		guidance.WriteString("- Consider dependencies or prerequisites\n\n")
+		guidance.WriteString("What's the first concrete action to move this forward?")
+	}
+	
+	return mcp.NewToolResultText(guidance.String())
 }

@@ -119,7 +119,38 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 				params.ID, strings.Join(updates, ", "))), nil
 		}
 		
-		return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' metadata updated: %s", params.ID, strings.Join(updates, ", "))), nil
+		// Create enhanced response for non-completion metadata updates
+		baseMsg := fmt.Sprintf("Todo '%s' metadata updated: %s", params.ID, strings.Join(updates, ", "))
+		
+		// Add context-specific guidance
+		var guidance strings.Builder
+		guidance.WriteString(baseMsg)
+		guidance.WriteString("\n\n")
+		
+		// Check what was updated and provide relevant guidance
+		if priority, hasPriority := metadataMap["priority"]; hasPriority {
+			guidance.WriteString(fmt.Sprintf("Priority adjusted to %s. This change affects your work sequence:\n", priority))
+			guidance.WriteString("- Review your current task list to ensure you're working on the highest priority items\n")
+			guidance.WriteString("- Consider if any dependencies need to be re-evaluated\n\n")
+			guidance.WriteString("Does this priority change require immediate task switching?")
+		} else if status, hasStatus := metadataMap["status"]; hasStatus && status == "blocked" {
+			guidance.WriteString("Task marked as blocked. To resolve this efficiently:\n")
+			guidance.WriteString("- Document the specific blocker and its impact in the findings section\n")
+			guidance.WriteString("- Identify who can help unblock or what information is needed\n")
+			guidance.WriteString("- Consider working on alternative tasks while waiting\n\n")
+			guidance.WriteString("What is the specific blocker preventing progress?")
+		} else if currentTest, hasTest := metadataMap["current_test"]; hasTest {
+			guidance.WriteString(fmt.Sprintf("Current test focus: %s\n\n", currentTest))
+			guidance.WriteString("Following TDD workflow:\n")
+			guidance.WriteString("- Ensure the test is written and failing before implementation\n")
+			guidance.WriteString("- Keep changes minimal to make this specific test pass\n")
+			guidance.WriteString("- Refactor only after the test is green\n\n")
+			guidance.WriteString("Is the test currently in red (failing) state?")
+		} else {
+			guidance.WriteString("Metadata updated. Continue with your current workflow.")
+		}
+		
+		return mcp.NewToolResultText(guidance.String()), nil
 	}
 
 	// Handle section updates
@@ -144,7 +175,56 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 			opDesc = "updated"
 		}
 		
-		return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' %s section %s", params.ID, params.Section, opDesc)), nil
+		// Create enhanced response for section updates
+		baseMsg := fmt.Sprintf("Todo '%s' %s section %s", params.ID, params.Section, opDesc)
+		
+		var guidance strings.Builder
+		guidance.WriteString(baseMsg)
+		guidance.WriteString("\n\n")
+		
+		// Provide section-specific guidance
+		switch params.Section {
+		case "findings":
+			guidance.WriteString("Research captured. To maximize value from these findings:\n")
+			guidance.WriteString("- Synthesize key insights into actionable conclusions\n")
+			guidance.WriteString("- Identify patterns or recurring themes\n")
+			guidance.WriteString("- Consider how these findings affect your implementation approach\n\n")
+			guidance.WriteString("What key insight from your research will most impact the implementation?")
+			
+		case "tests", "test_cases":
+			guidance.WriteString("Test cases documented. Following TDD practices:\n")
+			guidance.WriteString("- Start with the simplest test that will fail\n")
+			guidance.WriteString("- Write just enough code to make it pass\n")
+			guidance.WriteString("- Refactor only after achieving green status\n\n")
+			guidance.WriteString("Which test case should be implemented first to drive the design?")
+			
+		case "checklist":
+			if params.Operation == "toggle" {
+				guidance.WriteString("Checklist item toggled. To maintain progress:\n")
+				guidance.WriteString("- Ensure completed items are truly done before checking them off\n")
+				guidance.WriteString("- Update findings if you discovered anything while completing this item\n")
+				guidance.WriteString("- Move to the next unchecked item systematically\n\n")
+				guidance.WriteString("What's the next checklist item to tackle?")
+			} else {
+				guidance.WriteString("Checklist updated. For effective task tracking:\n")
+				guidance.WriteString("- Break down large items into smaller, actionable steps\n")
+				guidance.WriteString("- Order items by dependency and priority\n")
+				guidance.WriteString("- Focus on completing one item fully before moving to the next\n\n")
+				guidance.WriteString("Is the checklist ordered for optimal workflow?")
+			}
+			
+		case "scratchpad", "notes":
+			guidance.WriteString("Notes captured. Remember to:\n")
+			guidance.WriteString("- Transfer important information to appropriate sections\n")
+			guidance.WriteString("- Convert rough ideas into actionable items\n")
+			guidance.WriteString("- Clean up the scratchpad periodically\n\n")
+			guidance.WriteString("Should any of these notes be formalized into findings or test cases?")
+			
+		default:
+			guidance.WriteString("Section updated. Continue documenting your progress systematically.")
+		}
+		
+		return mcp.NewToolResultText(guidance.String()), nil
 	}
 
 	return nil, interrors.NewValidationError("operation", "", "no update operation specified")
