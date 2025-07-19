@@ -213,7 +213,7 @@ make workflow-lint
 
 ### Key Files
 - `Makefile` - All build/test/run commands
-- `TRANSPORT_GUIDE.md` - Transport mode details
+- `docs/guides/transport-guide.md` - Transport mode details
 - `docs/testing.md` - Comprehensive testing guide
 - `docs/development/architecture.md` - Detailed architecture
 

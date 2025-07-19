@@ -91,6 +91,6 @@ esac
 echo
 echo "📚 For more information, see:"
 echo "   - README.md"
-echo "   - TRANSPORT_GUIDE.md"
+echo "   - docs/guides/transport-guide.md"
 echo
 echo "✅ Setup complete!"

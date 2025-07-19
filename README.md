@@ -36,7 +36,7 @@ New in v2.1.0: Configure how long sessions and manager sets stay in memory:
 
 When using HTTP transport, the server automatically detects where Claude Code is running and creates todos in that project's directory instead of the server's directory. This is done through the `X-Working-Directory` header.
 
-See [TRANSPORT_GUIDE.md](TRANSPORT_GUIDE.md) for transport details and [docs/http-headers.md](docs/http-headers.md) for working directory resolution.
+See [docs/guides/transport-guide.md](docs/guides/transport-guide.md) for transport details and [docs/guides/http-headers.md](docs/guides/http-headers.md) for working directory resolution.
 
 ## Current Status
 
