@@ -2,14 +2,13 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 	
 	ctxkeys "github.com/user/mcp-todo-server/internal/context"
+	"github.com/user/mcp-todo-server/internal/logging"
 )
 
 // SessionInfo stores session-specific information
@@ -46,7 +45,7 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 		
 		// Update working directory if provided and different
 		if workingDir != "" && session.WorkingDirectory != workingDir {
-			fmt.Fprintf(os.Stderr, "Updating working directory for session %s: %s -> %s\n", 
+			logging.Infof("Updating working directory for session %s: %s -> %s", 
 				sessionID, session.WorkingDirectory, workingDir)
 			session.WorkingDirectory = workingDir
 		}
@@ -61,7 +60,7 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 	}
 	sm.sessions[sessionID] = session
 	
-	fmt.Fprintf(os.Stderr, "Created new session %s with working directory: %s\n", sessionID, workingDir)
+	logging.Infof("Created new session %s with working directory: %s", sessionID, workingDir)
 	return session
 }
 
@@ -72,7 +71,7 @@ func (sm *SessionManager) RemoveSession(sessionID string) {
 	
 	if _, exists := sm.sessions[sessionID]; exists {
 		delete(sm.sessions, sessionID)
-		fmt.Fprintf(os.Stderr, "Removed session %s\n", sessionID)
+		logging.Infof("Removed session %s", sessionID)
 	}
 }
 
@@ -88,12 +87,12 @@ func (sm *SessionManager) CleanupStaleSessions(inactivityTimeout time.Duration) 
 		if now.Sub(session.LastActivity) > inactivityTimeout {
 			delete(sm.sessions, id)
 			removedCount++
-			fmt.Fprintf(os.Stderr, "Removed stale session %s (inactive for %v)\n", id, now.Sub(session.LastActivity))
+			logging.Infof("Removed stale session %s (inactive for %v)", id, now.Sub(session.LastActivity))
 		}
 	}
 	
 	if removedCount > 0 {
-		fmt.Fprintf(os.Stderr, "Cleaned up %d stale sessions\n", removedCount)
+		logging.Infof("Cleaned up %d stale sessions", removedCount)
 	}
 	
 	return removedCount
@@ -146,24 +145,24 @@ func HTTPMiddleware(sessionManager *SessionManager) func(http.Handler) http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Log incoming request details
-			fmt.Fprintf(os.Stderr, "[Connection] %s %s from %s\n", r.Method, r.URL.Path, r.RemoteAddr)
+			logging.Connectionf("%s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 			
 			// Extract working directory from header
 			workingDir := r.Header.Get("X-Working-Directory")
 			if workingDir != "" {
-				fmt.Fprintf(os.Stderr, "[Header] X-Working-Directory: %s\n", workingDir)
+				logging.Headerf("X-Working-Directory: %s", workingDir)
 			}
 			
 			// Extract session ID from header
 			sessionID := r.Header.Get("Mcp-Session-Id")
 			if sessionID != "" {
-				fmt.Fprintf(os.Stderr, "[Header] Mcp-Session-Id: %s\n", sessionID)
+				logging.Headerf("Mcp-Session-Id: %s", sessionID)
 			}
 			
 			// Log other relevant headers
 			userAgent := r.Header.Get("User-Agent")
 			if userAgent != "" {
-				fmt.Fprintf(os.Stderr, "[Header] User-Agent: %s\n", userAgent)
+				logging.Headerf("User-Agent: %s", userAgent)
 			}
 			
 			// If we have both, manage the session
@@ -257,7 +256,7 @@ func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 	
 	// Use configured session timeout (0 means no cleanup)
 	if w.sessionTimeout == 0 {
-		fmt.Fprintln(os.Stderr, "Session cleanup disabled (timeout=0)")
+		logging.Infof("Session cleanup disabled (timeout=0)")
 		return
 	}
 	
@@ -266,10 +265,10 @@ func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 		case <-ticker.C:
 			removed := w.sessionManager.CleanupStaleSessions(w.sessionTimeout)
 			if removed > 0 {
-				fmt.Fprintf(os.Stderr, "Session cleanup: removed %d stale sessions\n", removed)
+				logging.Infof("Session cleanup: removed %d stale sessions", removed)
 			}
 		case <-w.cleanupStop:
-			fmt.Fprintln(os.Stderr, "Stopping session cleanup routine")
+			logging.Infof("Stopping session cleanup routine")
 			return
 		}
 	}
@@ -284,12 +283,12 @@ func (w *StreamableHTTPServerWrapper) Stop() {
 // LoggingMiddleware logs incoming requests (optional, for debugging)
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(os.Stderr, "HTTP %s %s\n", r.Method, r.URL.Path)
+		logging.Debugf("HTTP %s %s", r.Method, r.URL.Path)
 		
 		// Log interesting headers
 		for name, values := range r.Header {
 			if strings.HasPrefix(name, "X-") || strings.HasPrefix(name, "Mcp-") {
-				fmt.Fprintf(os.Stderr, "  Header %s: %s\n", name, strings.Join(values, ", "))
+				logging.Debugf("  Header %s: %s", name, strings.Join(values, ", "))
 			}
 		}
 		

@@ -11,6 +11,7 @@ import (
 	"github.com/user/mcp-todo-server/core"
 	ctxkeys "github.com/user/mcp-todo-server/internal/context"
 	interrors "github.com/user/mcp-todo-server/internal/errors"
+	"github.com/user/mcp-todo-server/internal/logging"
 )
 
 // ManagerFactory creates and caches managers for different working directories
@@ -122,7 +123,7 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 	search, err := f.createSearchEngineWithTimeout(ctx, indexPath, todoPath)
 	if err != nil {
 		// Log error but continue without search functionality
-		fmt.Fprintf(os.Stderr, "Warning: Failed to create search engine for %s: %v. Continuing without search functionality.\n", workingDir, err)
+		logging.Warnf("Failed to create search engine for %s: %v. Continuing without search functionality.", workingDir, err)
 		search = nil // Will be handled gracefully by handlers
 	}
 
@@ -141,7 +142,7 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 	// Record successful creation to reset circuit breaker
 	f.recordManagerCreationSuccess(workingDir)
 
-	fmt.Fprintf(os.Stderr, "Created manager set for %s (total cached: %d)\n", workingDir, len(f.managers))
+	logging.Infof("Created manager set for %s (total cached: %d)", workingDir, len(f.managers))
 	return manager, search, stats, templates, nil
 }
 
@@ -158,17 +159,17 @@ func (f *ManagerFactory) CleanupStale(maxAge time.Duration) int {
 			// Close search engine if it has a Close method
 			if closer, ok := set.search.(interface{ Close() error }); ok {
 				if err := closer.Close(); err != nil {
-					fmt.Fprintf(os.Stderr, "Error closing search engine for %s: %v\n", dir, err)
+					logging.Errorf("Error closing search engine for %s: %v", dir, err)
 				}
 			}
 			delete(f.managers, dir)
 			removed++
-			fmt.Fprintf(os.Stderr, "Removed stale manager set for %s\n", dir)
+			logging.Infof("Removed stale manager set for %s", dir)
 		}
 	}
 
 	if removed > 0 {
-		fmt.Fprintf(os.Stderr, "Cleaned up %d stale manager sets\n", removed)
+		logging.Infof("Cleaned up %d stale manager sets", removed)
 	}
 
 	return removed

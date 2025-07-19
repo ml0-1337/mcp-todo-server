@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/user/mcp-todo-server/internal/lock"
+	"github.com/user/mcp-todo-server/internal/logging"
 	"github.com/user/mcp-todo-server/server"
 )
 
@@ -36,7 +37,7 @@ func main() {
 	}
 	
 	// Now safe to log
-	fmt.Fprintf(os.Stderr, "MCP Todo Server starting...\n")
+	logging.Logf("MCP Todo Server starting...")
 	
 	// Parse command line flags
 	var (
@@ -70,7 +71,7 @@ func main() {
 			log.Fatalf("Failed to acquire server lock: %v", err)
 		}
 		
-		fmt.Fprintf(os.Stderr, "Acquired exclusive lock for port %s\n", *port)
+		logging.Logf("Acquired exclusive lock for port %s", *port)
 	}
 
 	// Create server with transport type and timeout options
@@ -97,15 +98,15 @@ func main() {
 		switch *transport {
 		case "stdio":
 			// Log to stderr in STDIO mode
-			fmt.Fprintf(os.Stderr, "Starting MCP Todo Server v%s (STDIO mode)...\n", Version)
-			fmt.Fprintf(os.Stderr, "Session timeout: %v, Manager timeout: %v, Heartbeat: %v\n", *sessionTimeout, *managerTimeout, *heartbeatInterval)
+			logging.Logf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
+			logging.Logf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}
 		case "http":
 			addr := fmt.Sprintf("%s:%s", *host, *port)
-			log.Printf("Starting MCP Todo Server v%s (HTTP mode) on %s...", Version, addr)
-			log.Printf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)
+			logging.Logf("Starting MCP Todo Server v%s (HTTP mode) on %s...", Version, addr)
+			logging.Logf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)
 			if err := todoServer.StartHTTP(addr); err != nil {
 				errChan <- err
 			}
@@ -119,20 +120,20 @@ func main() {
 	case err := <-errChan:
 		if serverLock != nil {
 			if unlockErr := serverLock.Unlock(); unlockErr != nil {
-				log.Printf("Error releasing server lock: %v", unlockErr)
+				logging.Errorf("Error releasing server lock: %v", unlockErr)
 			}
 		}
 		log.Fatalf("Server error: %v", err)
 	case sig := <-sigChan:
-		fmt.Fprintf(os.Stderr, "\nReceived signal %v, shutting down...\n", sig)
+		logging.Logf("Received signal %v, shutting down...", sig)
 		if err := todoServer.Close(); err != nil {
-			log.Printf("Error closing server: %v", err)
+			logging.Errorf("Error closing server: %v", err)
 		}
 		if serverLock != nil {
 			if err := serverLock.Unlock(); err != nil {
-				log.Printf("Error releasing server lock: %v", err)
+				logging.Errorf("Error releasing server lock: %v", err)
 			} else {
-				fmt.Fprintf(os.Stderr, "Released server lock\n")
+				logging.Logf("Released server lock")
 			}
 		}
 		os.Exit(0)

@@ -14,6 +14,7 @@ import (
 	"time"
 	
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/user/mcp-todo-server/internal/logging"
 )
 
 // ConnectionState represents the state of a connection
@@ -235,7 +236,7 @@ func (t *StableHTTPTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		// Write body
 		if len(resp.body) > 0 {
 			if _, err := w.Write(resp.body); err != nil {
-				fmt.Fprintf(os.Stderr, "[StableHTTP] Failed to write response: %v\n", err)
+				logging.StableHTTPf("Failed to write response: %v", err)
 			}
 		}
 		
@@ -297,7 +298,7 @@ func (t *StableHTTPTransport) getOrCreateConnection(sessionID, workingDir string
 	// Set to active state
 	conn.State.Store(int32(StateActive))
 	
-	fmt.Fprintf(os.Stderr, "[StableHTTP] Created new connection %s for session %s\n", conn.ID, sessionID)
+	logging.StableHTTPf("Created new connection %s for session %s", conn.ID, sessionID)
 	
 	return conn
 }
@@ -307,12 +308,12 @@ func (t *StableHTTPTransport) handleConnection(conn *StableHTTPConnection) {
 	defer t.wg.Done()
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			fmt.Fprintf(os.Stderr, "[StableHTTP] Panic in connection handler %s: %v\n", conn.ID, recovered)
+			logging.StableHTTPf("Panic in connection handler %s: %v", conn.ID, recovered)
 		}
 		t.closeConnection(conn)
 	}()
 	
-	fmt.Fprintf(os.Stderr, "[StableHTTP] Starting connection handler for %s\n", conn.ID)
+	logging.StableHTTPf("Starting connection handler for %s", conn.ID)
 	
 	for {
 		select {
@@ -320,11 +321,11 @@ func (t *StableHTTPTransport) handleConnection(conn *StableHTTPConnection) {
 			t.processRequest(conn, req)
 			
 		case <-conn.ctx.Done():
-			fmt.Fprintf(os.Stderr, "[StableHTTP] Connection %s context cancelled\n", conn.ID)
+			logging.StableHTTPf("Connection %s context cancelled", conn.ID)
 			return
 			
 		case <-t.ctx.Done():
-			fmt.Fprintf(os.Stderr, "[StableHTTP] Transport shutting down, closing connection %s\n", conn.ID)
+			logging.StableHTTPf("Transport shutting down, closing connection %s", conn.ID)
 			return
 		}
 	}
@@ -449,7 +450,7 @@ func (t *StableHTTPTransport) checkConnections() {
 	}
 	
 	// Log metrics
-	fmt.Fprintf(os.Stderr, "[StableHTTP] Monitor: %d active connections, %d total requests, %d errors\n",
+	logging.StableHTTPf("Monitor: %d active connections, %d total requests, %d errors",
 		t.activeConnections.Load(), t.totalRequests.Load(), t.totalErrors.Load())
 }
 
@@ -472,7 +473,7 @@ func (t *StableHTTPTransport) closeConnection(conn *StableHTTPConnection) {
 		close(conn.requestQueue)
 		
 		// Log closure
-		fmt.Fprintf(os.Stderr, "[StableHTTP] Closed connection %s (requests: %d, errors: %d, dropped: %d)\n",
+		logging.StableHTTPf("Closed connection %s (requests: %d, errors: %d, dropped: %d)",
 			conn.ID, conn.requestCount.Load(), conn.errorCount.Load(), conn.droppedMessages.Load())
 		
 		// Update state
@@ -482,7 +483,7 @@ func (t *StableHTTPTransport) closeConnection(conn *StableHTTPConnection) {
 
 // Shutdown gracefully shuts down the transport
 func (t *StableHTTPTransport) Shutdown(ctx context.Context) error {
-	fmt.Fprintf(os.Stderr, "[StableHTTP] Shutting down transport\n")
+	logging.StableHTTPf("Shutting down transport")
 	
 	// Cancel transport context
 	t.cancel()
@@ -503,10 +504,10 @@ func (t *StableHTTPTransport) Shutdown(ctx context.Context) error {
 	
 	select {
 	case <-done:
-		fmt.Fprintf(os.Stderr, "[StableHTTP] Transport shutdown complete\n")
+		logging.StableHTTPf("Transport shutdown complete")
 		return nil
 	case <-ctx.Done():
-		fmt.Fprintf(os.Stderr, "[StableHTTP] Transport shutdown timeout\n")
+		logging.StableHTTPf("Transport shutdown timeout")
 		return ctx.Err()
 	}
 }

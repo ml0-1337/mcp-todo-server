@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	
+	"github.com/user/mcp-todo-server/internal/logging"
 )
 
 // indexExistingTodosParallel indexes all existing todo files using parallel processing
@@ -17,18 +19,18 @@ func (e *Engine) indexExistingTodosParallel() error {
 	
 	// Read all .md files in basePath
 	readStart := time.Now()
-	fmt.Fprintf(os.Stderr, "Reading todos directory: %s\n", e.basePath)
+	logging.Infof("Reading todos directory: %s", e.basePath)
 	files, err := ioutil.ReadDir(e.basePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No todos directory yet, that's OK
-			fmt.Fprintf(os.Stderr, "Todos directory doesn't exist yet, skipping indexing\n")
+			logging.Infof("Todos directory doesn't exist yet, skipping indexing")
 			return nil
 		}
 		return fmt.Errorf("failed to read todos directory: %w", err)
 	}
 	readTime := time.Since(readStart)
-	fmt.Fprintf(os.Stderr, "Found %d files in todos directory (readdir took %v)\n", len(files), readTime)
+	logging.Infof("Found %d files in todos directory (readdir took %v)", len(files), readTime)
 
 	// Filter markdown files
 	var mdFiles []os.FileInfo
@@ -37,7 +39,7 @@ func (e *Engine) indexExistingTodosParallel() error {
 			mdFiles = append(mdFiles, file)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "[TIMING] Found %d markdown files out of %d total files\n", len(mdFiles), len(files))
+	logging.Timingf("Found %d markdown files out of %d total files", len(mdFiles), len(files))
 	
 	if len(mdFiles) == 0 {
 		return nil
@@ -104,7 +106,7 @@ func (e *Engine) indexExistingTodosParallel() error {
 			if processedCount > 0 {
 				elapsed := time.Since(processStart)
 				rate := float64(processedCount) / elapsed.Seconds()
-				fmt.Fprintf(os.Stderr, "[PROGRESS] Indexed %d/%d files (%.1f files/sec)\n", 
+				logging.Progressf("Indexed %d/%d files (%.1f files/sec)", 
 					processedCount, len(mdFiles), rate)
 			}
 		}
@@ -115,7 +117,7 @@ func (e *Engine) indexExistingTodosParallel() error {
 	if processedCount > 0 {
 		avgFileSize = totalFileSize / int64(processedCount)
 	}
-	fmt.Fprintf(os.Stderr, "[TIMING] Processed %d files in %v using %d workers (skipped %d, avg size: %d bytes)\n", 
+	logging.Timingf("Processed %d files in %v using %d workers (skipped %d, avg size: %d bytes)", 
 		processedCount, processTime, numWorkers, skippedCount, avgFileSize)
 
 	// Execute batch with timeout protection
@@ -137,7 +139,7 @@ func (e *Engine) indexExistingTodosParallel() error {
 		defer func() {
 			// Recover from any panics in batch operation
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "PANIC in batch indexing: %v\n", r)
+				logging.Errorf("PANIC in batch indexing: %v", r)
 				batchCh <- batchResult{err: fmt.Errorf("batch operation panicked: %v", r)}
 			}
 		}()
@@ -166,15 +168,15 @@ func (e *Engine) indexExistingTodosParallel() error {
 		if res.err != nil {
 			return fmt.Errorf("failed to index batch after %v: %w", batchTime, res.err)
 		}
-		fmt.Fprintf(os.Stderr, "[TIMING] Batch commit took %v\n", batchTime)
+		logging.Timingf("Batch commit took %v", batchTime)
 	case <-batchCtx.Done():
 		return fmt.Errorf("batch indexing timed out after 10 seconds")
 	}
 
 	totalTime := time.Since(totalStart)
-	fmt.Fprintf(os.Stderr, "[TIMING] Total parallel indexing time: %v (readdir: %v, process: %v, batch: %v)\n",
+	logging.Timingf("Total parallel indexing time: %v (readdir: %v, process: %v, batch: %v)",
 		totalTime, readTime, processTime, time.Since(batchStart))
-	fmt.Fprintf(os.Stderr, "[PERFORMANCE] Indexed %d todos at %.1f todos/sec\n", 
+	logging.Performancef("Indexed %d todos at %.1f todos/sec", 
 		processedCount, float64(processedCount)/totalTime.Seconds())
 
 	return nil

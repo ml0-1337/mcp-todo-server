@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	
+	"github.com/user/mcp-todo-server/internal/logging"
 )
 
 // GetEnv returns environment variable or fallback
@@ -61,7 +63,7 @@ func ResolveTodoPath() (string, error) {
 	// 1. Check for override (rare, but supported)
 	if customPath := GetEnv("CLAUDE_TODO_PATH", ""); customPath != "" {
 		// Use fmt.Fprintf to stderr to avoid stdout pollution
-		fmt.Fprintf(os.Stderr, "Using custom todo path: %s\n", customPath)
+		logging.Infof("Using custom todo path: %s", customPath)
 		return customPath, nil
 	}
 
@@ -75,10 +77,10 @@ func ResolveTodoPath() (string, error) {
 	projectRoot, err := FindProjectRoot(cwd)
 	if err != nil {
 		// No project markers found, use current directory
-		fmt.Fprintf(os.Stderr, "No project root found, using current directory: %s\n", cwd)
+		logging.Infof("No project root found, using current directory: %s", cwd)
 		projectRoot = cwd
 	} else {
-		fmt.Fprintf(os.Stderr, "Found project root: %s\n", projectRoot)
+		logging.Infof("Found project root: %s", projectRoot)
 	}
 
 	// 4. Build todo path (ALWAYS project-level)
@@ -89,7 +91,7 @@ func ResolveTodoPath() (string, error) {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Using todo directory: %s\n", todoPath)
+	logging.Infof("Using todo directory: %s", todoPath)
 	return todoPath, nil
 }
 
@@ -103,7 +105,7 @@ func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
 	
-	fmt.Fprintf(os.Stderr, "Using todo directory from working dir: %s\n", todoPath)
+	logging.Infof("Using todo directory from working dir: %s", todoPath)
 	return todoPath, nil
 }
 
@@ -111,7 +113,7 @@ func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
 func ResolveTemplatePath() (string, error) {
 	// 1. Check for explicit override
 	if customPath := GetEnv("CLAUDE_TEMPLATE_PATH", ""); customPath != "" {
-		fmt.Fprintf(os.Stderr, "Using custom template path: %s\n", customPath)
+		logging.Infof("Using custom template path: %s", customPath)
 		return customPath, nil
 	}
 
@@ -122,7 +124,7 @@ func ResolveTemplatePath() (string, error) {
 	// 3. Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Could not get working directory: %v\n", err)
+		logging.Warnf("Could not get working directory: %v", err)
 		cwd = "."
 	}
 
@@ -158,7 +160,7 @@ func ResolveTemplatePath() (string, error) {
 
 		// For hybrid mode, we'd need to modify the template manager
 		// to handle multiple directories
-		fmt.Fprintf(os.Stderr, "Hybrid mode: checking project (%s) and user (%s)\n", projectPath, userPath)
+		logging.Infof("Hybrid mode: checking project (%s) and user (%s)", projectPath, userPath)
 
 		// For now, use project if exists, otherwise user
 		if IsDirectory(projectPath) {
@@ -166,7 +168,7 @@ func ResolveTemplatePath() (string, error) {
 		}
 		return userPath, nil
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown CLAUDE_TEMPLATE_MODE: %s, using 'auto'\n", mode)
+		logging.Warnf("Unknown CLAUDE_TEMPLATE_MODE: %s, using 'auto'", mode)
 		mode = "auto"
 		return ResolveTemplatePath() // Recursive call with auto mode
 	}
@@ -174,18 +176,18 @@ func ResolveTemplatePath() (string, error) {
 	// 6. Find first existing directory
 	for _, path := range candidates {
 		if debug {
-			fmt.Fprintf(os.Stderr, "[DEBUG] Checking template path: %s\n", path)
+			logging.Debugf("Checking template path: %s", path)
 		}
 		if IsDirectory(path) {
-			fmt.Fprintf(os.Stderr, "Using template directory: %s\n", path)
+			logging.Infof("Using template directory: %s", path)
 			return path, nil
 		}
 	}
 
 	// 7. No directory found - show helpful error
-	fmt.Fprintf(os.Stderr, "Warning: No template directory found. Searched:\n")
+	logging.Warnf("No template directory found. Searched:")
 	for _, path := range candidates {
-		fmt.Fprintf(os.Stderr, "  - %s\n", path)
+		logging.Warnf("  - %s", path)
 	}
 
 	// Return first candidate as default (will be created if needed)

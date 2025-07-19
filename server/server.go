@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
 	ctxkeys "github.com/user/mcp-todo-server/internal/context"
+	"github.com/user/mcp-todo-server/internal/logging"
 	"github.com/user/mcp-todo-server/utils"
 )
 
@@ -68,7 +69,7 @@ func WithHeartbeatInterval(interval time.Duration) ServerOption {
 
 // NewTodoServer creates a new MCP todo server with all tools registered
 func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
-	fmt.Fprintf(os.Stderr, "Creating new TodoServer...\n")
+	logging.Infof("Creating new TodoServer...")
 	
 	// Resolve paths dynamically
 	todoPath, err := utils.ResolveTodoPath()
@@ -105,18 +106,18 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	}
 
 	// Now create handlers with the configured manager timeout
-	fmt.Fprintf(os.Stderr, "Creating handlers with todoPath=%s, templatePath=%s, managerTimeout=%v\n", todoPath, templatePath, ts.managerTimeout)
+	logging.Infof("Creating handlers with todoPath=%s, templatePath=%s, managerTimeout=%v", todoPath, templatePath, ts.managerTimeout)
 	todoHandlers, err := handlers.NewTodoHandlers(todoPath, templatePath, ts.managerTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handlers: %w", err)
 	}
 	ts.handlers = todoHandlers
-	fmt.Fprintf(os.Stderr, "Handlers created successfully\n")
+	logging.Infof("Handlers created successfully")
 
 	// Register all tools
-	fmt.Fprintf(os.Stderr, "Registering MCP tools...\n")
+	logging.Infof("Registering MCP tools...")
 	ts.registerTools()
-	fmt.Fprintf(os.Stderr, "Tools registered successfully\n")
+	logging.Infof("Tools registered successfully")
 
 	// Create HTTP server if needed
 	if ts.transport == "http" {
@@ -146,10 +147,10 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		
 		// Add heartbeat interval if configured
 		if ts.heartbeatInterval > 0 {
-			fmt.Fprintf(os.Stderr, "Configuring heartbeat interval: %v\n", ts.heartbeatInterval)
+			logging.Infof("Configuring heartbeat interval: %v", ts.heartbeatInterval)
 			options = append(options, server.WithHeartbeatInterval(ts.heartbeatInterval))
 		} else {
-			fmt.Fprintf(os.Stderr, "Heartbeat disabled (interval=0)\n")
+			logging.Infof("Heartbeat disabled (interval=0)")
 		}
 		
 		ts.httpServer = server.NewStreamableHTTPServer(s, options...)
@@ -476,12 +477,12 @@ func (ts *TodoServer) Close() error {
 
 // StartStdio starts the MCP server in STDIO mode
 func (ts *TodoServer) StartStdio() error {
-	fmt.Fprintf(os.Stderr, "StartStdio called, starting MCP STDIO server...\n")
+	logging.Infof("StartStdio called, starting MCP STDIO server...")
 	err := server.ServeStdio(ts.mcpServer)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "STDIO server error: %v\n", err)
+		logging.Errorf("STDIO server error: %v", err)
 	}
-	fmt.Fprintf(os.Stderr, "StartStdio returning\n")
+	logging.Infof("StartStdio returning")
 	return err
 }
 
@@ -513,7 +514,7 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 		IdleTimeout:  120 * time.Second,
 	}
 	
-	fmt.Fprintf(os.Stderr, "Starting HTTP server with middleware on %s\n", addr)
+	logging.Infof("Starting HTTP server with middleware on %s", addr)
 	return server.ListenAndServe()
 }
 
