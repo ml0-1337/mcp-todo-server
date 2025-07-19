@@ -89,19 +89,19 @@ func TestListTools(t *testing.T) {
 	tools := ts.ListTools()
 
 	// Check we have the expected number of tools
-	expectedTools := 10 // Including todo_create_multi
+	// With auto-archive enabled by default, todo_archive is not included
+	expectedTools := 9 // Excluding todo_archive
 	if len(tools) != expectedTools {
 		t.Errorf("Expected %d tools, got %d", expectedTools, len(tools))
 	}
 
-	// Check specific tools exist
+	// Check specific tools exist (todo_archive excluded by default)
 	toolNames := map[string]bool{
 		"todo_create":       false,
 		"todo_create_multi": false,
 		"todo_read":         false,
 		"todo_update":       false,
 		"todo_search":       false,
-		"todo_archive":      false,
 		"todo_template":     false,
 		"todo_link":         false,
 		"todo_stats":        false,
@@ -117,6 +117,13 @@ func TestListTools(t *testing.T) {
 	for name, found := range toolNames {
 		if !found {
 			t.Errorf("Expected tool %s not found", name)
+		}
+	}
+	
+	// Verify todo_archive is NOT in the list (auto-archive is default)
+	for _, tool := range tools {
+		if tool.Name == "todo_archive" {
+			t.Errorf("todo_archive should not be present when auto-archive is enabled (default)")
 		}
 	}
 }

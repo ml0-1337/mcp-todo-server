@@ -183,23 +183,23 @@ func (ts *TodoServer) ListTools() []mcp.Tool {
 	// The mark3labs/mcp-go library doesn't expose ListTools directly,
 	// so we'll maintain our own list for testing
 	tools := []mcp.Tool{
-		mcp.NewTool("todo_create", mcp.WithDescription("Create a new todo")),
-		mcp.NewTool("todo_create_multi", mcp.WithDescription("Create multiple todos with parent-child relationships")),
-		mcp.NewTool("todo_read", mcp.WithDescription("Read todo(s)")),
-		mcp.NewTool("todo_update", mcp.WithDescription("Update a todo")),
-		mcp.NewTool("todo_search", mcp.WithDescription("Search todos")),
+		mcp.NewTool("todo_create", mcp.WithDescription("Start tracking a new task, feature, or bug. Creates a markdown file to capture your work progress, findings, and test results.")),
+		mcp.NewTool("todo_create_multi", mcp.WithDescription("Plan a multi-phase project by creating a parent task and all its phases at once. Automatically links phases together for easy progress tracking.")),
+		mcp.NewTool("todo_read", mcp.WithDescription("View your tasks and their current status. Check a specific todo's details or see all active work with filtering options.")),
+		mcp.NewTool("todo_update", mcp.WithDescription("Add progress notes, test results, or findings to a todo. Update status when blocked or completed (auto-archives on completion).")),
+		mcp.NewTool("todo_search", mcp.WithDescription("Find past solutions, code snippets, or similar work across all your todos. Searches through task descriptions, findings, and test results.")),
 	}
 	
 	// Only include todo_archive if auto-archive is disabled
 	if ts.noAutoArchive {
-		tools = append(tools, mcp.NewTool("todo_archive", mcp.WithDescription("Archive a todo")))
+		tools = append(tools, mcp.NewTool("todo_archive", mcp.WithDescription("Move a completed todo to the archive folder organized by date. Usually happens automatically when you mark a todo as completed.")))
 	}
 	
 	tools = append(tools, []mcp.Tool{
-		mcp.NewTool("todo_template", mcp.WithDescription("Create from template")),
-		mcp.NewTool("todo_link", mcp.WithDescription("Link related todos")),
-		mcp.NewTool("todo_stats", mcp.WithDescription("Get todo statistics")),
-		mcp.NewTool("todo_clean", mcp.WithDescription("Clean up todos")),
+		mcp.NewTool("todo_template", mcp.WithDescription("Start with a pre-structured todo for common tasks. Templates include sections and checklists tailored to specific workflows.")),
+		mcp.NewTool("todo_link", mcp.WithDescription("Connect related tasks together. Useful for dependencies, blocking relationships, or grouping related work.")),
+		mcp.NewTool("todo_stats", mcp.WithDescription("View your productivity metrics: completed tasks, time spent, task distribution, and work patterns.")),
+		mcp.NewTool("todo_clean", mcp.WithDescription("Maintain your todo system by archiving old incomplete tasks or finding potential duplicates.")),
 	}...)
 	
 	return tools
@@ -210,20 +210,20 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_create
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_create",
-			mcp.WithDescription("Create a new todo with full metadata. TIP: Use parent_id for phases and subtasks. Types 'phase' and 'subtask' require parent_id."),
+			mcp.WithDescription("Start tracking a new task, feature, or bug. Creates a markdown file to capture your work progress, findings, and test results. Use for single tasks or as phases within larger projects."),
 			mcp.WithString("task",
 				mcp.Required(),
-				mcp.Description("Task description")),
+				mcp.Description("What you want to accomplish (e.g., 'Add user authentication', 'Fix login timeout bug')")),
 			mcp.WithString("priority",
-				mcp.Description("Task priority (high, medium, low)"),
+				mcp.Description("How urgent is this? (high=today/tomorrow, medium=this week, low=when possible)"),
 				mcp.DefaultString("high")),
 			mcp.WithString("type",
-				mcp.Description("Todo type (feature, bug, refactor, research, multi-phase, phase, subtask)"),
+				mcp.Description("What kind of work? (feature=new capability, bug=fix issue, refactor=improve code, research=investigate)"),
 				mcp.DefaultString("feature")),
 			mcp.WithString("template",
-				mcp.Description("Optional template name")),
+				mcp.Description("Use a pre-built structure (bug-fix, feature, research, refactor, tdd-cycle)")),
 			mcp.WithString("parent_id",
-				mcp.Description("Parent todo ID (required for phase/subtask types)")),
+				mcp.Description("Link to parent task when breaking down large projects into phases")),
 		),
 		ts.handlers.HandleTodoCreate,
 	)
@@ -231,44 +231,44 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_create_multi
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_create_multi",
-			mcp.WithDescription("Create multiple todos with parent-child relationships in one operation. Perfect for multi-phase projects."),
+			mcp.WithDescription("Plan a multi-phase project by creating a parent task and all its phases at once. Automatically links phases together for easy progress tracking."),
 			mcp.WithObject("parent",
 				mcp.Required(),
-				mcp.Description("Parent todo information"),
+				mcp.Description("The main project or feature"),
 				mcp.Properties(map[string]any{
 					"task": map[string]any{
 						"type":        "string",
-						"description": "Parent task description",
+						"description": "Overall project goal (e.g., 'Implement user authentication system')",
 					},
 					"priority": map[string]any{
 						"type":        "string",
-						"description": "Priority (high, medium, low)",
+						"description": "Project urgency (high=this sprint, medium=next sprint, low=backlog)",
 						"default":     "high",
 					},
 					"type": map[string]any{
 						"type":        "string",
-						"description": "Todo type (defaults to multi-phase)",
+						"description": "Usually 'multi-phase' for projects with multiple steps",
 						"default":     "multi-phase",
 					},
 				})),
 			mcp.WithArray("children",
 				mcp.Required(),
-				mcp.Description("Array of child todos"),
+				mcp.Description("List of phases or subtasks to complete the project"),
 				mcp.Items(map[string]any{
 					"type": "object",
 					"properties": map[string]any{
 						"task": map[string]any{
 							"type":        "string",
-							"description": "Child task description",
+							"description": "Phase description (e.g., 'Design database schema', 'Create login UI')",
 						},
 						"priority": map[string]any{
 							"type":        "string",
-							"description": "Priority (high, medium, low)",
+							"description": "Phase urgency (typically matches parent priority)",
 							"default":     "medium",
 						},
 						"type": map[string]any{
 							"type":        "string",
-							"description": "Todo type (defaults to phase)",
+							"description": "Usually 'phase' for project phases",
 							"default":     "phase",
 						},
 					},
@@ -281,27 +281,27 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_read
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_read",
-			mcp.WithDescription("Read single todo or list all todos"),
+			mcp.WithDescription("View your tasks and their current status. Check a specific todo's details or see all active work with filtering options."),
 			mcp.WithString("id",
-				mcp.Description("Specific todo ID")),
+				mcp.Description("View specific todo (e.g., 'implement-auth-feature'). Leave empty to list all")),
 			mcp.WithObject("filter",
-				mcp.Description("Filter options"),
+				mcp.Description("Options to filter the todo list"),
 				mcp.Properties(map[string]any{
 					"status": map[string]any{
 						"type":        "string",
-						"description": "Status filter (in_progress, completed, blocked, all)",
+						"description": "Show only todos in this state (in_progress=active work, completed=done, blocked=waiting)",
 					},
 					"priority": map[string]any{
 						"type":        "string",
-						"description": "Priority filter (high, medium, low, all)",
+						"description": "Show only this urgency level (high, medium, low, all)",
 					},
 					"days": map[string]any{
 						"type":        "number",
-						"description": "Todos from last N days",
+						"description": "Show todos from the last N days (e.g., 7 for past week)",
 					},
 				})),
 			mcp.WithString("format",
-				mcp.Description("Output format (full, summary, list)"),
+				mcp.Description("How much detail? (full=everything, summary=overview, list=just titles)"),
 				mcp.DefaultString("summary")),
 		),
 		ts.handlers.HandleTodoRead,
@@ -310,31 +310,31 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_update
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_update",
-			mcp.WithDescription("Update todo content or metadata"),
+			mcp.WithDescription("Add progress notes, test results, or findings to a todo. Update status when blocked or completed (auto-archives on completion)."),
 			mcp.WithString("id",
 				mcp.Required(),
-				mcp.Description("Todo ID to update")),
+				mcp.Description("Which todo to update (e.g., 'fix-login-bug')")),
 			mcp.WithString("section",
-				mcp.Description("Section to update (status, findings, tests, checklist, scratchpad)")),
+				mcp.Description("Where to add content (findings=research notes, tests=test results, checklist=task items, scratchpad=rough notes)")),
 			mcp.WithString("operation",
-				mcp.Description("Update operation (append, replace, prepend, toggle)"),
+				mcp.Description("How to add content (append=add to end, replace=overwrite, prepend=add to beginning, toggle=check/uncheck)"),
 				mcp.DefaultString("append")),
 			mcp.WithString("content",
-				mcp.Description("Content to add/update")),
+				mcp.Description("Your notes, code, test results, or findings to add")),
 			mcp.WithObject("metadata",
-				mcp.Description("Metadata to update"),
+				mcp.Description("Update todo properties (status, priority, current test)"),
 				mcp.Properties(map[string]any{
 					"status": map[string]any{
 						"type":        "string",
-						"description": "Todo status",
+						"description": "Change work state (in_progress=working, completed=done & archive, blocked=waiting)",
 					},
 					"priority": map[string]any{
 						"type":        "string",
-						"description": "Todo priority",
+						"description": "Change urgency (high, medium, low)",
 					},
 					"current_test": map[string]any{
 						"type":        "string",
-						"description": "Current test being worked on",
+						"description": "Track which test you're working on (e.g., 'Test 3: user validation')",
 					},
 				})),
 		),
@@ -344,31 +344,31 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_search
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_search",
-			mcp.WithDescription("Full-text search across all todos"),
+			mcp.WithDescription("Find past solutions, code snippets, or similar work across all your todos. Searches through task descriptions, findings, and test results."),
 			mcp.WithString("query",
 				mcp.Required(),
-				mcp.Description("Search terms")),
+				mcp.Description("What to search for (e.g., 'authentication', 'timeout bug', 'JWT implementation')")),
 			mcp.WithArray("scope",
-				mcp.Description("Search scope (task, findings, tests, all)"),
+				mcp.Description("Where to search (task=titles only, findings=research notes, tests=test code, all=everywhere)"),
 				mcp.Items(map[string]any{"type": "string"})),
 			mcp.WithObject("filters",
-				mcp.Description("Search filters"),
+				mcp.Description("Additional search filters to narrow results"),
 				mcp.Properties(map[string]any{
 					"status": map[string]any{
 						"type":        "string",
-						"description": "Status filter",
+						"description": "Search only in todos with this state",
 					},
 					"date_from": map[string]any{
 						"type":        "string",
-						"description": "Date in YYYY-MM-DD format",
+						"description": "Start date for search range (YYYY-MM-DD)",
 					},
 					"date_to": map[string]any{
 						"type":        "string",
-						"description": "Date in YYYY-MM-DD format",
+						"description": "End date for search range (YYYY-MM-DD)",
 					},
 				})),
 			mcp.WithNumber("limit",
-				mcp.Description("Maximum results"),
+				mcp.Description("Maximum results to return (default 20, max 100)"),
 				mcp.DefaultNumber(20),
 				mcp.Max(100)),
 		),
@@ -379,10 +379,10 @@ func (ts *TodoServer) registerTools() {
 	if ts.noAutoArchive {
 		ts.mcpServer.AddTool(
 			mcp.NewTool("todo_archive",
-				mcp.WithDescription("Archive completed todo to daily folder"),
+				mcp.WithDescription("Move a completed todo to the archive folder organized by date. Usually happens automatically when you mark a todo as completed."),
 				mcp.WithString("id",
 					mcp.Required(),
-					mcp.Description("Todo ID to archive")),
+					mcp.Description("Todo to archive (e.g., 'implement-feature')")),
 			),
 			ts.handlers.HandleTodoArchive,
 		)
@@ -391,16 +391,16 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_template
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_template",
-			mcp.WithDescription("Create todo from template or list templates"),
+			mcp.WithDescription("Start with a pre-structured todo for common tasks. Templates include sections and checklists tailored to specific workflows."),
 			mcp.WithString("template",
-				mcp.Description("Template name (leave empty to list)")),
+				mcp.Description("Template name (bug-fix, feature, research, refactor, tdd-cycle). Leave empty to see all available")),
 			mcp.WithString("task",
-				mcp.Description("Task description")),
+				mcp.Description("Your specific task description to fill the template")),
 			mcp.WithString("priority",
-				mcp.Description("Task priority"),
+				mcp.Description("How urgent? (high, medium, low)"),
 				mcp.DefaultString("high")),
 			mcp.WithString("type",
-				mcp.Description("Todo type"),
+				mcp.Description("Work type (usually matches template type)"),
 				mcp.DefaultString("feature")),
 		),
 		ts.handlers.HandleTodoTemplate,
@@ -409,15 +409,15 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_link
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_link",
-			mcp.WithDescription("Link related todos"),
+			mcp.WithDescription("Connect related tasks together. Useful for dependencies, blocking relationships, or grouping related work."),
 			mcp.WithString("parent_id",
 				mcp.Required(),
-				mcp.Description("Parent todo ID")),
+				mcp.Description("The main/blocking todo (e.g., 'design-api')")),
 			mcp.WithString("child_id",
 				mcp.Required(),
-				mcp.Description("Child todo ID")),
+				mcp.Description("The dependent/related todo (e.g., 'implement-endpoints')")),
 			mcp.WithString("link_type",
-				mcp.Description("Type of link (parent-child, blocks, relates-to)"),
+				mcp.Description("Relationship type (parent-child=breakdown, blocks=dependency, relates-to=connection)"),
 				mcp.DefaultString("parent-child")),
 		),
 		ts.handlers.HandleTodoLink,
@@ -426,9 +426,9 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_stats
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_stats",
-			mcp.WithDescription("Get todo statistics and analytics"),
+			mcp.WithDescription("View your productivity metrics: completed tasks, time spent, task distribution, and work patterns."),
 			mcp.WithString("period",
-				mcp.Description("Time period for stats (all, week, month, quarter)"),
+				mcp.Description("Time range to analyze (all=everything, week=last 7 days, month=last 30 days, quarter=last 90 days)"),
 				mcp.DefaultString("all")),
 		),
 		ts.handlers.HandleTodoStats,
@@ -437,12 +437,12 @@ func (ts *TodoServer) registerTools() {
 	// Register todo_clean
 	ts.mcpServer.AddTool(
 		mcp.NewTool("todo_clean",
-			mcp.WithDescription("Clean up and manage todos"),
+			mcp.WithDescription("Maintain your todo system by archiving old incomplete tasks or finding potential duplicates."),
 			mcp.WithString("operation",
-				mcp.Description("Cleanup operation (archive_old, find_duplicates)"),
+				mcp.Description("What to clean (archive_old=move stale todos, find_duplicates=identify similar tasks)"),
 				mcp.DefaultString("archive_old")),
 			mcp.WithNumber("days",
-				mcp.Description("Days threshold for archive_old"),
+				mcp.Description("For archive_old: how many days before considering a todo stale (default 90)"),
 				mcp.DefaultNumber(90)),
 		),
 		ts.handlers.HandleTodoClean,
