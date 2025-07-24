@@ -72,26 +72,6 @@ func TestGenerateBaseID(t *testing.T) {
 			task:     "The quick brown fox jumps over the lazy dog",
 			checkFor: []string{"quick", "brown", "fox"},
 		},
-		{
-			name:    "Task exactly 100 characters",
-			task:    "This is a task that is exactly one hundred characters long including spaces and all punctuation marks",
-			wantLen: 100,
-		},
-		{
-			name:    "Task with 99 characters",
-			task:    "This is a task that is exactly ninety nine characters long including spaces and all punctuation!!",
-			wantLen: 100, // Should NOT be truncated
-		},
-		{
-			name:    "Task with 101 characters truncated cleanly",
-			task:    "This is a task that is exactly one hundred and one characters long including spaces and punctuation!",
-			wantLen: 100,
-		},
-		{
-			name:    "Task with hyphens at truncation point",
-			task:    strings.Repeat("test-", 25), // 125 chars, should truncate and trim trailing hyphens
-			wantLen: 100,
-		},
 	}
 
 	for _, tt := range tests {

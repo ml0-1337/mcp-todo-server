@@ -59,6 +59,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+*.patch
 server.log
 /tmp/
 test-todos/
@@ -73,6 +74,5 @@ __debug_bin
 *.cpu
 
 # Claude specific temporary files
-.claude/.DS_Store
-.claude/index/
+.claude/
 .mcp.json

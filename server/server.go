@@ -140,9 +140,9 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		sessionTimeout:    7 * 24 * time.Hour, // Default: 7 days
 		managerTimeout:    24 * time.Hour,     // Default: 24 hours
 		heartbeatInterval: 30 * time.Second,    // Default: 30 seconds
-		requestTimeout:    60 * time.Second,    // Default: 60 seconds (increased from 30s)
-		httpReadTimeout:   120 * time.Second,   // Default: 120 seconds (increased from 60s)
-		httpWriteTimeout:  120 * time.Second,   // Default: 120 seconds (increased from 60s)
+		requestTimeout:    30 * time.Second,    // Default: 30 seconds
+		httpReadTimeout:   60 * time.Second,    // Default: 60 seconds
+		httpWriteTimeout:  60 * time.Second,    // Default: 60 seconds
 		httpIdleTimeout:   120 * time.Second,   // Default: 120 seconds (unchanged)
 	}
 
