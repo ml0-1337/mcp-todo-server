@@ -42,8 +42,14 @@ func (tm *TodoManager) ArchiveTodo(id string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	// Construct source file path
-	sourcePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
+	// Construct source file path using ResolveTodoPath
+	sourcePath, err := ResolveTodoPath(tm.basePath, id)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return interrors.NewNotFoundError("todo", id)
+		}
+		return interrors.Wrap(err, "failed to resolve todo path")
+	}
 
 	// Check if todo exists
 	if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
@@ -159,14 +165,16 @@ func (tm *TodoManager) BulkArchiveTodos(ids []string) []BulkResult {
 
 // isArchived checks if a todo is already archived
 func isArchived(basePath, id string) bool {
-	// Check if file exists in main todo directory
-	mainPath := filepath.Join(basePath, ".claude", "todos", id+".md")
-	if _, err := os.Stat(mainPath); err == nil {
-		// File exists in main directory, not archived
-		return false
+	// Try to resolve the todo path
+	todoPath, err := ResolveTodoPath(basePath, id)
+	if err != nil {
+		// If we can't find it in todos directory, assume it's archived
+		return true
 	}
-	// If not in main directory, assume it's archived
-	return true
+	
+	// Check if the resolved path is in the archive directory
+	archivePath := filepath.Join(basePath, ".claude", "archive")
+	return strings.HasPrefix(todoPath, archivePath)
 }
 
 // ArchiveTodoWithCascade archives a todo and optionally its children

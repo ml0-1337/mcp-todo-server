@@ -437,7 +437,7 @@ func TestArchiveOldTodos(t *testing.T) {
 
 		// The current implementation archives todos from the LAST N days, not OLDER than N days
 		// So with days=7, it archives completed todos from the last 7 days
-		// We have 1 completed todo within last 7 days (5 days old)
+		// We have 1 completed todo within last 7 days (3 days old)
 		if count != 1 {
 			t.Errorf("ArchiveOldTodos() archived %d todos, want 1", count)
 		}
@@ -446,23 +446,27 @@ func TestArchiveOldTodos(t *testing.T) {
 		// The archive directory is created relative to the basePath
 		archivePath := filepath.Join(tempDir, ".claude", "archive")
 		
-		// With the current logic, only recentCompleted (5 days old) should be archived
+		// With the current logic, only recentCompleted (3 days old) should be archived
 		// The older ones (15, 20 days) are NOT within last 7 days
-		if _, err := os.Stat(GetTodoPath(tempDir, recentCompleted.ID)); !os.IsNotExist(err) {
-			t.Error("Recent completed (5 days old) should be archived")
+		_, err = ResolveTodoPath(tempDir, recentCompleted.ID)
+		if err == nil {
+			t.Error("Recent completed (3 days old) should be archived")
 		}
 		
 		// These should NOT be archived (older than 7 days)
-		if _, err := os.Stat(GetTodoPath(tempDir, oldCompleted1.ID)); os.IsNotExist(err) {
+		_, err = ResolveTodoPath(tempDir, oldCompleted1.ID)
+		if err != nil {
 			t.Error("Old completed todo 1 (15 days) should NOT be archived with current logic")
 		}
 
-		if _, err := os.Stat(GetTodoPath(tempDir, oldCompleted2.ID)); os.IsNotExist(err) {
+		_, err = ResolveTodoPath(tempDir, oldCompleted2.ID)
+		if err != nil {
 			t.Error("Old completed todo 2 (20 days) should NOT be archived with current logic")
 		}
 
 		// In-progress todo should never be archived regardless of age
-		if _, err := os.Stat(GetTodoPath(tempDir, oldInProgress.ID)); os.IsNotExist(err) {
+		_, err = ResolveTodoPath(tempDir, oldInProgress.ID)
+		if err != nil {
 			t.Error("Old in-progress todo should not be archived")
 		}
 		

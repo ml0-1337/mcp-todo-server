@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 // Test 2: Archive works correctly with CLAUDE_TODO_PATH set
@@ -24,8 +23,11 @@ func TestArchiveWithClaudeTodoPath(t *testing.T) {
 		t.Fatalf("Failed to create todo: %v", err)
 	}
 	
-	// Verify todo exists in the right place
-	todoPath := filepath.Join(basePath, ".claude", "todos", todo.ID+".md")
+	// Verify todo exists using ResolveTodoPath
+	todoPath, err := ResolveTodoPath(basePath, todo.ID)
+	if err != nil {
+		t.Errorf("Failed to resolve todo path: %v", err)
+	}
 	if _, err := os.Stat(todoPath); os.IsNotExist(err) {
 		t.Errorf("Todo should exist at: %s", todoPath)
 	}
@@ -37,14 +39,15 @@ func TestArchiveWithClaudeTodoPath(t *testing.T) {
 	}
 	
 	// Verify todo was removed from original location
-	if _, err := os.Stat(todoPath); !os.IsNotExist(err) {
+	_, err = ResolveTodoPath(basePath, todo.ID)
+	if err == nil {
 		t.Error("Original todo file should have been removed")
 	}
 	
 	// Verify archive was created within the project directory
-	now := time.Now()
+	// Use the todo's started date for the archive path
 	archivePath := filepath.Join(basePath, ".claude", "archive", 
-		now.Format("2006"), now.Format("01"), now.Format("02"), 
+		todo.Started.Format("2006"), todo.Started.Format("01"), todo.Started.Format("02"), 
 		todo.ID+".md")
 	
 	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
@@ -53,7 +56,7 @@ func TestArchiveWithClaudeTodoPath(t *testing.T) {
 	
 	// Important: Verify archive is NOT in parent directory
 	wrongArchivePath := filepath.Join(filepath.Dir(basePath), "archive",
-		now.Format("2006"), now.Format("01"), now.Format("02"), 
+		todo.Started.Format("2006"), todo.Started.Format("01"), todo.Started.Format("02"), 
 		todo.ID+".md")
 	
 	if _, err := os.Stat(wrongArchivePath); !os.IsNotExist(err) {

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 	
@@ -90,7 +91,14 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 	defer tm.mu.Unlock()
 
 	// Read existing todo
-	filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
+	filename, err := ResolveTodoPath(tm.basePath, id)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return interrors.NewNotFoundError("todo", id)
+		}
+		return interrors.Wrap(err, "failed to resolve todo path")
+	}
+	
 	fileContent, err := ioutil.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -159,7 +167,6 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		}
 		
 		// Write back the updated content
-		filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
 		if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
 			return interrors.NewOperationError("write", "todo file", "failed to save changes", err)
 		}
@@ -192,8 +199,12 @@ func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, co
 		updatedContent = prependToSection(updatedContent, section, content)
 	}
 
-	// Write back to file
-	filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
+	// Resolve the path and write back to file
+	filename, err := ResolveTodoPath(tm.basePath, id)
+	if err != nil {
+		return interrors.Wrap(err, "failed to resolve todo path for update")
+	}
+	
 	if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
 		return interrors.NewOperationError("write", "todo section", "failed to save section update", err)
 	}
@@ -436,49 +447,99 @@ func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, er
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	todosDir := filepath.Join(tm.basePath, ".claude", "todos")
-	fmt.Fprintf(os.Stderr, "ListTodos: Reading from %s\n", todosDir)
-	files, err := ioutil.ReadDir(todosDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []*Todo{}, nil
-		}
-		return nil, fmt.Errorf("failed to read todos directory: %w", err)
-	}
-
 	var todos []*Todo
+	todosRoot := filepath.Join(tm.basePath, ".claude", "todos")
 	cutoffTime := time.Now().AddDate(0, 0, -days)
 
-	for _, file := range files {
-		if filepath.Ext(file.Name()) != ".md" {
-			continue
+	// Check if todos directory exists
+	if _, err := os.Stat(todosRoot); os.IsNotExist(err) {
+		return []*Todo{}, nil
+	}
+
+	// Optimization: If days filter is active and reasonable, only scan relevant directories
+	if days > 0 && days < 365 {
+		// Use ScanDateRange for optimized scanning
+		startDate := cutoffTime
+		endDate := time.Now()
+		
+		paths, err := ScanDateRange(tm.basePath, startDate, endDate)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ListTodos: Error in ScanDateRange: %v\n", err)
+			// Fall back to full scan on error
+		} else {
+			// Process found files
+			for _, path := range paths {
+				content, err := ioutil.ReadFile(path)
+				if err != nil {
+					continue
+				}
+
+				todo, err := tm.parseTodoFile(string(content))
+				if err != nil {
+					continue
+				}
+
+				// Apply filters
+				if status != "" && !strings.EqualFold(todo.Status, status) {
+					continue
+				}
+
+				if priority != "" && !strings.EqualFold(todo.Priority, priority) {
+					continue
+				}
+
+				todos = append(todos, todo)
+			}
+			return todos, nil
+		}
+	}
+
+	// Full recursive scan for no date filter or fallback
+	err := filepath.Walk(todosRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Continue on error
 		}
 
-		content, err := ioutil.ReadFile(filepath.Join(todosDir, file.Name()))
+		// Skip directories and non-markdown files
+		if info.IsDir() || !strings.HasSuffix(info.Name(), ".md") {
+			return nil
+		}
+
+		content, err := ioutil.ReadFile(path)
 		if err != nil {
-			continue
+			return nil // Skip files we can't read
 		}
 
 		todo, err := tm.parseTodoFile(string(content))
 		if err != nil {
-			continue
+			return nil // Skip malformed files
 		}
 
 		// Apply filters
 		if status != "" && !strings.EqualFold(todo.Status, status) {
-			continue
+			return nil
 		}
 
 		if priority != "" && !strings.EqualFold(todo.Priority, priority) {
-			continue
+			return nil
 		}
 
 		if days > 0 && todo.Started.Before(cutoffTime) {
-			continue
+			return nil
 		}
 
 		todos = append(todos, todo)
+		return nil
+	})
+
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to walk todos directory: %w", err)
 	}
+
+	// Sort by started date (newest first)
+	sort.Slice(todos, func(i, j int) bool {
+		return todos[i].Started.After(todos[j].Started)
+	})
 
 	return todos, nil
 }

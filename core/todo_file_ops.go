@@ -14,14 +14,18 @@ import (
 
 // writeTodo writes a todo to disk
 func (tm *TodoManager) writeTodo(todo *Todo) error {
-	// Ensure directory exists
-	dir := filepath.Join(tm.basePath, ".claude", "todos")
+	// Use date-based structure
+	datePath := GetDailyPath(todo.Started)
+	dir := filepath.Join(tm.basePath, ".claude", "todos", datePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
 	}
 
 	// Create the todo file with frontmatter
 	filename := filepath.Join(dir, fmt.Sprintf("%s.md", todo.ID))
+	
+	// Update path cache
+	globalPathCache.Set(todo.ID, filename)
 	
 	// Marshal the frontmatter
 	yamlData, err := yaml.Marshal(todo)
@@ -60,7 +64,15 @@ func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
+	// Use ResolveTodoPath to find the todo
+	filename, err := ResolveTodoPath(tm.basePath, id)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, interrors.NewNotFoundError("todo", id)
+		}
+		return nil, interrors.Wrap(err, "failed to resolve todo path")
+	}
+
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -151,12 +163,40 @@ func (tm *TodoManager) SaveTodo(todo *Todo) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
+	// Check if todo already exists and might need to be moved
+	oldPath, err := ResolveTodoPath(tm.basePath, todo.ID)
+	if err == nil {
+		// Todo exists, check if it needs to be moved due to date change
+		newPath := GetDateBasedTodoPath(tm.basePath, todo.ID, todo.Started)
+		if oldPath != newPath {
+			// Date changed, need to move the file
+			// First write to new location
+			if err := tm.writeTodo(todo); err != nil {
+				return err
+			}
+			// Then remove old file
+			if err := os.Remove(oldPath); err != nil {
+				// Log warning but don't fail - the new file was written successfully
+				fmt.Fprintf(os.Stderr, "Warning: failed to remove old todo file at %s: %v\n", oldPath, err)
+			}
+			// Update cache
+			globalPathCache.Delete(todo.ID)
+			globalPathCache.Set(todo.ID, newPath)
+			return nil
+		}
+	}
+
 	return tm.writeTodo(todo)
 }
 
 // ReadTodoContent reads the raw content of a todo file
 func (tm *TodoManager) ReadTodoContent(id string) (string, error) {
-	filename := filepath.Join(tm.basePath, ".claude", "todos", fmt.Sprintf("%s.md", id))
+	// Use ResolveTodoPath to find the todo
+	filename, err := ResolveTodoPath(tm.basePath, id)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve todo path: %w", err)
+	}
+	
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return "", fmt.Errorf("failed to read todo content: %w", err)

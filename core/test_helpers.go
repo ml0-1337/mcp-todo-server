@@ -45,8 +45,11 @@ func GetArchivePath(basePath string, todo *Todo, quarter string) string {
 // VerifyTodoExists checks if a todo file exists at the expected location
 func VerifyTodoExists(t *testing.T, basePath, todoID string) {
 	t.Helper()
-	path := GetTodoPath(basePath, todoID)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	// Use ResolveTodoPath to find the todo in either flat or date-based structure
+	path, err := ResolveTodoPath(basePath, todoID)
+	if err != nil {
+		t.Errorf("Expected todo %s to exist, but got error: %v", todoID, err)
+	} else if _, err := os.Stat(path); os.IsNotExist(err) {
 		t.Errorf("Expected todo file to exist at %s", path)
 	}
 }
@@ -54,10 +57,15 @@ func VerifyTodoExists(t *testing.T, basePath, todoID string) {
 // VerifyTodoNotExists checks if a todo file does not exist at the expected location
 func VerifyTodoNotExists(t *testing.T, basePath, todoID string) {
 	t.Helper()
-	path := GetTodoPath(basePath, todoID)
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Errorf("Expected todo file to not exist at %s", path)
+	// Use ResolveTodoPath - if it returns an error, the todo doesn't exist
+	path, err := ResolveTodoPath(basePath, todoID)
+	if err == nil {
+		// If we found a path, check if the file actually exists
+		if _, err := os.Stat(path); err == nil {
+			t.Errorf("Expected todo file to not exist, but found at %s", path)
+		}
 	}
+	// If ResolveTodoPath returns an error, that's expected (todo doesn't exist)
 }
 
 // VerifyArchiveExists checks if a todo exists in the archive
@@ -74,8 +82,12 @@ func CreateTestTodoWithContent(t *testing.T, manager *TodoManager, task, content
 	t.Helper()
 	todo := CreateTestTodo(t, manager, task, "high", "feature")
 	
-	// Write the content directly to the file
-	path := GetTodoPath(manager.basePath, todo.ID)
+	// Use ResolveTodoPath to find the created todo
+	path, err := ResolveTodoPath(manager.basePath, todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to resolve todo path: %v", err)
+	}
+	
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to write test content: %v", err)
 	}
@@ -88,8 +100,12 @@ func CreateTestTodoWithDate(t *testing.T, manager *TodoManager, task string, sta
 	t.Helper()
 	todo := CreateTestTodo(t, manager, task, "high", "feature")
 	
-	// Read the file content
-	path := GetTodoPath(manager.basePath, todo.ID)
+	// Use ResolveTodoPath to find the created todo
+	path, err := ResolveTodoPath(manager.basePath, todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to resolve todo path: %v", err)
+	}
+	
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Failed to read todo file: %v", err)
