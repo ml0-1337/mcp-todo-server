@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 )
 
@@ -134,9 +135,18 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 	})
 
 	t.Run("FormatTodoArchiveResponse", func(t *testing.T) {
-		result := FormatTodoArchiveResponse("todo-123", "/archive/path")
+		result := FormatTodoArchiveResponse("todo-123", "/archive/path", "feature")
 		if result == nil {
 			t.Fatal("Expected non-nil result")
+		}
+		
+		// Verify prompt is included
+		textContent, ok := result.Content[0].(mcp.TextContent)
+		if !ok {
+			t.Fatalf("Expected TextContent, got %T", result.Content[0])
+		}
+		if !strings.Contains(textContent.Text, "To build on this feature") {
+			t.Error("Expected archive prompt in response")
 		}
 	})
 
@@ -154,9 +164,18 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 	})
 
 	t.Run("FormatTodoTemplateResponse", func(t *testing.T) {
-		result := FormatTodoTemplateResponse(todo, "/path/to/template.md")
+		result := FormatTodoTemplateResponse(todo, "/path/to/template.md", "feature")
 		if result == nil {
 			t.Fatal("Expected non-nil result")
+		}
+		
+		// Verify prompt is included
+		textContent, ok := result.Content[0].(mcp.TextContent)
+		if !ok {
+			t.Fatalf("Expected TextContent, got %T", result.Content[0])
+		}
+		if !strings.Contains(textContent.Text, "Feature template applied") {
+			t.Error("Expected template prompt in response")
 		}
 	})
 

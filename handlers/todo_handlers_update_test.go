@@ -203,9 +203,9 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
 		}
 		
-		// Verify it contains the reflection prompt
+		// Verify it contains contextual prompts
 		if !strings.Contains(textContent.Text, "Task completed successfully") {
-			t.Error("Response should contain task completion prompt")
+			t.Error("Response should contain completion prompts")
 		}
 	})
 
@@ -319,9 +319,123 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
 		}
 		
-		// Verify it contains the reflection prompt
-		if !strings.Contains(textContent.Text, "Task marked as completed") {
-			t.Error("Response should contain task completion prompt")
+		// Verify it contains contextual prompts
+		if !strings.Contains(textContent.Text, "Task completed successfully") {
+			t.Error("Response should contain completion prompts")
+		}
+	})
+
+	t.Run("completion prompts should be contextual based on todo type", func(t *testing.T) {
+		testCases := []struct {
+			name         string
+			todoType     string
+			expectedText string
+		}{
+			{
+				name:         "feature todo",
+				todoType:     "feature",
+				expectedText: "Were there unexpected challenges that future features should consider?",
+			},
+			{
+				name:         "bug todo",
+				todoType:     "bug",
+				expectedText: "What was the root cause of this bug?",
+			},
+			{
+				name:         "research todo",
+				todoType:     "research",
+				expectedText: "What are the key insights or conclusions?",
+			},
+			{
+				name:         "refactor todo",
+				todoType:     "refactor",
+				expectedText: "Did this reveal additional technical debt to address?",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				// Setup mocks
+				mockManager := NewMockTodoManager()
+				mockSearch := NewMockSearchEngine()
+				mockStats := NewMockStatsEngine()
+				mockTemplates := NewMockTemplateManager()
+
+				// Create handlers
+				handlers := &TodoHandlers{
+					factory: NewManagerFactory(mockManager, mockSearch, mockStats, mockTemplates),
+				}
+
+				// Test todo with specific type
+				testTodo := &core.Todo{
+					ID:       "test-contextual",
+					Task:     "Test contextual prompts",
+					Status:   "in_progress",
+					Priority: "high",
+					Type:     tc.todoType,
+					Started:  time.Now(),
+				}
+
+				// Mock ReadTodo
+				mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
+					if id == "test-contextual" {
+						return testTodo, nil
+					}
+					return nil, fmt.Errorf("todo not found")
+				}
+
+				// Mock UpdateTodo
+				mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
+					if metadata != nil && metadata["status"] == "completed" {
+						testTodo.Status = "completed"
+						return nil
+					}
+					return fmt.Errorf("unexpected update")
+				}
+
+				// Mock ArchiveTodo
+				mockManager.ArchiveTodoFunc = func(id string) error {
+					return nil
+				}
+
+				// Mock search engine
+				mockSearch.DeleteTodoFunc = func(id string) error {
+					return nil
+				}
+
+				// Create update request
+				ctx := context.Background()
+				request := &MockCallToolRequest{
+					Arguments: map[string]interface{}{
+						"id": "test-contextual",
+						"metadata": map[string]interface{}{
+							"status": "completed",
+						},
+					},
+				}
+
+				// Execute update
+				result, err := handlers.HandleTodoUpdate(ctx, request.ToCallToolRequest())
+				if err != nil {
+					t.Fatalf("HandleTodoUpdate failed: %v", err)
+				}
+
+				// Check response
+				if result == nil || len(result.Content) == 0 {
+					t.Fatal("Expected result with content")
+				}
+
+				textContent, ok := result.Content[0].(mcp.TextContent)
+				if !ok {
+					t.Fatal("Expected TextContent in result")
+				}
+
+				// Verify contextual prompt
+				if !strings.Contains(textContent.Text, tc.expectedText) {
+					t.Errorf("Expected contextual prompt for %s type to contain '%s', got: %s", 
+						tc.todoType, tc.expectedText, textContent.Text)
+				}
+			})
 		}
 	})
 }

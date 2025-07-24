@@ -54,7 +54,13 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 		}
 	}
 
-	return FormatTodoArchiveResponse(params.ID, archivePath), nil
+	// Get todo type for prompts (default to empty string if not available)
+	todoType := ""
+	if todo != nil {
+		todoType = todo.Type
+	}
+	
+	return FormatTodoArchiveResponse(params.ID, archivePath, todoType), nil
 }
 
 // HandleTodoClean performs cleanup operations

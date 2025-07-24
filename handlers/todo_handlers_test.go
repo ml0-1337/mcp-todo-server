@@ -84,7 +84,7 @@ func TestFormatTodoArchiveResponse(t *testing.T) {
 	todoID := "test-archive-123"
 	archivePath := filepath.Join(".claude", "archive", "2025", "01", "15", "test-archive-123.md")
 
-	result := FormatTodoArchiveResponse(todoID, archivePath)
+	result := FormatTodoArchiveResponse(todoID, archivePath, "feature")
 
 	// Verify result is valid MCP response
 	if result == nil {

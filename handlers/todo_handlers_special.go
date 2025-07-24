@@ -52,7 +52,7 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 		fmt.Fprintf(os.Stderr, "Warning: failed to index todo: %v\n", err)
 	}
 
-	return FormatTodoTemplateResponse(todo, filePath), nil
+	return FormatTodoTemplateResponse(todo, filePath, template), nil
 }
 
 // HandleTodoLink links related todos

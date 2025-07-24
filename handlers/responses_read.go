@@ -60,7 +60,6 @@ func formatSingleTodoWithContent(todo *core.Todo, content string, format string)
 		data["sections"] = sectionData
 
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
-		// For full JSON format, return pure JSON without guidance
 		return mcp.NewToolResultText(string(jsonData))
 	}
 
@@ -90,13 +89,15 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 		}
 
 		jsonData, _ := json.MarshalIndent(data, "", "  ")
-		// For full JSON format, return pure JSON without guidance
 		return mcp.NewToolResultText(string(jsonData))
 	}
 
-	// Summary format - add guidance for non-JSON formats
-	summaryLine := formatTodoSummaryLine(todo)
-	return addSingleTodoGuidance(summaryLine, todo)
+	// Summary format
+	summary := formatTodoSummaryLine(todo)
+	
+	// Add single todo prompt
+	prompt := getSingleTodoPrompt(todo)
+	return mcp.NewToolResultText(summary + prompt)
 }
 
 // formatTodosFull formats multiple todos in full format
@@ -140,7 +141,8 @@ func formatTodosList(todos []*core.Todo) *mcp.CallToolResult {
 // formatTodosSummary formats todos with detailed summary
 func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 	if len(todos) == 0 {
-		return mcp.NewToolResultText("No todos found")
+		prompt := getReadPrompts(todos, "summary")
+		return mcp.NewToolResultText("No todos found" + prompt)
 	}
 
 	// Check if any todos have parent relationships
@@ -212,8 +214,8 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 			}
 		}
 		
-		result := strings.Join(lines, "\n")
-		return addMultiTodoGuidance(result, todos)
+		prompt := getReadPrompts(todos, "summary")
+		return mcp.NewToolResultText(strings.Join(lines, "\n") + prompt)
 	}
 
 	// No hierarchy - use grouped view
@@ -238,8 +240,8 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 		}
 	}
 
-	result := strings.Join(lines, "\n")
-	return addMultiTodoGuidance(result, todos)
+	prompt := getReadPrompts(todos, "summary")
+	return mcp.NewToolResultText(strings.Join(lines, "\n") + prompt)
 }
 
 // formatTodoSummaryLine formats a single todo as a summary line
@@ -313,6 +315,90 @@ func formatTodoNodeTreeInternal(node *core.TodoNode, prefix string, isLast bool,
 	return strings.Join(lines, "\n")
 }
 
+// getReadPrompts returns contextual prompts based on todo status and count
+func getReadPrompts(todos []*core.Todo, format string) string {
+	// Don't add prompts to JSON or list formats
+	if format == "list" || format == "full" {
+		return ""
+	}
+	
+	if len(todos) == 0 {
+		return "\n\nNo todos found. To get started:\n\n" +
+			"- What task or project would you like to begin?\n" +
+			"- Is this a feature, bug fix, research, or refactor?\n" +
+			"- Are there multiple phases that need planning?\n\n" +
+			"Use todo_create to start tracking your work."
+	}
+	
+	// Count todos by status
+	statusCounts := make(map[string]int)
+	for _, todo := range todos {
+		statusCounts[todo.Status]++
+	}
+	
+	// Generate status-specific prompts
+	if statusCounts["blocked"] > 0 {
+		return fmt.Sprintf("\n\nYou have %d blocked todo(s). To unblock progress:\n\n"+
+			"- What specific issues are preventing completion?\n"+
+			"- Are there alternative approaches to consider?\n"+
+			"- Do you need to create separate todos for blockers?\n\n"+
+			"Review blocked todos and update with findings or create linked dependencies.",
+			statusCounts["blocked"])
+	}
+	
+	if statusCounts["in_progress"] > 0 {
+		return fmt.Sprintf("\n\nYou have %d todo(s) in progress. To maintain momentum:\n\n"+
+			"- Which todo should be your primary focus?\n"+
+			"- Are you following the test list or implementation plan?\n"+
+			"- Any blockers emerging that need attention?\n\n"+
+			"Use todo_update to track progress on your active tasks.",
+			statusCounts["in_progress"])
+	}
+	
+	// All completed
+	return "\n\nAll todos are completed! To continue being productive:\n\n" +
+		"- Are there follow-up tasks from completed work?\n" +
+		"- Any technical debt or improvements to address?\n" +
+		"- New features or bugs reported?\n\n" +
+		"Consider archiving completed todos or creating new ones."
+}
+
+// getSingleTodoPrompt returns contextual prompts for a single todo
+func getSingleTodoPrompt(todo *core.Todo) string {
+	switch todo.Status {
+	case "in_progress":
+		return fmt.Sprintf("\n\nThis %s is in progress. To continue effectively:\n\n"+
+			"- What's the next concrete step to take?\n"+
+			"- Are you following your test list or implementation plan?\n"+
+			"- Any obstacles or questions that need addressing?\n\n"+
+			"Use todo_update to document progress and findings.",
+			todo.Type)
+	
+	case "blocked":
+		return fmt.Sprintf("\n\nThis %s is blocked. To resolve the blocker:\n\n"+
+			"- What specifically is preventing progress?\n"+
+			"- Have you documented the blocker details?\n"+
+			"- Is there an alternative approach to consider?\n\n"+
+			"Update the todo with blocker details or create a linked todo for the dependency.",
+			todo.Type)
+	
+	case "completed":
+		return fmt.Sprintf("\n\nThis %s is completed. To wrap up:\n\n"+
+			"- Are there any lessons learned to document?\n"+
+			"- Did this reveal any follow-up tasks?\n"+
+			"- Should this be archived to keep your list clean?\n\n"+
+			"Consider using todo_archive or creating follow-up todos.",
+			todo.Type)
+	
+	default:
+		return "\n\nNext steps for this todo:\n\n"+
+			"- Review the current status and update if needed\n"+
+			"- Check if any sections need documentation\n"+
+			"- Determine the next action to take\n\n"+
+			"Use todo_update to modify status or add content."
+	}
+}
+
 // FormatSearchResult represents a search result
 type FormatSearchResult struct {
 	ID      string  `json:"id"`
@@ -324,7 +410,8 @@ type FormatSearchResult struct {
 // FormatTodoSearchResponse formats search results
 func FormatTodoSearchResponse(results []core.SearchResult) *mcp.CallToolResult {
 	if len(results) == 0 {
-		return mcp.NewToolResultText("No matching todos found")
+		prompt := getSearchPrompts(0)
+		return mcp.NewToolResultText("No matching todos found" + prompt)
 	}
 
 	var lines []string
@@ -340,100 +427,33 @@ func FormatTodoSearchResponse(results []core.SearchResult) *mcp.CallToolResult {
 	}
 
 	header := fmt.Sprintf("Found %d matching todos:\n", len(results))
-	return mcp.NewToolResultText(header + strings.Join(lines, "\n\n"))
+	prompt := getSearchPrompts(len(results))
+	return mcp.NewToolResultText(header + strings.Join(lines, "\n\n") + prompt)
 }
 
-// addMultiTodoGuidance adds contextual guidance for multiple todos view
-func addMultiTodoGuidance(todoList string, todos []*core.Todo) *mcp.CallToolResult {
-	var guidance strings.Builder
-	guidance.WriteString(todoList)
-	guidance.WriteString("\n\n")
-	
-	// Count todos by status
-	statusCounts := make(map[string]int)
-	var blockedTodos []string
-	var oldestInProgress *core.Todo
-	
-	for _, todo := range todos {
-		statusCounts[todo.Status]++
-		if todo.Status == "blocked" {
-			blockedTodos = append(blockedTodos, todo.ID)
-		}
-		if todo.Status == "in_progress" && (oldestInProgress == nil || todo.Started.Before(oldestInProgress.Started)) {
-			oldestInProgress = todo
-		}
+// getSearchPrompts returns contextual prompts based on search results
+func getSearchPrompts(resultCount int) string {
+	if resultCount == 0 {
+		return "\n\nNo matches found. To find what you're looking for:\n\n" +
+			"- Try different search terms or keywords\n" +
+			"- Check if the todo might be archived\n" +
+			"- Consider creating a new todo if this is a new task\n\n" +
+			"Use broader search terms or create a new todo for this work."
 	}
 	
-	inProgressCount := statusCounts["in_progress"]
-	blockedCount := statusCounts["blocked"]
-	
-	guidance.WriteString(fmt.Sprintf("Current workload: %d active tasks", inProgressCount))
-	if blockedCount > 0 {
-		guidance.WriteString(fmt.Sprintf(", %d blocked", blockedCount))
-	}
-	guidance.WriteString("\n\n")
-	
-	guidance.WriteString("Workflow suggestions:\n")
-	
-	// Priority guidance based on workload
-	if blockedCount > 0 {
-		guidance.WriteString(fmt.Sprintf("- Address blocked items first to unblock progress: %s\n", strings.Join(blockedTodos, ", ")))
+	if resultCount == 1 {
+		return "\n\nFound one matching todo. Next steps:\n\n" +
+			"- Review the todo details with todo_read\n" +
+			"- Check if this is the task you were looking for\n" +
+			"- Update progress if this is your current work\n\n" +
+			"Use todo_read to view the complete todo content."
 	}
 	
-	if inProgressCount > 3 {
-		guidance.WriteString("- Consider completing existing work before starting new tasks (high WIP detected)\n")
-		if oldestInProgress != nil {
-			guidance.WriteString(fmt.Sprintf("- Focus on '%s' - it's been in progress the longest\n", oldestInProgress.ID))
-		}
-	} else if inProgressCount == 0 && len(todos) > 0 {
-		guidance.WriteString("- No tasks currently in progress. Choose the highest priority item to start\n")
-	}
-	
-	// Check for priority issues
-	highPriorityCount := 0
-	for _, todo := range todos {
-		if todo.Priority == "high" && todo.Status == "in_progress" {
-			highPriorityCount++
-		}
-	}
-	
-	if highPriorityCount > 1 {
-		guidance.WriteString("- Multiple high-priority items in progress. Consider if they're all truly urgent\n")
-	}
-	
-	guidance.WriteString("\nWhich task requires your immediate attention?")
-	
-	return mcp.NewToolResultText(guidance.String())
-}
-
-// addSingleTodoGuidance adds contextual guidance for single todo view
-func addSingleTodoGuidance(todoInfo string, todo *core.Todo) *mcp.CallToolResult {
-	var guidance strings.Builder
-	guidance.WriteString(todoInfo)
-	guidance.WriteString("\n\n")
-	
-	switch todo.Status {
-	case "in_progress":
-		guidance.WriteString("Task is in progress. To maintain momentum:\n")
-		guidance.WriteString("- Focus on the current test or next checklist item\n")
-		guidance.WriteString("- Document findings as you work\n")
-		guidance.WriteString("- Avoid context switching until a logical stopping point\n\n")
-		guidance.WriteString("What specific progress can you make on this task right now?")
-		
-	case "blocked":
-		guidance.WriteString("Task is blocked. To resolve efficiently:\n")
-		guidance.WriteString("- Document the specific blocker in the findings section\n")
-		guidance.WriteString("- Identify who can help or what information is needed\n")
-		guidance.WriteString("- Consider if there's a workaround or alternative approach\n\n")
-		guidance.WriteString("Can you describe the blocker in detail?")
-		
-	default: // new/not started
-		guidance.WriteString("Task ready to begin. To start effectively:\n")
-		guidance.WriteString("- Review the task description and any existing notes\n")
-		guidance.WriteString("- Add acceptance criteria or break down into concrete steps\n")
-		guidance.WriteString("- Consider dependencies or prerequisites\n\n")
-		guidance.WriteString("What's the first concrete action to move this forward?")
-	}
-	
-	return mcp.NewToolResultText(guidance.String())
+	// Multiple results
+	return fmt.Sprintf("\n\nFound %d matching todos. To work effectively:\n\n"+
+		"- Which todo best matches your current need?\n"+
+		"- Are these related tasks that could be linked?\n"+
+		"- Should any completed ones be archived?\n\n"+
+		"Review the results and use todo_read to examine specific todos.",
+		resultCount)
 }

@@ -17,65 +17,12 @@ func FormatTodoCreateResponse(todo *core.Todo, filePath string) *mcp.CallToolRes
 	}
 
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	jsonStr := string(jsonData)
 	
-	// Add context-aware guidance based on todo type and status
-	var guidance strings.Builder
-	guidance.WriteString(jsonStr)
-	guidance.WriteString("\n\n")
+	// Add contextual prompts
+	prompt := getCreatePrompts(todo.Type, false)
+	result := string(jsonData) + "\n\n" + prompt
 	
-	// Type-specific guidance
-	switch todo.Type {
-	case "bug":
-		guidance.WriteString("Starting a bug fix. To ensure a robust solution:\n")
-		guidance.WriteString("- First reproduce the issue and document it in 'findings'\n")
-		guidance.WriteString("- Write a failing test that captures the bug\n")
-		guidance.WriteString("- Only then implement the fix\n\n")
-		guidance.WriteString("Can you describe how to reproduce this bug?")
-		
-	case "feature":
-		guidance.WriteString(fmt.Sprintf("Starting a new %s. To build effectively:\n", todo.Type))
-		guidance.WriteString("- Define clear acceptance criteria in the 'tests' section\n")
-		guidance.WriteString("- Document design decisions in 'findings' as you research\n")
-		guidance.WriteString("- Break down into subtasks if scope seems large\n\n")
-		guidance.WriteString("What specific aspect will you tackle first?")
-		
-	case "phase", "subtask":
-		if todo.ParentID != "" {
-			guidance.WriteString("Phase created and linked to parent project. Consider:\n")
-			guidance.WriteString("- Review parent todo for overall context and goals\n")
-			guidance.WriteString("- Check if other phases might have dependencies\n")
-			guidance.WriteString("- Update parent's checklist to track this phase\n\n")
-			guidance.WriteString("Ready to begin implementation or need to create more phases first?")
-		} else {
-			guidance.WriteString(fmt.Sprintf("Created %s todo. Note: This type typically requires a parent_id.\n", todo.Type))
-			guidance.WriteString("Consider using todo_link to connect this to a parent project.\n\n")
-			guidance.WriteString("What's the broader context for this work?")
-		}
-		
-	case "refactor":
-		guidance.WriteString("Starting refactoring work. To maintain code quality:\n")
-		guidance.WriteString("- Ensure comprehensive tests exist before changing structure\n")
-		guidance.WriteString("- Document the current design problems in 'findings'\n")
-		guidance.WriteString("- Make structural changes separate from behavioral changes\n\n")
-		guidance.WriteString("What specific code smell or design issue are you addressing?")
-		
-	case "research":
-		guidance.WriteString("Starting research task. To capture valuable insights:\n")
-		guidance.WriteString("- Document all findings systematically as you explore\n")
-		guidance.WriteString("- Include links and references for future access\n")
-		guidance.WriteString("- Synthesize conclusions at the end\n\n")
-		guidance.WriteString("What specific question are you trying to answer?")
-		
-	default:
-		guidance.WriteString(fmt.Sprintf("Starting new %s task. To maximize effectiveness:\n", todo.Type))
-		guidance.WriteString("- Define clear success criteria\n")
-		guidance.WriteString("- Document progress in appropriate sections\n")
-		guidance.WriteString("- Consider if this should be broken into smaller pieces\n\n")
-		guidance.WriteString("What's the first concrete step to make progress?")
-	}
-	
-	return mcp.NewToolResultText(guidance.String())
+	return mcp.NewToolResultText(result)
 }
 
 // FormatTodoCreateResponseWithHints formats the response with pattern hints
@@ -104,7 +51,12 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 	}
 
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	return mcp.NewToolResultText(string(jsonData))
+	
+	// Add contextual prompts
+	prompt := getCreatePrompts(todo.Type, false)
+	result := string(jsonData) + "\n\n" + prompt
+	
+	return mcp.NewToolResultText(result)
 }
 
 // FormatTodoCreateMultiResponse formats the response for todo_create_multi
@@ -112,56 +64,140 @@ func FormatTodoCreateMultiResponse(parent *core.Todo, children []*core.Todo) *mc
 	var sb strings.Builder
 	
 	sb.WriteString(fmt.Sprintf("Created multi-phase project: %s\n\n", parent.ID))
-	sb.WriteString("Project Structure:\n")
+	sb.WriteString("📋 Project Structure:\n")
 	
 	// Parent
-	sb.WriteString(fmt.Sprintf("[PARENT] %s: %s [%s] [%s]\n", parent.ID, parent.Task, 
+	sb.WriteString(fmt.Sprintf("[→] %s: %s [%s] [%s]\n", parent.ID, parent.Task, 
 		strings.ToUpper(parent.Priority), parent.Type))
 	
 	// Children
-	for i, child := range children {
-		prefix := "├─"
-		if i == len(children)-1 {
-			prefix = "└─"
-		}
-		sb.WriteString(fmt.Sprintf("  %s %s: %s [%s] [%s]\n", prefix, child.ID, child.Task,
+	for _, child := range children {
+		sb.WriteString(fmt.Sprintf("  └─ %s: %s [%s] [%s]\n", child.ID, child.Task,
 			strings.ToUpper(child.Priority), child.Type))
 	}
 	
 	childCount := len(children)
-	sb.WriteString(fmt.Sprintf("\nSuccessfully created %d todos (1 parent, %d children)\n\n", 
+	sb.WriteString(fmt.Sprintf("\n✅ Successfully created %d todos (1 parent, %d children)\n", 
 		childCount+1, childCount))
 	
-	sb.WriteString("Multi-phase project initialized. To work effectively:\n")
-	sb.WriteString("- Start with the first phase while keeping the full scope in mind\n")
-	sb.WriteString("- Update parent's checklist as you complete each phase\n")
-	sb.WriteString("- Use todo_read to see progress across all phases\n")
-	sb.WriteString("- Consider dependencies between phases before starting work\n\n")
-	sb.WriteString("Which phase should be tackled first based on dependencies and priority?")
+	sb.WriteString("\n💡 TIP: Use `todo_read` to see the full hierarchy or `todo_update` to modify individual todos.")
+	
+	// Add contextual prompts for multi-phase projects
+	prompt := getCreatePrompts(parent.Type, true)
+	sb.WriteString("\n\n" + prompt)
 	
 	return mcp.NewToolResultText(sb.String())
 }
 
+// getCreatePrompts returns contextual prompts based on todo type
+func getCreatePrompts(todoType string, isMultiPhase bool) string {
+	if isMultiPhase {
+		return "Multi-phase project created. To maintain project momentum:\n\n" +
+			"- Which phase should you start with first?\n" +
+			"- Are there any dependencies between phases to consider?\n" +
+			"- Do you need to adjust priorities based on current context?\n\n" +
+			"Start with the first phase using todo_read to see the full hierarchy."
+	}
+
+	switch todoType {
+	case "feature":
+		return "Feature todo created. To ensure successful implementation:\n\n" +
+			"- What are the key behaviors this feature should exhibit?\n" +
+			"- Which test scenarios will validate the implementation?\n" +
+			"- Are there any edge cases or error conditions to consider?\n\n" +
+			"Consider using todo_update to add your Test List before implementation."
+	
+	case "bug":
+		return "Bug todo created. To effectively resolve this issue:\n\n" +
+			"- Can you reproduce the bug consistently?\n" +
+			"- What is the expected behavior versus actual behavior?\n" +
+			"- Which test would catch this bug in the future?\n\n" +
+			"Start by using todo_update to document reproduction steps."
+	
+	case "research":
+		return "Research todo created. To guide your investigation:\n\n" +
+			"- What are the key questions you need to answer?\n" +
+			"- Which resources or documentation should you consult?\n" +
+			"- What would constitute a successful research outcome?\n\n" +
+			"Use todo_update to document findings as you research."
+	
+	case "refactor":
+		return "Refactor todo created. To ensure safe code improvements:\n\n" +
+			"- What is the primary goal of this refactoring?\n" +
+			"- Are there existing tests to ensure behavior doesn't change?\n" +
+			"- Which files or components will be affected?\n\n" +
+			"Consider running existing tests first to establish a baseline."
+	
+	default:
+		return "Todo created successfully. To make progress:\n\n" +
+			"- What is the first concrete step to take?\n" +
+			"- Are there any blockers or dependencies to address?\n" +
+			"- How will you know when this todo is complete?\n\n" +
+			"Use todo_update to track progress and findings."
+	}
+}
+
+// getTemplatePrompts returns contextual prompts based on template type
+func getTemplatePrompts(template string) string {
+	switch template {
+	case "bug-fix":
+		return "Bug fix template applied. To get started:\n\n" +
+			"- Update the 'Steps to Reproduce' section with specific details\n" +
+			"- Add the failing test that reproduces the bug\n" +
+			"- Document your fix approach in the findings section\n\n" +
+			"Begin by using todo_update to fill in the template sections."
+	
+	case "feature":
+		return "Feature template applied. To develop effectively:\n\n" +
+			"- Define clear acceptance criteria in the checklist\n" +
+			"- List all test scenarios in the Test List section\n" +
+			"- Consider edge cases and error handling\n\n" +
+			"Start with todo_update to customize the template for your specific feature."
+	
+	case "research":
+		return "Research template applied. To conduct thorough research:\n\n" +
+			"- List specific questions to answer in the checklist\n" +
+			"- Document sources and references as you find them\n" +
+			"- Summarize key findings and recommendations\n\n" +
+			"Use todo_update to capture research findings as you progress."
+	
+	case "refactor":
+		return "Refactor template applied. To refactor safely:\n\n" +
+			"- Document the current state and problems\n" +
+			"- List all affected files and components\n" +
+			"- Ensure test coverage before making changes\n\n" +
+			"Begin by using todo_update to detail the refactoring plan."
+	
+	case "tdd-cycle":
+		return "TDD cycle template applied. To follow test-driven development:\n\n" +
+			"- Start with the Test List - what behaviors need testing?\n" +
+			"- Pick one test and follow Red-Green-Refactor cycle\n" +
+			"- Document each phase in the test results section\n\n" +
+			"Use todo_update to track your TDD progress through each cycle."
+	
+	default:
+		return "Template applied successfully. To make it your own:\n\n" +
+			"- Review the template sections and customize as needed\n" +
+			"- Add specific details relevant to your task\n" +
+			"- Remove any sections that don't apply\n\n" +
+			"Start customizing with todo_update."
+	}
+}
+
 // FormatTodoTemplateResponse formats the response for template creation
-func FormatTodoTemplateResponse(todo *core.Todo, filePath string) *mcp.CallToolResult {
+func FormatTodoTemplateResponse(todo *core.Todo, filePath string, template string) *mcp.CallToolResult {
 	response := map[string]interface{}{
 		"id":       todo.ID,
 		"path":     filePath,
 		"message":  fmt.Sprintf("Todo created from template successfully: %s", todo.ID),
-		"template": "Applied template sections and structure",
+		"template": fmt.Sprintf("Applied %s template", template),
 	}
 
 	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	jsonStr := string(jsonData)
 	
-	var guidance strings.Builder
-	guidance.WriteString(jsonStr)
-	guidance.WriteString("\n\n")
-	guidance.WriteString("Template applied with pre-structured sections. To leverage the template effectively:\n")
-	guidance.WriteString("- Review the template structure and customize for your specific needs\n")
-	guidance.WriteString("- Fill in the pre-defined sections with relevant information\n")
-	guidance.WriteString("- The template provides a proven workflow - follow it for best results\n\n")
-	guidance.WriteString("What information do you need to gather to complete the first template section?")
+	// Add contextual prompts for template
+	prompt := getTemplatePrompts(template)
+	result := string(jsonData) + "\n\n" + prompt
 	
-	return mcp.NewToolResultText(guidance.String())
+	return mcp.NewToolResultText(result)
 }
