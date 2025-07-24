@@ -13,33 +13,45 @@ import (
 	"github.com/user/mcp-todo-server/internal/logging"
 )
 
+// fileInfo holds file information for parallel processing
+type fileInfo struct {
+	path string
+	info os.FileInfo
+}
+
 // indexExistingTodosParallel indexes all existing todo files using parallel processing
 func (e *Engine) indexExistingTodosParallel() error {
 	totalStart := time.Now()
 	
-	// Read all .md files in basePath
-	readStart := time.Now()
-	logging.Infof("Reading todos directory: %s", e.basePath)
-	files, err := ioutil.ReadDir(e.basePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// No todos directory yet, that's OK
-			logging.Infof("Todos directory doesn't exist yet, skipping indexing")
-			return nil
-		}
-		return fmt.Errorf("failed to read todos directory: %w", err)
+	// Check if todos directory exists
+	logging.Infof("Starting parallel recursive index of todos directory: %s", e.basePath)
+	if _, err := os.Stat(e.basePath); os.IsNotExist(err) {
+		logging.Infof("Todos directory doesn't exist yet, skipping indexing")
+		return nil
 	}
-	readTime := time.Since(readStart)
-	logging.Infof("Found %d files in todos directory (readdir took %v)", len(files), readTime)
 
-	// Filter markdown files
-	var mdFiles []os.FileInfo
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".md") {
-			mdFiles = append(mdFiles, file)
+	// Collect all markdown files recursively
+	collectStart := time.Now()
+	var mdFiles []fileInfo
+	
+	err := filepath.Walk(e.basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			logging.Warnf("Error accessing path %s: %v", path, err)
+			return nil // Continue walking
 		}
+		
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
+			mdFiles = append(mdFiles, fileInfo{path: path, info: info})
+		}
+		return nil
+	})
+	
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error walking directory: %w", err)
 	}
-	logging.Timingf("Found %d markdown files out of %d total files", len(mdFiles), len(files))
+	
+	collectTime := time.Since(collectStart)
+	logging.Timingf("Found %d markdown files (collection took %v)", len(mdFiles), collectTime)
 	
 	if len(mdFiles) == 0 {
 		return nil
@@ -47,7 +59,7 @@ func (e *Engine) indexExistingTodosParallel() error {
 
 	// Create channels for worker pool
 	const numWorkers = 10
-	workCh := make(chan os.FileInfo, len(mdFiles))
+	workCh := make(chan fileInfo, len(mdFiles))
 	resultCh := make(chan *indexResult, len(mdFiles))
 	
 	// Start workers
@@ -174,8 +186,8 @@ func (e *Engine) indexExistingTodosParallel() error {
 	}
 
 	totalTime := time.Since(totalStart)
-	logging.Timingf("Total parallel indexing time: %v (readdir: %v, process: %v, batch: %v)",
-		totalTime, readTime, processTime, time.Since(batchStart))
+	logging.Timingf("Total parallel indexing time: %v (collect: %v, process: %v, batch: %v)",
+		totalTime, collectTime, processTime, time.Since(batchStart))
 	logging.Performancef("Indexed %d todos at %.1f todos/sec", 
 		processedCount, float64(processedCount)/totalTime.Seconds())
 
@@ -191,7 +203,7 @@ type indexResult struct {
 }
 
 // indexWorker processes files from the work channel
-func (e *Engine) indexWorker(id int, workCh <-chan os.FileInfo, resultCh chan<- *indexResult, wg *sync.WaitGroup) {
+func (e *Engine) indexWorker(id int, workCh <-chan fileInfo, resultCh chan<- *indexResult, wg *sync.WaitGroup) {
 	defer wg.Done()
 	
 	for file := range workCh {
@@ -201,10 +213,10 @@ func (e *Engine) indexWorker(id int, workCh <-chan os.FileInfo, resultCh chan<- 
 }
 
 // processFile processes a single todo file
-func (e *Engine) processFile(file os.FileInfo) *indexResult {
-	fileName := file.Name()
+func (e *Engine) processFile(file fileInfo) *indexResult {
+	fileName := file.info.Name()
 	todoID := strings.TrimSuffix(fileName, ".md")
-	filePath := filepath.Join(e.basePath, fileName)
+	filePath := file.path
 	
 	// Read file with timeout
 	fileCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

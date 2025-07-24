@@ -125,61 +125,51 @@ func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
 func (e *Engine) indexExistingTodos() error {
 	totalStart := time.Now()
 	
-	// Read all .md files in basePath
-	readStart := time.Now()
-	logging.Infof("Reading todos directory: %s", e.basePath)
-	files, err := ioutil.ReadDir(e.basePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// No todos directory yet, that's OK
-			logging.Infof("Todos directory doesn't exist yet, skipping indexing")
-			return nil
-		}
-		return fmt.Errorf("failed to read todos directory: %w", err)
+	// Check if todos directory exists
+	logging.Infof("Starting recursive index of todos directory: %s", e.basePath)
+	if _, err := os.Stat(e.basePath); os.IsNotExist(err) {
+		logging.Infof("Todos directory doesn't exist yet, skipping indexing")
+		return nil
 	}
-	readTime := time.Since(readStart)
-	logging.Infof("Found %d files in todos directory (readdir took %v)", len(files), readTime)
-
-	// Count markdown files
-	mdCount := 0
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".md") {
-			mdCount++
-		}
-	}
-	logging.Timingf("Found %d markdown files out of %d total files", mdCount, len(files))
 
 	// Create a batch for efficient indexing
 	batch := e.index.NewBatch()
 
-	// Process files
+	// Process files recursively
 	processStart := time.Now()
 	processedCount := 0
 	skippedCount := 0
 	totalFileSize := int64(0)
 	
-	for _, file := range files {
-		if !strings.HasSuffix(file.Name(), ".md") {
-			continue
+	// Walk the directory tree
+	err := filepath.Walk(e.basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			logging.Warnf("Error accessing path %s: %v", path, err)
+			return nil // Continue walking
+		}
+
+		// Skip directories and non-markdown files
+		if info.IsDir() || !strings.HasSuffix(info.Name(), ".md") {
+			return nil
 		}
 
 		// Log progress every 10 files
 		if processedCount > 0 && processedCount%10 == 0 {
 			elapsed := time.Since(processStart)
 			rate := float64(processedCount) / elapsed.Seconds()
-			logging.Progressf("Indexed %d/%d files (%.1f files/sec)", 
-				processedCount, mdCount, rate)
+			logging.Progressf("Indexed %d files (%.1f files/sec)", 
+				processedCount, rate)
 		}
 
-		// Read and parse todo file
-		todoID := strings.TrimSuffix(file.Name(), ".md")
-		filePath := filepath.Join(e.basePath, file.Name())
+		// Extract todo ID from filename
+		todoID := strings.TrimSuffix(info.Name(), ".md")
 
 		fileStart := time.Now()
-		content, err := ioutil.ReadFile(filePath)
+		content, err := ioutil.ReadFile(path)
 		if err != nil {
 			skippedCount++
-			continue // Skip files we can't read
+			logging.Warnf("Failed to read file %s: %v", path, err)
+			return nil // Skip files we can't read
 		}
 		totalFileSize += int64(len(content))
 
@@ -187,7 +177,8 @@ func (e *Engine) indexExistingTodos() error {
 		todo, err := parseTodoFile(todoID, string(content))
 		if err != nil {
 			skippedCount++
-			continue // Skip malformed files
+			logging.Warnf("Failed to parse todo %s: %v", todoID, err)
+			return nil // Skip malformed files
 		}
 
 		// Create search document
@@ -214,12 +205,21 @@ func (e *Engine) indexExistingTodos() error {
 		fileTime := time.Since(fileStart)
 		if fileTime > 100*time.Millisecond {
 			logging.Timingf("Slow file %s: %v (size: %d bytes)", 
-				file.Name(), fileTime, len(content))
+				info.Name(), fileTime, len(content))
 		}
+
+		return nil
+	})
+
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error walking directory: %w", err)
 	}
 	
 	processTime := time.Since(processStart)
-	avgFileSize := totalFileSize / int64(processedCount)
+	var avgFileSize int64
+	if processedCount > 0 {
+		avgFileSize = totalFileSize / int64(processedCount)
+	}
 	logging.Timingf("Processed %d files in %v (skipped %d, avg size: %d bytes)", 
 		processedCount, processTime, skippedCount, avgFileSize)
 
@@ -277,8 +277,8 @@ func (e *Engine) indexExistingTodos() error {
 	}
 
 	totalTime := time.Since(totalStart)
-	logging.Timingf("Total indexExistingTodos time: %v (readdir: %v, process: %v, batch: %v)",
-		totalTime, readTime, processTime, time.Since(batchStart))
+	logging.Timingf("Total indexExistingTodos time: %v (process: %v, batch: %v)",
+		totalTime, processTime, time.Since(batchStart))
 
 	return nil
 }
