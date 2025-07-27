@@ -180,7 +180,6 @@ parent_id: %s
 		"Test Strategy",
 		"Test List",
 		"Test Cases",
-		"Maintainability Analysis",
 		"Test Results Log",
 		"Checklist",
 		"Working Scratchpad",

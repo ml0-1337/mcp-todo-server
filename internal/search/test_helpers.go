@@ -76,7 +76,7 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 	}
 
 	// Build content
-	content := fmt.Sprintf("---\n%s---\n\n# Task: %s\n\n## Findings & Research\n\n## Web Searches\n\n## Test Strategy\n\n## Test List\n\n## Test Cases\n\n## Maintainability Analysis\n\n## Test Results Log\n\n## Checklist\n\n## Working Scratchpad\n",
+	content := fmt.Sprintf("---\n%s---\n\n# Task: %s\n\n## Findings & Research\n\n## Web Searches\n\n## Test Strategy\n\n## Test List\n\n## Test Cases\n\n## Test Results Log\n\n## Checklist\n\n## Working Scratchpad\n",
 		string(yamlData), todo.Task)
 
 	// Write file
