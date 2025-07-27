@@ -277,23 +277,29 @@ func appendToSection(fileContent, section, content string) string {
 		return fileContent + "\n\n" + sectionHeader + "\n\n" + contentToAppend
 	}
 	
-	// Find where to insert the content (before the next section)
-	// But we need to insert after any existing content in the section
-	insertIndex := sectionIndex + 1
-	
-	// Skip empty lines after section header
-	for insertIndex < nextSectionIndex && strings.TrimSpace(lines[insertIndex]) == "" {
-		insertIndex++
+	// Find the last non-empty line in the section
+	lastContentIndex := sectionIndex
+	for i := sectionIndex + 1; i < nextSectionIndex; i++ {
+		if strings.TrimSpace(lines[i]) != "" {
+			lastContentIndex = i
+		}
 	}
 	
-	// Find the end of existing content in the section
-	for insertIndex < nextSectionIndex && strings.TrimSpace(lines[insertIndex]) != "" {
-		insertIndex++
-	}
+	// Insert after the last content
+	insertIndex := lastContentIndex + 1
 	
-	// If we have existing content, add a newline before appending
-	if insertIndex > sectionIndex + 1 {
+	// Handle spacing
+	if lastContentIndex > sectionIndex {
+		// There's existing content, add newline before appending
 		contentToAppend = "\n" + contentToAppend
+	} else {
+		// Section is empty
+		// Check if there's already an empty line after the header
+		if insertIndex < len(lines) && strings.TrimSpace(lines[insertIndex]) == "" {
+			// There's already an empty line, insert after it to preserve spacing
+			insertIndex++
+		}
+		// No need to add extra newline, the structure is already correct
 	}
 	
 	// Insert the content
@@ -348,26 +354,31 @@ func replaceSection(fileContent, section, content string) string {
 		return fileContent + "\n\n" + sectionHeader + "\n\n" + content
 	}
 	
-	// Replace the section content
-	// Keep lines up to and including the section header
-	result := lines[:sectionIndex+1]
+	// Build the new content
+	newLines := make([]string, 0, len(lines))
+	
+	// Add all lines before the section
+	newLines = append(newLines, lines[:sectionIndex+1]...)
 	
 	// Add empty line after header if content is not empty
 	if content != "" {
-		result = append(result, "")
-		// Add the new content (split by lines to maintain formatting)
+		newLines = append(newLines, "")
+		// Add the new content
 		contentLines := strings.Split(strings.TrimSpace(content), "\n")
-		result = append(result, contentLines...)
+		newLines = append(newLines, contentLines...)
 	}
 	
-	// Add lines after the section
+	// Add lines after the section (skip old section content)
 	if nextSectionIndex < len(lines) {
-		// Add empty line before next section
-		result = append(result, "")
-		result = append(result, lines[nextSectionIndex:]...)
+		// Add empty line before next section if we added content
+		if content != "" {
+			newLines = append(newLines, "")
+		}
+		// Add all remaining lines starting from the next section
+		newLines = append(newLines, lines[nextSectionIndex:]...)
 	}
 	
-	return strings.Join(result, "\n")
+	return strings.Join(newLines, "\n")
 }
 
 // prependToSection prepends content to a section
