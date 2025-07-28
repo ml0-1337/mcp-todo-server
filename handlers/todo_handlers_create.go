@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
@@ -26,10 +27,53 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 		return nil, interrors.Wrap(err, "failed to get context-aware managers")
 	}
 
-	// Create todo
-	todo, err := manager.CreateTodo(params.Task, params.Priority, params.Type)
-	if err != nil {
-		return nil, interrors.Wrap(err, "failed to create todo")
+	// Check if we need to use a template based on type
+	var templateContent string
+	if params.Type == "prd" || params.Template != "" {
+		// Determine which template to use
+		templateName := params.Template
+		if templateName == "" && params.Type == "prd" {
+			templateName = "prd"
+		}
+
+		// Get the template manager
+		basePath := manager.GetBasePath()
+		templatesDir := filepath.Join(basePath, "templates")
+		templateManager := core.NewTemplateManager(templatesDir)
+
+		// Load the template
+		template, err := templateManager.LoadTemplate(templateName)
+		if err != nil {
+			// If template not found, log warning and continue with default sections
+			fmt.Fprintf(os.Stderr, "Warning: failed to load template '%s': %v\n", templateName, err)
+		} else {
+			// Execute the template with variables
+			vars := map[string]interface{}{
+				"feature_name": params.Task,
+				"author":       "Claude Code",
+				"date":         time.Now().Format("2006-01-02"),
+			}
+			content, err := templateManager.ExecuteTemplate(template, vars)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to execute template: %v\n", err)
+			} else {
+				templateContent = content
+			}
+		}
+	}
+
+	// Create todo with template content if available
+	var todo *core.Todo
+	if concreteManager, ok := manager.(*core.TodoManager); ok && templateContent != "" {
+		todo, err = concreteManager.CreateTodoWithTemplate(params.Task, params.Priority, params.Type, templateContent)
+		if err != nil {
+			return nil, interrors.Wrap(err, "failed to create todo with template")
+		}
+	} else {
+		todo, err = manager.CreateTodo(params.Task, params.Priority, params.Type)
+		if err != nil {
+			return nil, interrors.Wrap(err, "failed to create todo")
+		}
 	}
 
 	// Handle parent-child relationship if parent_id is provided

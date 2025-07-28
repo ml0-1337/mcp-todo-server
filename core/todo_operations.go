@@ -49,6 +49,11 @@ func getDefaultSections() map[string]*SectionDefinition {
 
 // CreateTodo creates a new todo with a unique ID
 func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error) {
+	return tm.CreateTodoWithTemplate(task, priority, todoType, "")
+}
+
+// CreateTodoWithTemplate creates a new todo with optional template content
+func (tm *TodoManager) CreateTodoWithTemplate(task, priority, todoType, templateContent string) (*Todo, error) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
@@ -75,10 +80,17 @@ func (tm *TodoManager) CreateTodo(task, priority, todoType string) (*Todo, error
 		Sections: getDefaultSections(),
 	}
 
-	// Write todo to file
-	err := tm.writeTodo(todo)
-	if err != nil {
-		return nil, interrors.Wrap(err, "failed to write todo")
+	// Write todo to file (with template content if provided)
+	if templateContent != "" {
+		err := tm.writeTodoWithContent(todo, templateContent)
+		if err != nil {
+			return nil, interrors.Wrap(err, "failed to write todo with template")
+		}
+	} else {
+		err := tm.writeTodo(todo)
+		if err != nil {
+			return nil, interrors.Wrap(err, "failed to write todo")
+		}
 	}
 
 	return todo, nil

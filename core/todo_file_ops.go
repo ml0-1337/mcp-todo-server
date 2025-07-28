@@ -59,6 +59,43 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	return nil
 }
 
+// writeTodoWithContent writes a todo with custom template content
+func (tm *TodoManager) writeTodoWithContent(todo *Todo, templateContent string) error {
+	// Use date-based structure
+	datePath := GetDailyPath(todo.Started)
+	dir := filepath.Join(tm.basePath, ".claude", "todos", datePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
+	}
+
+	// Create the todo file with frontmatter
+	filename := filepath.Join(dir, fmt.Sprintf("%s.md", todo.ID))
+	
+	// Update path cache
+	globalPathCache.Set(todo.ID, filename)
+	
+	// Marshal the frontmatter
+	yamlData, err := yaml.Marshal(todo)
+	if err != nil {
+		return interrors.Wrap(err, "failed to marshal todo")
+	}
+
+	// Build content with template
+	var contentBuilder strings.Builder
+	contentBuilder.WriteString("---\n")
+	contentBuilder.Write(yamlData)
+	contentBuilder.WriteString("---\n\n")
+	contentBuilder.WriteString(fmt.Sprintf("# Task: %s\n\n", todo.Task))
+	contentBuilder.WriteString(templateContent)
+
+	// Write to file
+	if err := ioutil.WriteFile(filename, []byte(contentBuilder.String()), 0644); err != nil {
+		return interrors.NewOperationError("write", "todo file", "failed to save todo", err)
+	}
+
+	return nil
+}
+
 // ReadTodo reads a todo by ID
 func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
 	tm.mu.Lock()

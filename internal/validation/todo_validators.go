@@ -13,6 +13,7 @@ const (
 	TypeBug        = "bug"
 	TypeRefactor   = "refactor"
 	TypeResearch   = "research"
+	TypePRD        = "prd"
 	TypeMultiPhase = "multi-phase"
 	TypePhase      = "phase"
 	TypeSubtask    = "subtask"
@@ -41,7 +42,7 @@ func IsValidPriority(p string) bool {
 // IsValidTodoType validates todo type values
 func IsValidTodoType(t string) bool {
 	return t == TypeFeature || t == TypeBug || t == TypeRefactor || 
-		t == TypeResearch || t == TypeMultiPhase || t == TypePhase || t == TypeSubtask
+		t == TypeResearch || t == TypePRD || t == TypeMultiPhase || t == TypePhase || t == TypeSubtask
 }
 
 // IsValidFormat validates format values
@@ -61,7 +62,7 @@ func GetValidPriorities() []string {
 
 // GetValidTodoTypes returns all valid todo type values
 func GetValidTodoTypes() []string {
-	return []string{TypeFeature, TypeBug, TypeRefactor, TypeResearch, TypeMultiPhase, TypePhase, TypeSubtask}
+	return []string{TypeFeature, TypeBug, TypeRefactor, TypeResearch, TypePRD, TypeMultiPhase, TypePhase, TypeSubtask}
 }
 
 // GetValidFormats returns all valid format values
