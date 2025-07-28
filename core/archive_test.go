@@ -228,12 +228,25 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		err = manager.ArchiveTodo(todo.ID)
 		if err == nil {
 			t.Error("Archive should fail when write fails")
+		} else {
+			t.Logf("Archive failed as expected with error: %v", err)
 		}
 
 		// Original should still exist and be unchanged
-		originalPath := GetTodoPath(tempDir, todo.ID)
-		if _, err := os.Stat(originalPath); os.IsNotExist(err) {
-			t.Error("Original todo should still exist after failed archive")
+		// Use ResolveTodoPath to find the actual location
+		originalPath, resolveErr := ResolveTodoPath(tempDir, todo.ID)
+		if resolveErr != nil {
+			t.Errorf("Failed to resolve todo path: %v", resolveErr)
+		} else {
+			if _, err := os.Stat(originalPath); os.IsNotExist(err) {
+				t.Error("Original todo should still exist after failed archive")
+				
+				// Check if file was moved to archive
+				archivePath := filepath.Join(archiveDir, todo.ID+".md")
+				if _, err := os.Stat(archivePath); err == nil {
+					t.Error("Todo was archived despite write failure!")
+				}
+			}
 		}
 
 		// Verify todo can still be read and is unchanged
@@ -266,7 +279,19 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	todo4, _ := manager.CreateTodo("Todo 4 - Valid", "high", "feature")
 
 	// Delete todo3's file to simulate missing todo
-	os.Remove(GetTodoPath(tempDir, todo3.ID))
+	// Use ResolveTodoPath to find actual location
+	todo3Path, _ := ResolveTodoPath(tempDir, todo3.ID)
+	err = os.Remove(todo3Path)
+	if err != nil {
+		t.Logf("Warning: Failed to delete todo3 file: %v", err)
+	} else {
+		t.Logf("Deleted todo3 file at: %s", todo3Path)
+	}
+	
+	// Verify it's really gone
+	if _, err := os.Stat(todo3Path); !os.IsNotExist(err) {
+		t.Error("Todo3 file still exists after deletion")
+	}
 
 	// Create list of IDs including a non-existent one
 	todoIDs := []string{
@@ -307,6 +332,7 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 				t.Errorf("Todo %s should have succeeded, but got error: %v", result.ID, result.Error)
 			} else {
 				successCount++
+				t.Logf("Todo %s succeeded as expected", result.ID)
 			}
 		} else {
 			if result.Success {
@@ -315,6 +341,8 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 				failureCount++
 				if result.Error == nil {
 					t.Errorf("Failed result for %s should have error", result.ID)
+				} else {
+					t.Logf("Todo %s failed as expected with error: %v", result.ID, result.Error)
 				}
 			}
 		}
