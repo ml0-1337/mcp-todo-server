@@ -201,7 +201,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Original should not exist
-		originalPath := GetTodoPath(tempDir, todo.ID)
+		originalPath, _ := ResolveTodoPath(tempDir, todo.ID)
 		if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 			t.Error("Original todo should not exist after successful archive")
 		}

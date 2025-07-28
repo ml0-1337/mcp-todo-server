@@ -145,7 +145,10 @@ func (se *StatsEngine) CalculateTestCoverage(todoID string) (float64, error) {
 	}
 
 	// Read the full content to get test section
-	todoPath := filepath.Join(se.manager.basePath, todoID+".md")
+	todoPath, err := ResolveTodoPath(se.manager.basePath, todoID)
+	if err != nil {
+		return 0, err
+	}
 	content, err := ioutil.ReadFile(todoPath)
 	if err != nil {
 		return 0, err
@@ -322,32 +325,46 @@ func (se *StatsEngine) generateStatsFromTodos(todos []*Todo) (*TodoStats, error)
 
 // Helper to get all todos
 func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
-	// Read all .md files in the todos directory
+	// Read all .md files in the todos directory tree
 	todosDir := filepath.Join(se.manager.basePath, ".claude", "todos")
-	files, err := ioutil.ReadDir(todosDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// No todos directory exists yet, return empty slice
-			return []*Todo{}, nil
-		}
-		return nil, interrors.Wrap(err, "failed to read todos directory")
-	}
-
+	
 	var todos []*Todo
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".md") {
+	
+	// Walk through all subdirectories
+	err := filepath.Walk(todosDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			// If the todos directory doesn't exist, return empty slice
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		
+		// Skip directories
+		if info.IsDir() {
+			return nil
+		}
+		
+		// Process only .md files
+		if strings.HasSuffix(info.Name(), ".md") {
 			// Extract ID from filename
-			todoID := strings.TrimSuffix(file.Name(), ".md")
-
+			todoID := strings.TrimSuffix(info.Name(), ".md")
+			
 			// Read the todo
 			todo, err := se.manager.ReadTodo(todoID)
 			if err != nil {
 				// Skip files that can't be read as todos
-				continue
+				return nil
 			}
-
+			
 			todos = append(todos, todo)
 		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, interrors.Wrap(err, "failed to walk todos directory")
 	}
 
 	return todos, nil
