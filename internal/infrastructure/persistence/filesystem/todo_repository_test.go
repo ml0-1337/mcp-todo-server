@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -453,5 +454,285 @@ func TestRepository_NotFoundError(t *testing.T) {
 	
 	if err != domain.ErrTodoNotFound {
 		t.Errorf("Expected domain.ErrTodoNotFound for GetContent, got: %v", err)
+	}
+}
+
+func TestRepository_Archive(t *testing.T) {
+	// Test: Repository should archive todos correctly
+	tmpDir := t.TempDir()
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Create a todo to archive
+	todo := &domain.Todo{
+		ID:       "test-archive-1",
+		Task:     "Task to archive",
+		Started:  time.Now(),
+		Status:   "completed",
+		Priority: "medium",
+		Type:     "task",
+	}
+	
+	err := repo.Save(ctx, todo)
+	if err != nil {
+		t.Fatalf("Failed to save todo: %v", err)
+	}
+	
+	// Archive the todo
+	archivePath := "2025/07/29"
+	err = repo.Archive(ctx, todo.ID, archivePath)
+	if err != nil {
+		t.Fatalf("Failed to archive todo: %v", err)
+	}
+	
+	// Verify original file is gone
+	originalPath := filepath.Join(tmpDir, "test-archive-1.md")
+	if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
+		t.Error("Original todo file should not exist after archiving")
+	}
+	
+	// Verify archive file exists
+	archiveFilePath := filepath.Join(tmpDir, "archive", archivePath, "test-archive-1.md")
+	if _, err := os.Stat(archiveFilePath); os.IsNotExist(err) {
+		t.Error("Archive file should exist")
+	}
+}
+
+func TestRepository_ListWithFilters(t *testing.T) {
+	// Test: Repository should filter todos by priority and days
+	tmpDir := t.TempDir()
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Create todos with different attributes
+	now := time.Now()
+	todos := []*domain.Todo{
+		{
+			ID:       "todo-high-recent",
+			Task:     "High priority recent",
+			Started:  now.Add(-24 * time.Hour),
+			Status:   "in_progress",
+			Priority: "high",
+			Type:     "feature",
+		},
+		{
+			ID:       "todo-high-old",
+			Task:     "High priority old",
+			Started:  now.Add(-10 * 24 * time.Hour),
+			Status:   "in_progress",
+			Priority: "high",
+			Type:     "bug",
+		},
+		{
+			ID:       "todo-low-recent",
+			Task:     "Low priority recent",
+			Started:  now.Add(-2 * 24 * time.Hour),
+			Status:   "in_progress",
+			Priority: "low",
+			Type:     "task",
+		},
+		{
+			ID:       "todo-with-parent",
+			Task:     "Child todo",
+			Started:  now,
+			Status:   "in_progress",
+			Priority: "medium",
+			Type:     "task",
+			ParentID: "parent-123",
+		},
+	}
+	
+	for _, todo := range todos {
+		if err := repo.Save(ctx, todo); err != nil {
+			t.Fatalf("Failed to save todo %s: %v", todo.ID, err)
+		}
+	}
+	
+	// Test priority filter
+	result, err := repo.List(ctx, repository.ListFilters{Priority: "high"})
+	if err != nil {
+		t.Fatalf("Failed to list with priority filter: %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("Expected 2 high priority todos, got %d", len(result))
+	}
+	
+	// Test days filter (last 7 days)
+	result, err = repo.List(ctx, repository.ListFilters{Days: 7})
+	if err != nil {
+		t.Fatalf("Failed to list with days filter: %v", err)
+	}
+	if len(result) != 3 {
+		t.Errorf("Expected 3 recent todos (within 7 days), got %d", len(result))
+	}
+	
+	// Test parent ID filter
+	result, err = repo.List(ctx, repository.ListFilters{ParentID: "parent-123"})
+	if err != nil {
+		t.Fatalf("Failed to list with parent ID filter: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("Expected 1 todo with parent, got %d", len(result))
+	}
+	if len(result) > 0 && result[0].ID != "todo-with-parent" {
+		t.Errorf("Expected todo-with-parent, got %s", result[0].ID)
+	}
+	
+	// Test combined filters
+	result, err = repo.List(ctx, repository.ListFilters{
+		Priority: "high",
+		Days:     5,
+	})
+	if err != nil {
+		t.Fatalf("Failed to list with combined filters: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("Expected 1 high priority recent todo, got %d", len(result))
+	}
+}
+
+func TestRepository_SaveValidationError(t *testing.T) {
+	// Test: Repository should return validation error for invalid todo
+	tmpDir := t.TempDir()
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Create invalid todo (empty ID)
+	invalidTodo := &domain.Todo{
+		ID:       "",
+		Task:     "Invalid todo",
+		Started:  time.Now(),
+		Status:   "in_progress",
+		Priority: "high",
+		Type:     "task",
+	}
+	
+	err := repo.Save(ctx, invalidTodo)
+	if err == nil {
+		t.Error("Expected validation error for todo with empty ID")
+	}
+	if !strings.Contains(err.Error(), "validation failed") {
+		t.Errorf("Expected validation error, got: %v", err)
+	}
+}
+
+func TestRepository_FindByIDWithContent(t *testing.T) {
+	// Test: Repository should return todo with full content
+	tmpDir := t.TempDir()
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	// Create todo with sections
+	todo := &domain.Todo{
+		ID:       "test-with-content",
+		Task:     "Todo with content",
+		Started:  time.Now(),
+		Status:   "in_progress",
+		Priority: "high",
+		Type:     "feature",
+		Sections: map[string]*domain.SectionDefinition{
+			"description": {
+				Title:   "Description",
+				Content: "This is a detailed description",
+				Order:   1,
+			},
+			"checklist": {
+				Title:   "Checklist",
+				Content: "- [ ] Item 1\n- [x] Item 2",
+				Order:   2,
+			},
+		},
+	}
+	
+	err := repo.Save(ctx, todo)
+	if err != nil {
+		t.Fatalf("Failed to save todo: %v", err)
+	}
+	
+	// Retrieve with content
+	retrievedTodo, content, err := repo.FindByIDWithContent(ctx, "test-with-content")
+	if err != nil {
+		t.Fatalf("Failed to find todo with content: %v", err)
+	}
+	
+	// Verify todo is returned
+	if retrievedTodo.ID != todo.ID {
+		t.Errorf("Expected todo ID %s, got %s", todo.ID, retrievedTodo.ID)
+	}
+	
+	// Verify content contains expected sections
+	if !strings.Contains(content, "# Todo with content") {
+		t.Error("Content should contain task as heading")
+	}
+	if !strings.Contains(content, "## Description") {
+		t.Error("Content should contain Description section")
+	}
+	if !strings.Contains(content, "This is a detailed description") {
+		t.Error("Content should contain description text")
+	}
+	if !strings.Contains(content, "## Checklist") {
+		t.Error("Content should contain Checklist section")
+	}
+	if !strings.Contains(content, "- [ ] Item 1") {
+		t.Error("Content should contain checklist items")
+	}
+}
+
+func TestRepository_ErrorHandling(t *testing.T) {
+	// Test: Repository should handle file system errors gracefully
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	
+	// Test save to read-only directory
+	t.Run("save to read-only directory", func(t *testing.T) {
+		// Create a read-only directory
+		readOnlyDir := filepath.Join(tmpDir, "readonly")
+		os.Mkdir(readOnlyDir, 0755)
+		os.Chmod(readOnlyDir, 0555)
+		defer os.Chmod(readOnlyDir, 0755) // Restore for cleanup
+		
+		readOnlyRepo := NewTodoRepository(readOnlyDir)
+		todo := &domain.Todo{
+			ID:       "test-readonly",
+			Task:     "Test task",
+			Started:  time.Now(),
+			Status:   "in_progress",
+			Priority: "medium",
+			Type:     "task",
+		}
+		
+		err := readOnlyRepo.Save(ctx, todo)
+		if err == nil {
+			t.Error("Expected error when saving to read-only directory")
+		}
+	})
+	
+	// Test list with invalid directory
+	t.Run("list non-existent directory", func(t *testing.T) {
+		nonExistentRepo := NewTodoRepository("/path/that/does/not/exist")
+		result, err := nonExistentRepo.List(ctx, repository.ListFilters{})
+		
+		// Should return empty list, not error
+		if err != nil {
+			t.Errorf("Expected no error for non-existent directory, got: %v", err)
+		}
+		if len(result) != 0 {
+			t.Errorf("Expected empty list, got %d items", len(result))
+		}
+	})
+}
+
+func TestRepository_UpdateContent(t *testing.T) {
+	// Test: UpdateContent should return not implemented error
+	tmpDir := t.TempDir()
+	repo := NewTodoRepository(tmpDir)
+	ctx := context.Background()
+	
+	err := repo.UpdateContent(ctx, "any-id", "section", "content")
+	if err == nil {
+		t.Error("Expected error for UpdateContent")
+	}
+	if !strings.Contains(err.Error(), "not implemented") {
+		t.Errorf("Expected 'not implemented' error, got: %v", err)
 	}
 }
