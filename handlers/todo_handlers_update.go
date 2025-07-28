@@ -142,7 +142,22 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 			opDesc = "updated"
 		}
 		
-		return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' %s section %s", params.ID, params.Section, opDesc)), nil
+		// Get todo type for contextual prompts
+		todoType := ""
+		todo, _ := manager.ReadTodo(params.ID)
+		if todo != nil {
+			todoType = todo.Type
+		}
+		
+		// Build response with contextual prompts
+		baseMessage := fmt.Sprintf("Todo '%s' %s section %s", params.ID, params.Section, opDesc)
+		prompts := getUpdatePrompts(params.Section, params.Operation, todoType)
+		
+		if prompts != "" {
+			return mcp.NewToolResultText(baseMessage + "\n\n" + prompts), nil
+		}
+		
+		return mcp.NewToolResultText(baseMessage), nil
 	}
 
 	return nil, interrors.NewValidationError("operation", "", "no update operation specified")
