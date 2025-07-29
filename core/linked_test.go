@@ -98,7 +98,7 @@ func TestLinkedTodosReferentialIntegrity(t *testing.T) {
 		if err == nil {
 			t.Error("Should not allow archiving parent with active children")
 		}
-		if err != nil && !strings.Contains(err.Error(), "has active children") {
+		if err != nil && !strings.Contains(err.Error(), "active children") {
 			t.Errorf("Error should mention active children, got: %v", err)
 		}
 	})

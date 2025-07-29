@@ -141,18 +141,23 @@ func TestConcurrentTodoOperations(t *testing.T) {
 
 	// Verify all todos were created
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
-	files, err := ioutil.ReadDir(todosDir)
+	
+	// Count todos recursively since they're in date-based subdirectories
+	actualTodos := 0
+	err = filepath.Walk(todosDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
+			actualTodos++
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("Failed to read directory: %v", err)
+		t.Fatalf("Failed to walk directory: %v", err)
 	}
 
 	expectedTodos := numGoroutines * todosPerGoroutine
-	actualTodos := 0
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".md") {
-			actualTodos++
-		}
-	}
 
 	// Allow some margin for concurrent conflicts
 	if actualTodos < expectedTodos*9/10 {

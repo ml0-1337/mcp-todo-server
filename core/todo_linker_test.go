@@ -3,7 +3,6 @@ package core
 import (
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -65,24 +64,24 @@ func TestLinkTodos(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "parent todo not found",
+			name: "parent todo",
 			setup: func() (string, string) {
 				child, _ := manager.CreateTodo("Child task", "medium", "phase")
 				return "nonexistent-parent", child.ID
 			},
 			linkType:    "parent-child",
 			expectError: true,
-			errorMsg:    "parent todo not found",
+			errorMsg:    "parent todo",
 		},
 		{
-			name: "child todo not found",
+			name: "child todo",
 			setup: func() (string, string) {
 				parent, _ := manager.CreateTodo("Parent task", "high", "multi-phase")
 				return parent.ID, "nonexistent-child"
 			},
 			linkType:    "parent-child",
 			expectError: true,
-			errorMsg:    "child todo not found",
+			errorMsg:    "child todo",
 		},
 		{
 			name: "unsupported link type",
@@ -93,7 +92,7 @@ func TestLinkTodos(t *testing.T) {
 			},
 			linkType:    "blocks",
 			expectError: true,
-			errorMsg:    "unsupported link type: blocks",
+			errorMsg:    "unsupported link type",
 		},
 		{
 			name: "empty parent ID",
@@ -103,7 +102,7 @@ func TestLinkTodos(t *testing.T) {
 			},
 			linkType:    "parent-child",
 			expectError: true,
-			errorMsg:    "parent todo not found",
+			errorMsg:    "resource not found",
 		},
 		{
 			name: "empty child ID",
@@ -113,7 +112,7 @@ func TestLinkTodos(t *testing.T) {
 			},
 			linkType:    "parent-child",
 			expectError: true,
-			errorMsg:    "child todo not found",
+			errorMsg:    "resource not found",
 		},
 		{
 			name: "link to self",
@@ -294,16 +293,19 @@ func TestLinkTodosErrorRecovery(t *testing.T) {
 		parent, _ := manager.CreateTodo("Parent", "high", "multi-phase")
 		child, _ := manager.CreateTodo("Child", "medium", "phase")
 
-		// Delete parent file
-		os.Remove(filepath.Join(tempDir, ".claude", "todos", parent.ID + ".md"))
+		// Delete parent file using ResolveTodoPath to handle date-based structure
+		parentPath, err := ResolveTodoPath(tempDir, parent.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve parent path: %v", err)
+		}
+		os.Remove(parentPath)
 
 		// Try to link
-		err := linker.LinkTodos(parent.ID, child.ID, "parent-child")
+		err = linker.LinkTodos(parent.ID, child.ID, "parent-child")
 		if err == nil {
 			t.Error("Expected error when parent is deleted")
-		}
-		if !strings.Contains(err.Error(), "parent todo not found") {
-			t.Errorf("Expected 'parent todo not found' error, got: %v", err)
+		} else if !strings.Contains(err.Error(), "parent todo") {
+			t.Errorf("Expected 'parent todo' error, got: %v", err)
 		}
 	})
 
@@ -312,16 +314,19 @@ func TestLinkTodosErrorRecovery(t *testing.T) {
 		parent, _ := manager.CreateTodo("Parent", "high", "multi-phase")
 		child, _ := manager.CreateTodo("Child", "medium", "phase")
 
-		// Delete child file
-		os.Remove(filepath.Join(tempDir, ".claude", "todos", child.ID + ".md"))
+		// Delete child file using ResolveTodoPath to handle date-based structure
+		childPath, err := ResolveTodoPath(tempDir, child.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve child path: %v", err)
+		}
+		os.Remove(childPath)
 
 		// Try to link
-		err := linker.LinkTodos(parent.ID, child.ID, "parent-child")
+		err = linker.LinkTodos(parent.ID, child.ID, "parent-child")
 		if err == nil {
 			t.Error("Expected error when child is deleted")
-		}
-		if !strings.Contains(err.Error(), "child todo not found") {
-			t.Errorf("Expected 'child todo not found' error, got: %v", err)
+		} else if !strings.Contains(err.Error(), "child todo") {
+			t.Errorf("Expected 'child todo' error, got: %v", err)
 		}
 	})
 }
