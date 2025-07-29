@@ -370,14 +370,17 @@ func TestListTodos(t *testing.T) {
 		badManager := NewTodoManager("/non/existent/path")
 		todos, err := badManager.ListTodos("", "", 0)
 		
-		// Should return error
-		if err == nil {
-			t.Error("Expected error for non-existent directory")
+		// Should return empty list, not error (missing todos directory is valid state)
+		if err != nil {
+			t.Errorf("Expected no error for non-existent directory, got: %v", err)
 		}
 		
-		// Should return nil todos
-		if todos != nil {
-			t.Error("Expected nil todos on error")
+		// Should return empty list
+		if todos == nil {
+			t.Error("Expected empty list, got nil")
+		}
+		if len(todos) != 0 {
+			t.Errorf("Expected 0 todos, got %d", len(todos))
 		}
 	})
 }

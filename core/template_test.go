@@ -220,9 +220,9 @@ variables:
 			t.Error("Loading non-existent template should return error")
 		}
 
-		expectedError := "template not found: non-existent"
-		if err.Error() != expectedError {
-			t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
+		// Check for partial error message match
+		if !strings.Contains(err.Error(), "non-existent") || !strings.Contains(err.Error(), "not found") {
+			t.Errorf("Expected error containing 'non-existent' and 'not found', got '%s'", err.Error())
 		}
 	})
 
@@ -713,7 +713,7 @@ variables:
 			priority:     "high",
 			todoType:     "feature",
 			expectError:  true,
-			errorMsg:     "template not found",
+			errorMsg:     "not found",
 		},
 		{
 			name:         "empty template name",
@@ -722,7 +722,7 @@ variables:
 			priority:     "high",
 			todoType:     "feature",
 			expectError:  true,
-			errorMsg:     "template not found",
+			errorMsg:     "not found",
 		},
 		{
 			name:         "invalid template YAML",

@@ -534,12 +534,12 @@ func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, er
 			return nil // Skip malformed files
 		}
 
-		// Apply filters
-		if status != "" && !strings.EqualFold(todo.Status, status) {
+		// Apply filters (treat "all" as wildcard)
+		if status != "" && status != "all" && !strings.EqualFold(todo.Status, status) {
 			return nil
 		}
 
-		if priority != "" && !strings.EqualFold(todo.Priority, priority) {
+		if priority != "" && priority != "all" && !strings.EqualFold(todo.Priority, priority) {
 			return nil
 		}
 

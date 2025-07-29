@@ -252,8 +252,11 @@ func TestFileSystemErrorHandling(t *testing.T) {
 			t.Fatalf("Failed to create first todo: %v", err)
 		}
 
-		// Make the file read-only
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo1.ID+".md")
+		// Make the file read-only using ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo1.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
 		err = os.Chmod(filePath, 0444) // r--r--r-- (read-only)
 		if err != nil {
 			t.Fatalf("Failed to set file permissions: %v", err)
@@ -332,30 +335,31 @@ func TestFileSystemErrorHandling(t *testing.T) {
 			t.Fatalf("Failed to create todo: %v", err)
 		}
 
-		// Check that no .tmp files remain
-		files, err := ioutil.ReadDir(tempDir)
+		// Check that no .tmp files remain in the entire directory tree
+		var tempFiles []string
+		err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.HasSuffix(info.Name(), ".tmp") {
+				tempFiles = append(tempFiles, path)
+			}
+			return nil
+		})
 		if err != nil {
-			t.Fatalf("Failed to read directory: %v", err)
+			t.Fatalf("Failed to walk directory: %v", err)
 		}
 
-		for _, file := range files {
-			if strings.HasSuffix(file.Name(), ".tmp") {
-				t.Errorf("Temp file not cleaned up: %s", file.Name())
-			}
+		if len(tempFiles) > 0 {
+			t.Errorf("Temp files not cleaned up: %v", tempFiles)
 		}
 
-		// Verify the actual file exists
-		expectedFile := todo.ID + ".md"
-		found := false
-		for _, file := range files {
-			if file.Name() == expectedFile {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			t.Errorf("Expected file %s not found", expectedFile)
+		// Verify the actual file exists using ResolveTodoPath
+		todoPath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Errorf("Failed to resolve todo path: %v", err)
+		} else if _, err := os.Stat(todoPath); os.IsNotExist(err) {
+			t.Errorf("Expected todo file not found at %s", todoPath)
 		}
 	})
 }
