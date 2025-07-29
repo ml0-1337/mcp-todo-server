@@ -23,10 +23,7 @@ func SafeExecute(operation string, fn func() error) error {
 }
 
 // SafeExecuteWithResult wraps a function with panic recovery and returns both result and error
-func SafeExecuteWithResult[T any](operation string, fn func() (T, error)) (T, error) {
-	var result T
-	var err error
-	
+func SafeExecuteWithResult[T any](operation string, fn func() (T, error)) (result T, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			// Log the panic with stack trace
