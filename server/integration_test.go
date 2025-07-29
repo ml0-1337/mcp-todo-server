@@ -93,7 +93,8 @@ func TestMCPServerIntegration(t *testing.T) {
 			toolNames[tool.Name] = true
 		}
 		
-		expectedTools := []string{"todo_create", "todo_read", "todo_update", "todo_archive", "todo_search"}
+		// Note: todo_archive is not included by default when auto-archive is enabled
+		expectedTools := []string{"todo_create", "todo_read", "todo_update", "todo_search", "todo_stats"}
 		for _, expected := range expectedTools {
 			if !toolNames[expected] {
 				t.Errorf("Missing expected tool: %s", expected)

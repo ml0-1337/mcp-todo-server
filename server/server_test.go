@@ -48,23 +48,22 @@ func TestServerInitialization(t *testing.T) {
 	// Get the list of registered tools
 	tools := server.ListTools()
 
-	// Expected tools
+	// Expected tools (without todo_archive since auto-archive is enabled by default)
 	expectedTools := []string{
 		"todo_create",
 		"todo_create_multi",
 		"todo_read",
 		"todo_update",
 		"todo_search",
-		// Note: todo_archive is no longer in default list due to auto-archive feature
 		"todo_template",
 		"todo_link",
 		"todo_stats",
 		"todo_clean",
 	}
 
-	// Verify all expected tools are registered (minus 1 for todo_archive)
-	if len(tools) != len(expectedTools)-1 {
-		t.Errorf("Expected %d tools, got %d", len(expectedTools)-1, len(tools))
+	// Verify all expected tools are registered
+	if len(tools) != len(expectedTools) {
+		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(tools))
 	}
 
 	// Check each tool is present
