@@ -220,6 +220,7 @@ type StreamableHTTPServerWrapper struct {
 	sessionTimeout time.Duration
 	cleanupStop    chan struct{}
 	cleanupDone    chan struct{}
+	stopOnce       sync.Once
 }
 
 // NewStreamableHTTPServerWrapper creates a new wrapper with middleware
@@ -276,8 +277,10 @@ func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 
 // Stop stops the cleanup routine
 func (w *StreamableHTTPServerWrapper) Stop() {
-	close(w.cleanupStop)
-	<-w.cleanupDone
+	w.stopOnce.Do(func() {
+		close(w.cleanupStop)
+		<-w.cleanupDone
+	})
 }
 
 // LoggingMiddleware logs incoming requests (optional, for debugging)
