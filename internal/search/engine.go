@@ -296,32 +296,7 @@ func (e *Engine) Close() error {
 }
 
 // HealthCheck returns the health status of the search engine
-func (e *Engine) HealthCheck() map[string]interface{} {
-	health := make(map[string]interface{})
-	
-	// Check circuit breaker state
-	health["circuit_breaker_state"] = e.circuitBreaker.GetState()
-	health["circuit_breaker_failures"] = e.circuitBreaker.GetFailureCount()
-	
-	// Check index lock status
-	if e.lock != nil {
-		health["index_locked"] = e.lock.IsLocked()
-		health["lock_path"] = e.lock.GetLockPath()
-	}
-	
-	// Test basic index functionality
-	testQuery := bleve.NewMatchAllQuery()
-	testRequest := bleve.NewSearchRequest(testQuery)
-	testRequest.Size = 1
-	
-	_, err := e.index.Search(testRequest)
-	health["index_healthy"] = err == nil
-	if err != nil {
-		health["index_error"] = err.Error()
-	}
-	
-	return health
-}
+// HealthCheck is now implemented in engine_health.go
 
 // GetIndexedCount returns the number of indexed documents
 func (e *Engine) GetIndexedCount() (uint64, error) {
