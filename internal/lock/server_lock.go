@@ -1,3 +1,4 @@
+// Package lock provides server-level locking mechanisms to prevent multiple instances.
 package lock
 
 import (

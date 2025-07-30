@@ -1,9 +1,9 @@
+// Package filesystem provides file system based persistence for todo items.
 package filesystem
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -43,7 +43,7 @@ func NewTodoRepository(basePath string) *TodoRepository {
 }
 
 // Save creates or updates a todo
-func (r *TodoRepository) Save(ctx context.Context, todo *domain.Todo) error {
+func (r *TodoRepository) Save(_ context.Context, todo *domain.Todo) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -93,11 +93,11 @@ func (r *TodoRepository) Save(ctx context.Context, todo *domain.Todo) error {
 
 	// Write to file
 	filePath := r.todoPath(todo.ID)
-	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0750); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	if err := ioutil.WriteFile(filePath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -105,12 +105,12 @@ func (r *TodoRepository) Save(ctx context.Context, todo *domain.Todo) error {
 }
 
 // FindByID retrieves a todo by its ID
-func (r *TodoRepository) FindByID(ctx context.Context, id string) (*domain.Todo, error) {
+func (r *TodoRepository) FindByID(_ context.Context, id string) (*domain.Todo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	filePath := r.todoPath(id)
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, domain.ErrTodoNotFound
@@ -122,12 +122,12 @@ func (r *TodoRepository) FindByID(ctx context.Context, id string) (*domain.Todo,
 }
 
 // FindByIDWithContent retrieves a todo and its full content
-func (r *TodoRepository) FindByIDWithContent(ctx context.Context, id string) (*domain.Todo, string, error) {
+func (r *TodoRepository) FindByIDWithContent(_ context.Context, id string) (*domain.Todo, string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	filePath := r.todoPath(id)
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, "", domain.ErrTodoNotFound
@@ -173,7 +173,7 @@ func (r *TodoRepository) List(ctx context.Context, filters repository.ListFilter
 		}
 
 		// Read and parse todo
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
@@ -216,7 +216,7 @@ func (r *TodoRepository) List(ctx context.Context, filters repository.ListFilter
 }
 
 // Delete removes a todo
-func (r *TodoRepository) Delete(ctx context.Context, id string) error {
+func (r *TodoRepository) Delete(_ context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -232,7 +232,7 @@ func (r *TodoRepository) Delete(ctx context.Context, id string) error {
 }
 
 // Archive moves a todo to archive
-func (r *TodoRepository) Archive(ctx context.Context, id string, archivePath string) error {
+func (r *TodoRepository) Archive(_ context.Context, id string, archivePath string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -240,7 +240,7 @@ func (r *TodoRepository) Archive(ctx context.Context, id string, archivePath str
 	dstPath := filepath.Join(r.basePath, "archive", archivePath, fmt.Sprintf("%s.md", id))
 
 	// Create archive directory
-	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0750); err != nil {
 		return fmt.Errorf("failed to create archive directory: %w", err)
 	}
 
@@ -253,19 +253,19 @@ func (r *TodoRepository) Archive(ctx context.Context, id string, archivePath str
 }
 
 // UpdateContent updates a specific section of a todo
-func (r *TodoRepository) UpdateContent(ctx context.Context, id string, section string, content string) error {
+func (r *TodoRepository) UpdateContent(_ context.Context, id string, section string, content string) error {
 	// This is a simplified implementation
 	// In practice, this would parse the file, update the section, and rewrite
 	return fmt.Errorf("not implemented")
 }
 
 // GetContent retrieves the full content of a todo
-func (r *TodoRepository) GetContent(ctx context.Context, id string) (string, error) {
+func (r *TodoRepository) GetContent(_ context.Context, id string) (string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	filePath := r.todoPath(id)
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", domain.ErrTodoNotFound

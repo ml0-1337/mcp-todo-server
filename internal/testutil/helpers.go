@@ -19,7 +19,7 @@ func SetupTestDir(t testing.TB) (string, func()) {
 
 	// Ensure the todos subdirectory exists
 	todosDir := filepath.Join(tempDir, ".claude/todos")
-	if err := os.MkdirAll(todosDir, 0755); err != nil {
+	if err := os.MkdirAll(todosDir, 0750); err != nil {
 		t.Fatalf("Failed to create todos directory: %v", err)
 	}
 
@@ -35,7 +35,7 @@ func SetupTestTodoManager(t testing.TB) (*core.TodoManager, string) {
 
 	// Ensure the todos subdirectory exists
 	todosDir := filepath.Join(tempDir, ".claude/todos")
-	if err := os.MkdirAll(todosDir, 0755); err != nil {
+	if err := os.MkdirAll(todosDir, 0750); err != nil {
 		t.Fatalf("Failed to create todos directory: %v", err)
 	}
 
@@ -79,7 +79,7 @@ func CreateTestTodoWithDate(t testing.TB, manager *core.TodoManager, task string
 
 	// Write back the updated content
 	updatedContent := strings.Join(lines, "\n")
-	if err := os.WriteFile(path, []byte(updatedContent), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(updatedContent), 0600); err != nil {
 		t.Fatalf("Failed to write updated content: %v", err)
 	}
 
@@ -100,7 +100,7 @@ func CreateTestTodoWithContent(t testing.TB, manager *core.TodoManager, task, co
 
 	// Write the content directly to the file
 	path := filepath.Join(manager.GetBasePath(), ".claude/todos", todo.ID+".md")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		t.Fatalf("Failed to write test content: %v", err)
 	}
 

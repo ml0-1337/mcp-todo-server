@@ -36,78 +36,51 @@ func NewStatsEngine(manager *TodoManager) *StatsEngine {
 	}
 }
 
-// CalculateCompletionRatesByType calculates completion percentage by todo type
-func (se *StatsEngine) CalculateCompletionRatesByType() (map[string]float64, error) {
+// calculateCompletionRates is a generic helper for calculating completion rates by a given field
+func (se *StatsEngine) calculateCompletionRates(getField func(*Todo) string, defaultValue string) (map[string]float64, error) {
 	todos, err := se.getAllTodos()
 	if err != nil {
 		return nil, err
 	}
 
-	// Count by type and status
-	totalByType := make(map[string]int)
-	completedByType := make(map[string]int)
+	// Count by field and status
+	totalByField := make(map[string]int)
+	completedByField := make(map[string]int)
 
 	for _, todo := range todos {
-		todoType := todo.Type
-		if todoType == "" {
-			todoType = "unknown"
+		fieldValue := getField(todo)
+		if fieldValue == "" {
+			fieldValue = defaultValue
 		}
 
-		totalByType[todoType]++
+		totalByField[fieldValue]++
 		if todo.Status == "completed" {
-			completedByType[todoType]++
+			completedByField[fieldValue]++
 		}
 	}
 
 	// Calculate rates
 	rates := make(map[string]float64)
-	for todoType, total := range totalByType {
+	for fieldValue, total := range totalByField {
 		if total > 0 {
-			completed := completedByType[todoType]
+			completed := completedByField[fieldValue]
 			rate := float64(completed) / float64(total) * 100.0
 			// Round to 1 decimal place
-			rates[todoType] = math.Round(rate*10) / 10
+			rates[fieldValue] = math.Round(rate*10) / 10
 		}
 	}
 
 	return rates, nil
 }
 
+// CalculateCompletionRatesByType calculates completion percentage by todo type
+func (se *StatsEngine) CalculateCompletionRatesByType() (map[string]float64, error) {
+	return se.calculateCompletionRates(func(t *Todo) string { return t.Type }, "unknown")
+}
+
 // CalculateCompletionRatesByPriority calculates completion percentage by priority
 func (se *StatsEngine) CalculateCompletionRatesByPriority() (map[string]float64, error) {
-	todos, err := se.getAllTodos()
-	if err != nil {
-		return nil, err
-	}
-
-	// Count by priority and status
-	totalByPriority := make(map[string]int)
-	completedByPriority := make(map[string]int)
-
-	for _, todo := range todos {
-		priority := todo.Priority
-		if priority == "" {
-			priority = "medium"
-		}
-
-		totalByPriority[priority]++
-		if todo.Status == "completed" {
-			completedByPriority[priority]++
-		}
-	}
-
-	// Calculate rates
-	rates := make(map[string]float64)
-	for priority, total := range totalByPriority {
-		if total > 0 {
-			completed := completedByPriority[priority]
-			rate := float64(completed) / float64(total) * 100.0
-			// Round to 1 decimal place
-			rates[priority] = math.Round(rate*10) / 10
-		}
-	}
-
-	return rates, nil
+	return se.calculateCompletionRates(func(t *Todo) string { return t.Priority }, "medium")
 }
 
 // CalculateAverageCompletionTime calculates average time from start to completion

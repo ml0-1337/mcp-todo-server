@@ -1,3 +1,4 @@
+// Package application provides the application service layer for todo operations.
 package application
 
 import (
