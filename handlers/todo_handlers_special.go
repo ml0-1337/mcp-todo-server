@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/user/mcp-todo-server/core"
 )
 
 // HandleTodoTemplate creates a todo from template
@@ -76,13 +75,12 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 		return nil, fmt.Errorf("failed to get context-aware managers: %w", err)
 	}
 
-	// Create link - need concrete TodoManager for linker
-	concreteManager, ok := manager.(*core.TodoManager)
-	if !ok {
+	// Create link using the factory's linker
+	linker := h.factory.CreateLinker(manager)
+	if linker == nil {
 		return HandleError(fmt.Errorf("Linking feature not available with current manager")), nil
 	}
 	
-	linker := core.NewTodoLinker(concreteManager)
 	err = linker.LinkTodos(parentID, childID, linkType)
 	if err != nil {
 		return HandleError(err), nil

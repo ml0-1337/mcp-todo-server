@@ -28,6 +28,9 @@ type ManagerFactory struct {
 	lastFailureTime   map[string]time.Time
 	maxCreationAttempts int
 	backoffDuration   time.Duration
+	
+	// Test support - allow injecting custom linker for tests
+	testLinker    TodoLinker
 }
 
 // managerSet contains all managers for a specific directory
@@ -243,4 +246,26 @@ func (f *ManagerFactory) recordManagerCreationFailure(workingDir string) {
 func (f *ManagerFactory) recordManagerCreationSuccess(workingDir string) {
 	delete(f.creationAttempts, workingDir)
 	delete(f.lastFailureTime, workingDir)
+}
+
+// CreateLinker creates a TodoLinker for the given manager
+func (f *ManagerFactory) CreateLinker(manager TodoManager) TodoLinker {
+	// If we have a test linker injected, use it
+	if f.testLinker != nil {
+		return f.testLinker
+	}
+	
+	// Try to cast to concrete TodoManager for linker creation
+	if concreteManager, ok := manager.(*core.TodoManager); ok {
+		return core.NewTodoLinker(concreteManager)
+	}
+	// Return nil if not a concrete TodoManager
+	return nil
+}
+
+// SetTestLinker sets a test linker for testing purposes
+func (f *ManagerFactory) SetTestLinker(linker TodoLinker) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.testLinker = linker
 }
