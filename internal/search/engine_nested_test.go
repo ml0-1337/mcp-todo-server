@@ -168,8 +168,8 @@ type: feature
 			expectedIDs:   []string{"search-test-1"},
 		},
 		{
-			name:          "Search with date range",
-			query:         "",
+			name:  "Search with date range",
+			query: "",
 			filters: map[string]string{
 				"date_from": "2025-01-19",
 				"date_to":   "2025-01-20",

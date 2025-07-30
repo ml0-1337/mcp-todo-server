@@ -94,7 +94,7 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 
 	// Summary format
 	summary := formatTodoSummaryLine(todo)
-	
+
 	// Add single todo prompt
 	prompt := getSingleTodoPrompt(todo)
 	return mcp.NewToolResultText(summary + prompt)
@@ -157,16 +157,16 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 	if hasHierarchy {
 		// Use hierarchical view
 		roots, orphans := core.BuildTodoHierarchy(todos)
-		
+
 		var lines []string
 		lines = append(lines, "HIERARCHICAL VIEW:")
 		lines = append(lines, "")
-		
+
 		// Format root todos with their children using tree structure
 		for _, root := range roots {
 			// Format the root todo
 			lines = append(lines, formatTodoSummaryLineWithOptions(root.Todo, false, true))
-			
+
 			// Format children with tree branches
 			for i, child := range root.Children {
 				isLast := i == len(root.Children)-1
@@ -176,7 +176,7 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 				}
 			}
 		}
-		
+
 		// Show orphaned todos if any
 		if len(orphans) > 0 {
 			lines = append(lines, "")
@@ -191,17 +191,17 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 				lines = append(lines, line)
 			}
 		}
-		
+
 		// Also show grouped view
 		lines = append(lines, "")
 		lines = append(lines, "GROUPED BY STATUS:")
-		
+
 		// Group todos by status
 		statusGroups := make(map[string][]*core.Todo)
 		for _, todo := range todos {
 			statusGroups[todo.Status] = append(statusGroups[todo.Status], todo)
 		}
-		
+
 		// Show each status group
 		statusOrder := []string{"in_progress", "completed", "blocked"}
 		for _, status := range statusOrder {
@@ -213,7 +213,7 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 				}
 			}
 		}
-		
+
 		prompt := getReadPrompts(todos, "summary")
 		return mcp.NewToolResultText(strings.Join(lines, "\n") + prompt)
 	}
@@ -221,13 +221,13 @@ func formatTodosSummary(todos []*core.Todo) *mcp.CallToolResult {
 	// No hierarchy - use grouped view
 	var lines []string
 	lines = append(lines, "GROUPED BY STATUS:")
-	
+
 	// Group todos by status
 	statusGroups := make(map[string][]*core.Todo)
 	for _, todo := range todos {
 		statusGroups[todo.Status] = append(statusGroups[todo.Status], todo)
 	}
-	
+
 	// Show each status group
 	statusOrder := []string{"in_progress", "completed", "blocked"}
 	for _, status := range statusOrder {
@@ -253,25 +253,25 @@ func formatTodoSummaryLine(todo *core.Todo) string {
 func formatTodoSummaryLineWithOptions(todo *core.Todo, showParent bool, showType bool) string {
 	status := getStatusIcon(todo.Status)
 	priority := getPriorityLabel(todo.Priority)
-	
+
 	// Format: [status] id: task [priority] [type]
 	line := fmt.Sprintf("%s %s: %s", status, todo.ID, todo.Task)
-	
+
 	// Add priority label if not medium (medium is default, so omitted)
 	if priority != "" {
 		line += " " + priority
 	}
-	
+
 	// Add type if requested and not empty
 	if showType && todo.Type != "" {
 		line += fmt.Sprintf(" [%s]", todo.Type)
 	}
-	
+
 	// Add parent if requested and not empty
 	if showParent && todo.ParentID != "" {
 		line += fmt.Sprintf(" (parent: %s)", todo.ParentID)
 	}
-	
+
 	return line
 }
 
@@ -283,7 +283,7 @@ func formatTodoNodeTree(node *core.TodoNode, prefix string, isLast bool) string 
 // formatTodoNodeTreeInternal formats a todo node with special handling for first level
 func formatTodoNodeTreeInternal(node *core.TodoNode, prefix string, isLast bool, forceTreeSymbol bool) string {
 	var lines []string
-	
+
 	// Format current node
 	line := prefix
 	if prefix != "" || forceTreeSymbol {
@@ -296,8 +296,8 @@ func formatTodoNodeTreeInternal(node *core.TodoNode, prefix string, isLast bool,
 	// Don't show parent in tree view since it's already shown by structure
 	line += formatTodoSummaryLineWithOptions(node.Todo, false, true)
 	lines = append(lines, line)
-	
-	// Format children  
+
+	// Format children
 	childPrefix := prefix
 	if prefix != "" || forceTreeSymbol {
 		if isLast {
@@ -306,12 +306,12 @@ func formatTodoNodeTreeInternal(node *core.TodoNode, prefix string, isLast bool,
 			childPrefix += "│   "
 		}
 	}
-	
+
 	for i, child := range node.Children {
 		childIsLast := i == len(node.Children)-1
 		lines = append(lines, formatTodoNodeTreeInternal(child, childPrefix, childIsLast, false))
 	}
-	
+
 	return strings.Join(lines, "\n")
 }
 
@@ -321,7 +321,7 @@ func getReadPrompts(todos []*core.Todo, format string) string {
 	if format == "list" || format == "full" {
 		return ""
 	}
-	
+
 	if len(todos) == 0 {
 		return "\n\nNo todos found. To get started:\n\n" +
 			"- What task or project would you like to begin?\n" +
@@ -329,13 +329,13 @@ func getReadPrompts(todos []*core.Todo, format string) string {
 			"- Are there multiple phases that need planning?\n\n" +
 			"Use todo_create to start tracking your work."
 	}
-	
+
 	// Count todos by status
 	statusCounts := make(map[string]int)
 	for _, todo := range todos {
 		statusCounts[todo.Status]++
 	}
-	
+
 	// Generate status-specific prompts
 	if statusCounts["blocked"] > 0 {
 		return fmt.Sprintf("\n\nYou have %d blocked todo(s). To unblock progress:\n\n"+
@@ -345,7 +345,7 @@ func getReadPrompts(todos []*core.Todo, format string) string {
 			"Review blocked todos and update with findings or create linked dependencies.",
 			statusCounts["blocked"])
 	}
-	
+
 	if statusCounts["in_progress"] > 0 {
 		return fmt.Sprintf("\n\nYou have %d todo(s) in progress. To maintain momentum:\n\n"+
 			"- Which todo should be your primary focus?\n"+
@@ -354,7 +354,7 @@ func getReadPrompts(todos []*core.Todo, format string) string {
 			"Use todo_update to track progress on your active tasks.",
 			statusCounts["in_progress"])
 	}
-	
+
 	// All completed
 	return "\n\nAll todos are completed! To continue being productive:\n\n" +
 		"- Are there follow-up tasks from completed work?\n" +
@@ -373,7 +373,7 @@ func getSingleTodoPrompt(todo *core.Todo) string {
 			"- Any obstacles or questions that need addressing?\n\n"+
 			"Use todo_update to document progress and findings.",
 			todo.Type)
-	
+
 	case "blocked":
 		return fmt.Sprintf("\n\nThis %s is blocked. To resolve the blocker:\n\n"+
 			"- What specifically is preventing progress?\n"+
@@ -381,7 +381,7 @@ func getSingleTodoPrompt(todo *core.Todo) string {
 			"- Is there an alternative approach to consider?\n\n"+
 			"Update the todo with blocker details or create a linked todo for the dependency.",
 			todo.Type)
-	
+
 	case "completed":
 		return fmt.Sprintf("\n\nThis %s is completed. To wrap up:\n\n"+
 			"- Are there any lessons learned to document?\n"+
@@ -389,12 +389,12 @@ func getSingleTodoPrompt(todo *core.Todo) string {
 			"- Should this be archived to keep your list clean?\n\n"+
 			"Consider using todo_archive or creating follow-up todos.",
 			todo.Type)
-	
+
 	default:
-		return "\n\nNext steps for this todo:\n\n"+
-			"- Review the current status and update if needed\n"+
-			"- Check if any sections need documentation\n"+
-			"- Determine the next action to take\n\n"+
+		return "\n\nNext steps for this todo:\n\n" +
+			"- Review the current status and update if needed\n" +
+			"- Check if any sections need documentation\n" +
+			"- Determine the next action to take\n\n" +
 			"Use todo_update to modify status or add content."
 	}
 }
@@ -421,8 +421,8 @@ func FormatTodoSearchResponse(results []core.SearchResult) *mcp.CallToolResult {
 		if snippet == "" {
 			snippet = "No content preview available"
 		}
-		
-		lines = append(lines, fmt.Sprintf("• %s (relevance: %s)\n  %s", 
+
+		lines = append(lines, fmt.Sprintf("• %s (relevance: %s)\n  %s",
 			result.ID, score, snippet))
 	}
 
@@ -440,7 +440,7 @@ func getSearchPrompts(resultCount int) string {
 			"- Consider creating a new todo if this is a new task\n\n" +
 			"Use broader search terms or create a new todo for this work."
 	}
-	
+
 	if resultCount == 1 {
 		return "\n\nFound one matching todo. Next steps:\n\n" +
 			"- Review the todo details with todo_read\n" +
@@ -448,7 +448,7 @@ func getSearchPrompts(resultCount int) string {
 			"- Update progress if this is your current work\n\n" +
 			"Use todo_read to view the complete todo content."
 	}
-	
+
 	// Multiple results
 	return fmt.Sprintf("\n\nFound %d matching todos. To work effectively:\n\n"+
 		"- Which todo best matches your current need?\n"+

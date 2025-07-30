@@ -63,9 +63,9 @@ func (pc *PathCache) Set(todoID, path string) {
 func (pc *PathCache) Delete(todoID string) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	
+
 	delete(pc.cache, todoID)
-	
+
 	// Remove from order slice
 	for i, id := range pc.order {
 		if id == todoID {
@@ -79,7 +79,7 @@ func (pc *PathCache) Delete(todoID string) {
 func (pc *PathCache) Clear() {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	
+
 	pc.cache = make(map[string]string)
 	pc.order = make([]string, 0, pc.maxSize)
 }
@@ -120,18 +120,18 @@ func ResolveTodoPath(basePath string, todoID string) (string, error) {
 		if err != nil {
 			return nil // Skip errors, continue search
 		}
-		
+
 		// Skip if it's a directory
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		// Check if this is the file we're looking for
 		if info.Name() == todoID+".md" {
 			foundPath = path
 			return filepath.SkipDir // Stop searching
 		}
-		
+
 		return nil
 	})
 
@@ -187,7 +187,7 @@ func ScanDateRange(basePath string, startDate, endDate time.Time) ([]string, err
 func MigrateToDateStructure(basePath string, todoID string, started time.Time) error {
 	// Source path (flat structure)
 	sourcePath := filepath.Join(basePath, ".claude", "todos", todoID+".md")
-	
+
 	// Check if source exists
 	if _, err := os.Stat(sourcePath); err != nil {
 		if os.IsNotExist(err) {

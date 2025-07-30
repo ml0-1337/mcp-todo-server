@@ -17,23 +17,23 @@ type TodoError struct {
 // Error implements the error interface
 func (e *TodoError) Error() string {
 	parts := []string{}
-	
+
 	if e.Operation != "" {
 		parts = append(parts, fmt.Sprintf("operation %s", e.Operation))
 	}
-	
+
 	if e.ID != "" {
 		parts = append(parts, fmt.Sprintf("todo %s", e.ID))
 	}
-	
+
 	if e.Message != "" {
 		parts = append(parts, e.Message)
 	}
-	
+
 	if e.Cause != nil {
 		parts = append(parts, e.Cause.Error())
 	}
-	
+
 	return strings.Join(parts, ": ")
 }
 
@@ -129,23 +129,23 @@ type OperationError struct {
 // Error implements the error interface
 func (e *OperationError) Error() string {
 	parts := []string{}
-	
+
 	if e.Operation != "" {
 		parts = append(parts, fmt.Sprintf("operation '%s' failed", e.Operation))
 	}
-	
+
 	if e.Resource != "" {
 		parts = append(parts, fmt.Sprintf("on %s", e.Resource))
 	}
-	
+
 	if e.Message != "" {
 		parts = append(parts, e.Message)
 	}
-	
+
 	if e.Cause != nil {
 		parts = append(parts, e.Cause.Error())
 	}
-	
+
 	return strings.Join(parts, ": ")
 }
 
@@ -206,18 +206,18 @@ func (e *MultiError) Error() string {
 	if len(e.Errors) == 0 {
 		return "no errors"
 	}
-	
+
 	if len(e.Errors) == 1 {
 		return e.Errors[0].Error()
 	}
-	
+
 	messages := make([]string, 0, len(e.Errors))
 	for _, err := range e.Errors {
 		if err != nil {
 			messages = append(messages, err.Error())
 		}
 	}
-	
+
 	return fmt.Sprintf("multiple errors: [%s]", strings.Join(messages, "; "))
 }
 

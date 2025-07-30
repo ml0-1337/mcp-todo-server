@@ -99,7 +99,7 @@ This todo uses RFC3339 timestamp format to test archiving.
 	// Verify archive structure based on started date
 	// Create a todo object with the expected started date for path calculation
 	todo := &Todo{
-		ID: "test-rfc3339-archive",
+		ID:      "test-rfc3339-archive",
 		Started: time.Date(2025, 1, 29, 10, 30, 0, 0, time.UTC),
 	}
 	expectedArchivePath := GetArchivePath(tempDir, todo, "")

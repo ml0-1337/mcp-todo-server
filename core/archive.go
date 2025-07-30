@@ -8,10 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
-
 
 // GetDailyPath returns the daily archive path YYYY/MM/DD for a given time
 func GetDailyPath(t time.Time) string {
@@ -171,7 +170,7 @@ func isArchived(basePath, id string) bool {
 		// If we can't find it in todos directory, assume it's archived
 		return true
 	}
-	
+
 	// Check if the resolved path is in the archive directory
 	archivePath := filepath.Join(basePath, ".claude", "archive")
 	return strings.HasPrefix(todoPath, archivePath)

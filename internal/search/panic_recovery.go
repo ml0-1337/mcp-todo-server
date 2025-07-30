@@ -13,12 +13,12 @@ func SafeExecute(operation string, fn func() error) error {
 			// Log the panic with stack trace
 			stackBuf := make([]byte, 4096)
 			stackSize := runtime.Stack(stackBuf, false)
-			
+
 			fmt.Fprintf(os.Stderr, "PANIC in %s: %v\n", operation, r)
 			fmt.Fprintf(os.Stderr, "Stack trace:\n%s\n", stackBuf[:stackSize])
 		}
 	}()
-	
+
 	return fn()
 }
 
@@ -29,17 +29,17 @@ func SafeExecuteWithResult[T any](operation string, fn func() (T, error)) (resul
 			// Log the panic with stack trace
 			stackBuf := make([]byte, 4096)
 			stackSize := runtime.Stack(stackBuf, false)
-			
+
 			fmt.Fprintf(os.Stderr, "PANIC in %s: %v\n", operation, r)
 			fmt.Fprintf(os.Stderr, "Stack trace:\n%s\n", stackBuf[:stackSize])
-			
+
 			// Return zero value and error
 			var zero T
 			result = zero
 			err = fmt.Errorf("operation %s panicked: %v", operation, r)
 		}
 	}()
-	
+
 	result, err = fn()
 	return result, err
 }

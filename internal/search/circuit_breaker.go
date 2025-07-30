@@ -22,7 +22,7 @@ type CircuitBreaker struct {
 	state        CircuitState
 	failureCount int
 	lastFailTime time.Time
-	
+
 	// Configuration
 	failureThreshold int
 	timeout          time.Duration

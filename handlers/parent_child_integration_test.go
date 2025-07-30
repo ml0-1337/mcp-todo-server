@@ -80,7 +80,7 @@ func TestParentChildWorkflow(t *testing.T) {
 	}
 
 	readContent := readResult.Content[0].(mcp.TextContent).Text
-	
+
 	// Debug output
 	t.Logf("Read content:\n%s", readContent)
 
@@ -115,7 +115,7 @@ func TestParentChildWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no Go error, but got: %v", err)
 	}
-	
+
 	// The error should be in the result, not as a Go error
 	if orphanResult == nil || !orphanResult.IsError {
 		t.Fatal("Expected error result for phase without parent_id")
@@ -204,7 +204,7 @@ func TestParentChildWorkflow(t *testing.T) {
 	if idx := strings.Index(patternContent, "\n\n"); idx > 0 {
 		jsonPart = patternContent[:idx]
 	}
-	
+
 	var patternResponse map[string]interface{}
 	if err := json.Unmarshal([]byte(jsonPart), &patternResponse); err != nil {
 		t.Errorf("Failed to parse JSON response: %v", err)
@@ -272,7 +272,7 @@ func TestOrphanedPhaseDetection(t *testing.T) {
 	}
 
 	content := result.Content[0].(mcp.TextContent).Text
-	
+
 	// Debug output
 	t.Logf("Orphan detection content:\n%s", content)
 

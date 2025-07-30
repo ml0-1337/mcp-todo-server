@@ -239,11 +239,11 @@ func TestIsValidOperation(t *testing.T) {
 func TestGetValidPriorities(t *testing.T) {
 	expected := []string{"high", "medium", "low"}
 	got := GetValidPriorities()
-	
+
 	if len(got) != len(expected) {
 		t.Errorf("GetValidPriorities() returned %d items, want %d", len(got), len(expected))
 	}
-	
+
 	for i, v := range expected {
 		if i >= len(got) || got[i] != v {
 			t.Errorf("GetValidPriorities()[%d] = %q, want %q", i, got[i], v)
@@ -254,11 +254,11 @@ func TestGetValidPriorities(t *testing.T) {
 func TestGetValidTodoTypes(t *testing.T) {
 	expected := []string{"feature", "bug", "refactor", "research", "prd", "multi-phase", "phase", "subtask"}
 	got := GetValidTodoTypes()
-	
+
 	if len(got) != len(expected) {
 		t.Errorf("GetValidTodoTypes() returned %d items, want %d", len(got), len(expected))
 	}
-	
+
 	for i, v := range expected {
 		if i >= len(got) || got[i] != v {
 			t.Errorf("GetValidTodoTypes()[%d] = %q, want %q", i, got[i], v)
@@ -269,11 +269,11 @@ func TestGetValidTodoTypes(t *testing.T) {
 func TestGetValidFormats(t *testing.T) {
 	expected := []string{"full", "summary", "list"}
 	got := GetValidFormats()
-	
+
 	if len(got) != len(expected) {
 		t.Errorf("GetValidFormats() returned %d items, want %d", len(got), len(expected))
 	}
-	
+
 	for i, v := range expected {
 		if i >= len(got) || got[i] != v {
 			t.Errorf("GetValidFormats()[%d] = %q, want %q", i, got[i], v)
@@ -284,11 +284,11 @@ func TestGetValidFormats(t *testing.T) {
 func TestGetValidOperations(t *testing.T) {
 	expected := []string{"append", "replace", "prepend", "toggle"}
 	got := GetValidOperations()
-	
+
 	if len(got) != len(expected) {
 		t.Errorf("GetValidOperations() returned %d items, want %d", len(got), len(expected))
 	}
-	
+
 	for i, v := range expected {
 		if i >= len(got) || got[i] != v {
 			t.Errorf("GetValidOperations()[%d] = %q, want %q", i, got[i], v)

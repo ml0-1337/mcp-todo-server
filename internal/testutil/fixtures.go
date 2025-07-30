@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/core"
 )
 
 // TodoBuilder helps build test todos with custom properties
 type TodoBuilder struct {
-	task       string
-	priority   string
-	todoType   string
-	status     string
-	started    time.Time
-	completed  time.Time
-	parentID   string
-	sections   map[string]string
+	task      string
+	priority  string
+	todoType  string
+	status    string
+	started   time.Time
+	completed time.Time
+	parentID  string
+	sections  map[string]string
 }
 
 // NewTodoBuilder creates a new todo builder with defaults
@@ -78,7 +78,7 @@ func (b *TodoBuilder) WithSection(key, content string) *TodoBuilder {
 func (b *TodoBuilder) Build() *core.Todo {
 	// Generate ID similar to how core does it
 	id := generateTodoID(b.task)
-	
+
 	return &core.Todo{
 		ID:        id,
 		Task:      b.task,
@@ -120,28 +120,28 @@ var SampleTodos = struct {
 			WithType("feature").
 			Build()
 	},
-	
+
 	BugMedium: func() *core.Todo {
 		return NewTodoBuilder("Fix login timeout issue").
 			WithPriority("medium").
 			WithType("bug").
 			Build()
 	},
-	
+
 	RefactorLow: func() *core.Todo {
 		return NewTodoBuilder("Refactor database connection pool").
 			WithPriority("low").
 			WithType("refactor").
 			Build()
 	},
-	
+
 	MultiPhaseParent: func() *core.Todo {
 		return NewTodoBuilder("Implement search functionality").
 			WithPriority("high").
 			WithType("multi-phase").
 			Build()
 	},
-	
+
 	PhaseChild: func(parentID string) *core.Todo {
 		return NewTodoBuilder("Phase 1: Design search API").
 			WithPriority("medium").
@@ -157,7 +157,7 @@ func GenerateTestContent(todo *core.Todo, sections map[string]string) string {
 	if !todo.Completed.IsZero() {
 		completedStr = todo.Completed.Format(time.RFC3339)
 	}
-	
+
 	content := fmt.Sprintf(`---
 todo_id: %s
 started: %s
@@ -170,13 +170,13 @@ parent_id: %s
 
 # Task: %s
 
-`, todo.ID, todo.Started.Format(time.RFC3339), completedStr, 
-   todo.Status, todo.Priority, todo.Type, todo.ParentID, todo.Task)
-	
+`, todo.ID, todo.Started.Format(time.RFC3339), completedStr,
+		todo.Status, todo.Priority, todo.Type, todo.ParentID, todo.Task)
+
 	// Add default sections if not provided
 	defaultSections := []string{
 		"Findings & Research",
-		"Web Searches", 
+		"Web Searches",
 		"Test Strategy",
 		"Test List",
 		"Test Cases",
@@ -184,17 +184,17 @@ parent_id: %s
 		"Checklist",
 		"Working Scratchpad",
 	}
-	
+
 	for _, section := range defaultSections {
 		content += fmt.Sprintf("## %s\n\n", section)
-		
+
 		// Add custom content if provided
 		key := generateSectionKey(section)
 		if customContent, exists := sections[key]; exists {
 			content += customContent + "\n\n"
 		}
 	}
-	
+
 	return content
 }
 
@@ -202,19 +202,19 @@ parent_id: %s
 func generateSectionKey(title string) string {
 	// Remove "## " prefix if present
 	clean := strings.TrimPrefix(title, "## ")
-	
+
 	// Convert to lowercase and replace spaces with underscores
 	key := strings.ToLower(clean)
 	key = strings.ReplaceAll(key, " ", "_")
 	key = strings.ReplaceAll(key, "&", "and")
-	
+
 	// Remove special characters
 	key = strings.ReplaceAll(key, "(", "")
 	key = strings.ReplaceAll(key, ")", "")
 	key = strings.ReplaceAll(key, ":", "")
 	key = strings.ReplaceAll(key, ",", "")
 	key = strings.ReplaceAll(key, ".", "")
-	
+
 	return key
 }
 
@@ -237,7 +237,7 @@ func CreateChecklistItems(items ...string) string {
 func CreateTestCases(cases ...string) string {
 	content := ""
 	for i, testCase := range cases {
-		content += fmt.Sprintf("```go\n// Test %d: %s\nfunc Test%d(t *testing.T) {\n\t// Test implementation\n}\n```\n\n", 
+		content += fmt.Sprintf("```go\n// Test %d: %s\nfunc Test%d(t *testing.T) {\n\t// Test implementation\n}\n```\n\n",
 			i+1, testCase, i+1)
 	}
 	return content
@@ -247,13 +247,13 @@ func CreateTestCases(cases ...string) string {
 func CreateWebSearches(queries ...string) string {
 	content := ""
 	baseTime := time.Now().Add(-1 * time.Hour)
-	
+
 	for i, query := range queries {
 		timestamp := baseTime.Add(time.Duration(i*5) * time.Minute)
-		content += fmt.Sprintf("[%s] Query: \"%s\"\n", 
+		content += fmt.Sprintf("[%s] Query: \"%s\"\n",
 			timestamp.Format("2006-01-02 15:04:05"), query)
 		content += fmt.Sprintf("- Found relevant information about %s\n\n", query)
 	}
-	
+
 	return content
 }

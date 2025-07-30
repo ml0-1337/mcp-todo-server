@@ -10,7 +10,7 @@ import (
 
 func TestWrap(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
 		name    string
 		err     error
@@ -30,22 +30,22 @@ func TestWrap(t *testing.T) {
 			want:    "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := interrors.Wrap(tt.err, tt.message)
-			
+
 			if tt.err == nil {
 				if got != nil {
 					t.Errorf("Wrap() with nil error = %v, want nil", got)
 				}
 				return
 			}
-			
+
 			if got.Error() != tt.want {
 				t.Errorf("Wrap() = %v, want %v", got.Error(), tt.want)
 			}
-			
+
 			// Check that the original error is preserved
 			if !errors.Is(got, tt.err) {
 				t.Errorf("Wrapped error should match original with errors.Is")
@@ -56,7 +56,7 @@ func TestWrap(t *testing.T) {
 
 func TestWrapf(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
 		name   string
 		err    error
@@ -79,18 +79,18 @@ func TestWrapf(t *testing.T) {
 			want:   "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := interrors.Wrapf(tt.err, tt.format, tt.args...)
-			
+
 			if tt.err == nil {
 				if got != nil {
 					t.Errorf("Wrapf() with nil error = %v, want nil", got)
 				}
 				return
 			}
-			
+
 			if got.Error() != tt.want {
 				t.Errorf("Wrapf() = %v, want %v", got.Error(), tt.want)
 			}
@@ -100,7 +100,7 @@ func TestWrapf(t *testing.T) {
 
 func TestGetCategory(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
 		name string
 		err  error
@@ -147,7 +147,7 @@ func TestGetCategory(t *testing.T) {
 			want: interrors.CategoryUnknown,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := interrors.GetCategory(tt.err); got != tt.want {
@@ -159,21 +159,21 @@ func TestGetCategory(t *testing.T) {
 
 func TestCategoryHelpers(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
-		name     string
-		err      error
-		isNotFound    bool
-		isValidation  bool
-		isOperation   bool
-		isPermission  bool
-		isConflict    bool
-		isInternal    bool
+		name         string
+		err          error
+		isNotFound   bool
+		isValidation bool
+		isOperation  bool
+		isPermission bool
+		isConflict   bool
+		isInternal   bool
 	}{
 		{
-			name:         "not found error",
-			err:          interrors.ErrNotFound,
-			isNotFound:   true,
+			name:       "not found error",
+			err:        interrors.ErrNotFound,
+			isNotFound: true,
 		},
 		{
 			name:         "validation error",
@@ -181,9 +181,9 @@ func TestCategoryHelpers(t *testing.T) {
 			isValidation: true,
 		},
 		{
-			name:         "operation error",
-			err:          interrors.ErrOperation,
-			isOperation:  true,
+			name:        "operation error",
+			err:         interrors.ErrOperation,
+			isOperation: true,
 		},
 		{
 			name:         "permission error",
@@ -191,17 +191,17 @@ func TestCategoryHelpers(t *testing.T) {
 			isPermission: true,
 		},
 		{
-			name:         "conflict error",
-			err:          interrors.ErrConflict,
-			isConflict:   true,
+			name:       "conflict error",
+			err:        interrors.ErrConflict,
+			isConflict: true,
 		},
 		{
-			name:         "internal error",
-			err:          interrors.ErrInternal,
-			isInternal:   true,
+			name:       "internal error",
+			err:        interrors.ErrInternal,
+			isInternal: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := interrors.IsNotFound(tt.err); got != tt.isNotFound {
@@ -228,24 +228,24 @@ func TestCategoryHelpers(t *testing.T) {
 
 func TestErrorsIsAndAs(t *testing.T) {
 	t.Helper()
-	
+
 	// Test errors.Is wrapper
 	baseErr := interrors.New("base error")
 	wrappedErr := fmt.Errorf("wrapped: %w", baseErr)
-	
+
 	if !interrors.Is(wrappedErr, baseErr) {
 		t.Error("errors.Is should work with wrapped errors")
 	}
-	
+
 	// Test errors.As wrapper
 	todoErr := interrors.NewTodoError("123", "update", "failed", interrors.CategoryOperation, baseErr)
 	wrappedTodoErr := fmt.Errorf("operation failed: %w", todoErr)
-	
+
 	var extractedTodoErr *interrors.TodoError
 	if !interrors.As(wrappedTodoErr, &extractedTodoErr) {
 		t.Error("errors.As should extract TodoError from wrapped error")
 	}
-	
+
 	if extractedTodoErr.ID != "123" {
 		t.Errorf("Extracted TodoError has wrong ID: got %s, want 123", extractedTodoErr.ID)
 	}

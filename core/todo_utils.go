@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -114,14 +114,14 @@ func extractTask(content string) string {
 // toggleChecklistItem toggles a checklist item between states
 func toggleChecklistItem(content string, itemText string) string {
 	lines := strings.Split(content, "\n")
-	
+
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Check all possible checkbox formats
 		var itemContent string
 		var currentMarker string
-		
+
 		if strings.HasPrefix(trimmed, "- [ ]") {
 			itemContent = strings.TrimSpace(trimmed[5:])
 			currentMarker = "[ ]"
@@ -144,7 +144,7 @@ func toggleChecklistItem(content string, itemText string) string {
 		} else {
 			continue
 		}
-		
+
 		if itemContent == itemText {
 			// Toggle the checkbox state: pending -> in_progress -> completed -> pending
 			var newMarker string
@@ -156,14 +156,14 @@ func toggleChecklistItem(content string, itemText string) string {
 			case "[x]", "[X]":
 				newMarker = "[ ]"
 			}
-			
+
 			// Preserve the original indentation
 			leadingWhitespace := line[:len(line)-len(trimmed)]
 			lines[i] = leadingWhitespace + "- " + newMarker + " " + itemContent
 			break
 		}
 	}
-	
+
 	return strings.Join(lines, "\n")
 }
 
@@ -171,10 +171,10 @@ func toggleChecklistItem(content string, itemText string) string {
 func ParseChecklist(content string) []ChecklistItem {
 	var items []ChecklistItem
 	lines := strings.Split(content, "\n")
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Parse checklist items regardless of section
 		if strings.HasPrefix(trimmed, "- [ ]") {
 			text := strings.TrimSpace(trimmed[5:])
@@ -202,23 +202,23 @@ func ParseChecklist(content string) []ChecklistItem {
 			}
 		}
 	}
-	
+
 	return items
 }
 
 // formatWithTimestamp adds a timestamp to content
 func formatWithTimestamp(content string) string {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	
+
 	// Handle different content types
 	lines := strings.Split(strings.TrimSpace(content), "\n")
-	
+
 	// Check if it's a test result or command output
 	if len(lines) > 0 && (strings.HasPrefix(lines[0], "#") || strings.Contains(lines[0], "```")) {
 		// It's already formatted or is a code block
 		return fmt.Sprintf("[%s] %s", timestamp, content)
 	}
-	
+
 	// For regular content, just prepend timestamp
 	return fmt.Sprintf("[%s] %s", timestamp, content)
 }

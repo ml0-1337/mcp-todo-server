@@ -12,10 +12,10 @@ func extractSection(content, sectionHeader string) string {
 	lines := strings.Split(content, "\n")
 	sectionStart := -1
 	sectionEnd := len(lines)
-	
+
 	// Find section start
 	for i, line := range lines {
-		if strings.TrimSpace(line) == "## " + sectionHeader {
+		if strings.TrimSpace(line) == "## "+sectionHeader {
 			sectionStart = i + 1
 			// Skip the standard empty line after section header if present
 			if sectionStart < len(lines) && strings.TrimSpace(lines[sectionStart]) == "" {
@@ -24,11 +24,11 @@ func extractSection(content, sectionHeader string) string {
 			break
 		}
 	}
-	
+
 	if sectionStart == -1 {
 		return ""
 	}
-	
+
 	// Find next section
 	for i := sectionStart; i < len(lines); i++ {
 		if strings.HasPrefix(strings.TrimSpace(lines[i]), "## ") {
@@ -40,13 +40,13 @@ func extractSection(content, sectionHeader string) string {
 			break
 		}
 	}
-	
+
 	// Extract content
 	result := strings.Join(lines[sectionStart:sectionEnd], "\n")
-	
+
 	// Trim trailing newlines
 	result = strings.TrimRight(result, "\n")
-	
+
 	return result
 }
 
@@ -135,16 +135,16 @@ func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 
 	// Extract findings section
 	findings := extractSection(content, "Findings & Research")
-	
+
 	// Debug: show the raw content
 	t.Logf("Raw content:\n%s", content)
 	t.Logf("Extracted findings:\n%q", findings)
-	
+
 	// The content should be at the end, and extractSection skips the standard empty line after header
 	expectedContent := "Content after empty lines\n\nThis should be at the end"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%q\n\nBut got:\n%q", expectedContent, findings)
-		
+
 		// Show where the content was actually inserted
 		if strings.Contains(findings, "This should be at the end\n\nContent after empty lines") {
 			t.Errorf("BUG CONFIRMED: Content was inserted in the MIDDLE instead of at the END")
@@ -321,7 +321,7 @@ func TestAppendToSection_MultipleAppends(t *testing.T) {
 
 	// Extract findings section
 	findings := extractSection(content, "Findings & Research")
-	
+
 	// Check that all content appears in the correct order
 	expectedOrder := []string{"First content", "Second append", "Third append", "Fourth append"}
 	lastIndex := -1
@@ -368,15 +368,15 @@ func TestAppendToSection_BugRegressionWithLeadingEmpty(t *testing.T) {
 
 	// Read and verify
 	content, _ := manager.ReadTodoContent(todo.ID)
-	
+
 	// Check that content appears in correct order
 	contentIdx := strings.Index(content, "Content with leading empty")
 	appendIdx := strings.Index(content, "This MUST be at the end")
-	
+
 	if contentIdx == -1 || appendIdx == -1 {
 		t.Fatal("Content not found in file")
 	}
-	
+
 	if appendIdx < contentIdx {
 		t.Error("REGRESSION: Appended content appears BEFORE original content - bug has returned!")
 	}
@@ -421,7 +421,7 @@ func TestAppendToSection_RawFileVerification(t *testing.T) {
 
 	// Check the raw file content
 	fileStr := string(rawContent)
-	
+
 	// Find the findings section
 	findingsIndex := strings.Index(fileStr, "## Findings & Research")
 	if findingsIndex == -1 {
@@ -438,11 +438,11 @@ func TestAppendToSection_RawFileVerification(t *testing.T) {
 
 	// Extract findings section
 	findingsSection := fileStr[findingsIndex:nextSectionIndex]
-	
+
 	// Verify order in raw content
 	contentIndex := strings.Index(findingsSection, "Content with leading empty")
 	appendIndex := strings.Index(findingsSection, "Should be at end")
-	
+
 	if contentIndex == -1 || appendIndex == -1 {
 		t.Errorf("Could not find expected content in section:\n%s", findingsSection)
 	} else if appendIndex < contentIndex {

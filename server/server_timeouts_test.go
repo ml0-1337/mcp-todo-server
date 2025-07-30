@@ -7,18 +7,18 @@ import (
 
 func TestServerTimeoutConfiguration(t *testing.T) {
 	tests := []struct {
-		name               string
-		opts               []ServerOption
-		expectedRequest    time.Duration
-		expectedReadWrite  time.Duration
-		expectedIdle       time.Duration
+		name              string
+		opts              []ServerOption
+		expectedRequest   time.Duration
+		expectedReadWrite time.Duration
+		expectedIdle      time.Duration
 	}{
 		{
-			name:               "Default timeouts",
-			opts:               []ServerOption{},
-			expectedRequest:    60 * time.Second,
-			expectedReadWrite:  120 * time.Second,
-			expectedIdle:       120 * time.Second,
+			name:              "Default timeouts",
+			opts:              []ServerOption{},
+			expectedRequest:   60 * time.Second,
+			expectedReadWrite: 120 * time.Second,
+			expectedIdle:      120 * time.Second,
 		},
 		{
 			name: "Custom timeouts for devcontainer",
@@ -28,9 +28,9 @@ func TestServerTimeoutConfiguration(t *testing.T) {
 				WithHTTPWriteTimeout(300 * time.Second),
 				WithHTTPIdleTimeout(600 * time.Second),
 			},
-			expectedRequest:    180 * time.Second,
-			expectedReadWrite:  300 * time.Second,
-			expectedIdle:       600 * time.Second,
+			expectedRequest:   180 * time.Second,
+			expectedReadWrite: 300 * time.Second,
+			expectedIdle:      600 * time.Second,
 		},
 		{
 			name: "Zero timeouts (disabled)",
@@ -40,9 +40,9 @@ func TestServerTimeoutConfiguration(t *testing.T) {
 				WithHTTPWriteTimeout(0),
 				WithHTTPIdleTimeout(0),
 			},
-			expectedRequest:    0,
-			expectedReadWrite:  0,
-			expectedIdle:       0,
+			expectedRequest:   0,
+			expectedReadWrite: 0,
+			expectedIdle:      0,
 		},
 	}
 

@@ -161,7 +161,7 @@ func getFindingsPrompts(operation string) string {
 			"- Have you documented any unexpected discoveries?\n\n" +
 			"Review the updated findings for completeness."
 	}
-	
+
 	// append/prepend
 	return "Content added to findings. To maximize value:\n\n" +
 		"- Have you captured the \"why\" behind your discoveries?\n" +
@@ -186,7 +186,7 @@ func getTestsPrompts(operation string, todoType string) string {
 			"- Have you considered related edge cases?\n\n" +
 			"What other scenarios might trigger this bug?"
 	}
-	
+
 	// Feature/general tests
 	if operation == "replace" {
 		return "Test updated. To maintain test quality:\n\n" +
@@ -195,7 +195,7 @@ func getTestsPrompts(operation string, todoType string) string {
 			"- Does it test behavior, not implementation?\n\n" +
 			"Review the test for clarity and coverage."
 	}
-	
+
 	return "Test added. To ensure comprehensive coverage:\n\n" +
 		"- Does this test verify the expected behavior clearly?\n" +
 		"- Are edge cases and error conditions considered?\n" +
@@ -212,7 +212,7 @@ func getChecklistPrompts(operation string) string {
 			"- Should priorities be adjusted?\n\n" +
 			"Focus on the next highest priority item."
 	}
-	
+
 	if operation == "replace" {
 		return "Checklist updated. To stay organized:\n\n" +
 			"- Are all items specific and actionable?\n" +
@@ -220,7 +220,7 @@ func getChecklistPrompts(operation string) string {
 			"- Do you need to break down any large items?\n\n" +
 			"Review the updated checklist for clarity."
 	}
-	
+
 	// append/prepend
 	return "Checklist updated. To maintain momentum:\n\n" +
 		"- Is each item specific and actionable?\n" +
@@ -247,7 +247,7 @@ func getGenericSectionPrompts(operation string) string {
 			"- Are there gaps to address?\n\n" +
 			"Review the section for completeness."
 	}
-	
+
 	return "Content added. To maintain quality:\n\n" +
 		"- Does this enhance the section's value?\n" +
 		"- Is the information well-structured?\n" +
@@ -287,17 +287,17 @@ func FormatTodoSectionsResponse(todo *core.Todo) *mcp.CallToolResult {
 		if section == nil {
 			continue
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("%s:\n", key))
 		sb.WriteString(fmt.Sprintf("  title: %s\n", section.Title))
 		sb.WriteString(fmt.Sprintf("  order: %d\n", section.Order))
 		sb.WriteString(fmt.Sprintf("  schema: %s\n", section.Schema))
 		sb.WriteString(fmt.Sprintf("  required: %v\n", section.Required))
-		
+
 		if section.Custom {
 			sb.WriteString("  custom: true\n")
 		}
-		
+
 		// Handle metadata if present
 		if section.Metadata != nil && len(section.Metadata) > 0 {
 			sb.WriteString("  metadata:\n")
@@ -316,7 +316,7 @@ func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp
 	if todo.Sections == nil || len(todo.Sections) == 0 {
 		return mcp.NewToolResultText(fmt.Sprintf("No sections found for todo '%s'", todo.ID))
 	}
-	
+
 	sections := make(map[string]interface{})
 
 	// Parse content to check which sections have content

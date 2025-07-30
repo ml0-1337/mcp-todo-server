@@ -22,15 +22,15 @@ type ManagerFactory struct {
 	baseSearch    SearchEngine
 	baseStats     StatsEngine
 	baseTemplates TemplateManager
-	
+
 	// Circuit breaker for manager creation
-	creationAttempts  map[string]int
-	lastFailureTime   map[string]time.Time
+	creationAttempts    map[string]int
+	lastFailureTime     map[string]time.Time
 	maxCreationAttempts int
-	backoffDuration   time.Duration
-	
+	backoffDuration     time.Duration
+
 	// Test support - allow injecting custom linker for tests
-	testLinker    TodoLinker
+	testLinker TodoLinker
 }
 
 // managerSet contains all managers for a specific directory
@@ -69,7 +69,7 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 		fmt.Fprintf(os.Stderr, "No working directory in context, using base managers\n")
 		return f.baseManager, f.baseSearch, f.baseStats, f.baseTemplates, nil
 	}
-	
+
 	fmt.Fprintf(os.Stderr, "GetManagers called with working directory: %s\n", workingDir)
 
 	// Check cache first
@@ -99,7 +99,7 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 
 	// Create new manager set for this directory
 	fmt.Fprintf(os.Stderr, "Creating new manager set for working directory: %s\n", workingDir)
-	
+
 	// Resolve paths relative to working directory
 	todoPath := filepath.Join(workingDir, ".claude", "todos")
 	templatePath := filepath.Join(workingDir, ".claude", "templates")
@@ -121,7 +121,7 @@ func (f *ManagerFactory) GetManagers(ctx context.Context) (TodoManager, SearchEn
 
 	// Create managers - TodoManager expects the working directory, not the todos path
 	manager := core.NewTodoManager(workingDir)
-	
+
 	// Create search engine with timeout and graceful fallback
 	search, err := f.createSearchEngineWithTimeout(ctx, indexPath, todoPath)
 	if err != nil {
@@ -193,13 +193,13 @@ func (f *ManagerFactory) createSearchEngineWithTimeout(ctx context.Context, inde
 		err    error
 	}
 	resultCh := make(chan result, 1)
-	
+
 	// Start search engine creation in goroutine
 	go func() {
 		engine, err := core.NewSearchEngine(indexPath, todoPath)
 		resultCh <- result{engine: engine, err: err}
 	}()
-	
+
 	// Wait for either completion or timeout
 	select {
 	case res := <-resultCh:
@@ -216,12 +216,12 @@ func (f *ManagerFactory) createSearchEngineWithTimeout(ctx context.Context, inde
 func (f *ManagerFactory) shouldBlockManagerCreation(workingDir string) bool {
 	attempts := f.creationAttempts[workingDir]
 	lastFailure := f.lastFailureTime[workingDir]
-	
+
 	// If we haven't exceeded max attempts, allow creation
 	if attempts < f.maxCreationAttempts {
 		return false
 	}
-	
+
 	// If we've exceeded max attempts, check if enough time has passed
 	if time.Since(lastFailure) > f.backoffDuration {
 		// Reset the circuit breaker
@@ -229,7 +229,7 @@ func (f *ManagerFactory) shouldBlockManagerCreation(workingDir string) bool {
 		delete(f.lastFailureTime, workingDir)
 		return false
 	}
-	
+
 	// Block creation - still in backoff period
 	return true
 }
@@ -238,7 +238,7 @@ func (f *ManagerFactory) shouldBlockManagerCreation(workingDir string) bool {
 func (f *ManagerFactory) recordManagerCreationFailure(workingDir string) {
 	f.creationAttempts[workingDir]++
 	f.lastFailureTime[workingDir] = time.Now()
-	fmt.Fprintf(os.Stderr, "Recorded manager creation failure for %s (attempt %d/%d)\n", 
+	fmt.Fprintf(os.Stderr, "Recorded manager creation failure for %s (attempt %d/%d)\n",
 		workingDir, f.creationAttempts[workingDir], f.maxCreationAttempts)
 }
 
@@ -254,7 +254,7 @@ func (f *ManagerFactory) CreateLinker(manager TodoManager) TodoLinker {
 	if f.testLinker != nil {
 		return f.testLinker
 	}
-	
+
 	// Try to cast to concrete TodoManager for linker creation
 	if concreteManager, ok := manager.(*core.TodoManager); ok {
 		return core.NewTodoLinker(concreteManager)

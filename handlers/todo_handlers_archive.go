@@ -59,7 +59,7 @@ func (h *TodoHandlers) HandleTodoArchive(ctx context.Context, request mcp.CallTo
 	if todo != nil {
 		todoType = todo.Type
 	}
-	
+
 	return FormatTodoArchiveResponse(params.ID, archivePath, todoType), nil
 }
 

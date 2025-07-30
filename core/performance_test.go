@@ -141,7 +141,7 @@ func TestConcurrentTodoOperations(t *testing.T) {
 
 	// Verify all todos were created
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
-	
+
 	// Count todos recursively since they're in date-based subdirectories
 	actualTodos := 0
 	err = filepath.Walk(todosDir, func(path string, info os.FileInfo, err error) error {

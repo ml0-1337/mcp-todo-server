@@ -440,7 +440,7 @@ func TestFormatFlatWithIndication(t *testing.T) {
 	lines := strings.Split(output, "\n")
 	parent1Found := false
 	child1Found := false
-	
+
 	for _, line := range lines {
 		if strings.Contains(line, "parent1: Parent Task 1") {
 			parent1Found = true
@@ -457,7 +457,7 @@ func TestFormatFlatWithIndication(t *testing.T) {
 			}
 		}
 	}
-	
+
 	if !parent1Found {
 		t.Error("Could not find parent1 in output")
 	}
@@ -546,7 +546,7 @@ func TestCountChildrenIndirect(t *testing.T) {
 	lines := strings.Split(output, "\n")
 	rootFound := false
 	child1Found := false
-	
+
 	for _, line := range lines {
 		if strings.Contains(line, "root: Root") {
 			rootFound = true
@@ -563,7 +563,7 @@ func TestCountChildrenIndirect(t *testing.T) {
 			}
 		}
 	}
-	
+
 	if !rootFound {
 		t.Error("Could not find root in output")
 	}
@@ -619,4 +619,3 @@ func TestCountChildrenIndirect(t *testing.T) {
 		t.Error("Parent with single child should show [1 children]")
 	}
 }
-

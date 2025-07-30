@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -281,7 +281,7 @@ func (se *StatsEngine) generateStatsFromTodos(todos []*Todo) (*TodoStats, error)
 	// Calculate completion rates only from filtered todos
 	completedByType := make(map[string]int)
 	totalByType := make(map[string]int)
-	
+
 	for _, todo := range todos {
 		todoType := todo.Type
 		if todoType == "" {
@@ -327,9 +327,9 @@ func (se *StatsEngine) generateStatsFromTodos(todos []*Todo) (*TodoStats, error)
 func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
 	// Read all .md files in the todos directory tree
 	todosDir := filepath.Join(se.manager.basePath, ".claude", "todos")
-	
+
 	var todos []*Todo
-	
+
 	// Walk through all subdirectories
 	err := filepath.Walk(todosDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -339,30 +339,30 @@ func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
 			}
 			return err
 		}
-		
+
 		// Skip directories
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		// Process only .md files
 		if strings.HasSuffix(info.Name(), ".md") {
 			// Extract ID from filename
 			todoID := strings.TrimSuffix(info.Name(), ".md")
-			
+
 			// Read the todo
 			todo, err := se.manager.ReadTodo(todoID)
 			if err != nil {
 				// Skip files that can't be read as todos
 				return nil
 			}
-			
+
 			todos = append(todos, todo)
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, interrors.Wrap(err, "failed to walk todos directory")
 	}

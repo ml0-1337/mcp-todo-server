@@ -34,15 +34,15 @@ func TestServerStartupShutdown(t *testing.T) {
 			oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 			oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 			oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-			
+
 			todosDir := filepath.Join(tempDir, "todos")
 			templatesDir := filepath.Join(tempDir, "templates")
 			bleveDir := filepath.Join(tempDir, "search_index")
-			
+
 			os.Setenv("CLAUDE_TODO_PATH", todosDir)
 			os.Setenv("CLAUDE_TEMPLATE_PATH", templatesDir)
 			os.Setenv("CLAUDE_BLEVE_PATH", bleveDir)
-			
+
 			defer func() {
 				os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 				os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
@@ -94,11 +94,11 @@ func TestServerMultipleClose(t *testing.T) {
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 	oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-	
+
 	os.Setenv("CLAUDE_TODO_PATH", filepath.Join(tempDir, "todos"))
 	os.Setenv("CLAUDE_TEMPLATE_PATH", filepath.Join(tempDir, "templates"))
 	os.Setenv("CLAUDE_BLEVE_PATH", filepath.Join(tempDir, "search_index"))
-	
+
 	defer func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
@@ -136,11 +136,11 @@ func TestHTTPServerInitialization(t *testing.T) {
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 	oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-	
+
 	os.Setenv("CLAUDE_TODO_PATH", filepath.Join(tempDir, "todos"))
 	os.Setenv("CLAUDE_TEMPLATE_PATH", filepath.Join(tempDir, "templates"))
 	os.Setenv("CLAUDE_BLEVE_PATH", filepath.Join(tempDir, "search_index"))
-	
+
 	defer func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
@@ -180,11 +180,11 @@ func TestServerWithInvalidTransport(t *testing.T) {
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 	oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-	
+
 	os.Setenv("CLAUDE_TODO_PATH", filepath.Join(tempDir, "todos"))
 	os.Setenv("CLAUDE_TEMPLATE_PATH", filepath.Join(tempDir, "templates"))
 	os.Setenv("CLAUDE_BLEVE_PATH", filepath.Join(tempDir, "search_index"))
-	
+
 	defer func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
@@ -218,11 +218,11 @@ func TestConcurrentStartStop(t *testing.T) {
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 	oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-	
+
 	os.Setenv("CLAUDE_TODO_PATH", filepath.Join(tempDir, "todos"))
 	os.Setenv("CLAUDE_TEMPLATE_PATH", filepath.Join(tempDir, "templates"))
 	os.Setenv("CLAUDE_BLEVE_PATH", filepath.Join(tempDir, "search_index"))
-	
+
 	defer func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
@@ -268,11 +268,11 @@ func TestServerWithContext(t *testing.T) {
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 	oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-	
+
 	os.Setenv("CLAUDE_TODO_PATH", filepath.Join(tempDir, "todos"))
 	os.Setenv("CLAUDE_TEMPLATE_PATH", filepath.Join(tempDir, "templates"))
 	os.Setenv("CLAUDE_BLEVE_PATH", filepath.Join(tempDir, "search_index"))
-	
+
 	defer func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)
@@ -311,7 +311,7 @@ func BenchmarkServerStartupShutdown(b *testing.B) {
 	oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 	oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 	oldBlevePath := os.Getenv("CLAUDE_BLEVE_PATH")
-	
+
 	defer func() {
 		os.Setenv("CLAUDE_TODO_PATH", oldTodoPath)
 		os.Setenv("CLAUDE_TEMPLATE_PATH", oldTemplatePath)

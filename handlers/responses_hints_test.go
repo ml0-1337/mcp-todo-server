@@ -74,13 +74,13 @@ func TestFormatTodoCreateResponseWithHints(t *testing.T) {
 				t.Fatal("No content in response")
 			}
 			textContent := result.Content[0].(mcp.TextContent)
-			
+
 			// Extract JSON part (before the prompt text)
 			jsonPart := textContent.Text
 			if idx := strings.Index(textContent.Text, "\n\n"); idx > 0 {
 				jsonPart = textContent.Text[:idx]
 			}
-			
+
 			err := json.Unmarshal([]byte(jsonPart), &response)
 			if err != nil {
 				t.Fatalf("Failed to parse response JSON: %v", err)
@@ -152,13 +152,13 @@ func TestFormatTodoCreateResponseWithSimilarTodos(t *testing.T) {
 		t.Fatal("No content in response")
 	}
 	textContent := result.Content[0].(mcp.TextContent)
-	
+
 	// Extract JSON part (before the prompt text)
 	jsonPart := textContent.Text
 	if idx := strings.Index(textContent.Text, "\n\n"); idx > 0 {
 		jsonPart = textContent.Text[:idx]
 	}
-	
+
 	err := json.Unmarshal([]byte(jsonPart), &response)
 	if err != nil {
 		t.Fatalf("Failed to parse response JSON: %v", err)

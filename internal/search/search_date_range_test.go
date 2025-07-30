@@ -21,7 +21,7 @@ func TestBleveDateRangeQuery_StartDateOnly(t *testing.T) {
 
 	// Create todos with different dates
 	manager := NewTestTodoManager(tempDir)
-	
+
 	// Create todo from 10 days ago
 	todo1, err := manager.CreateTodo("Old task", "high", "feature")
 	if err != nil {
@@ -71,11 +71,11 @@ func TestBleveDateRangeQuery_StartDateOnly(t *testing.T) {
 	filters := map[string]string{
 		"date_from": sevenDaysAgo.Format("2006-01-02"),
 	}
-	
+
 	// Debug: Log the date filter being used
 	t.Logf("Searching with date_from: %s", filters["date_from"])
 	t.Logf("Expected to find todos after: %s", sevenDaysAgo.String())
-	
+
 	// Also log the actual todo dates
 	todo1Read, _ := manager.ReadTodo(todo1.ID)
 	todo2Read, _ := manager.ReadTodo(todo2.ID)
@@ -83,7 +83,7 @@ func TestBleveDateRangeQuery_StartDateOnly(t *testing.T) {
 	t.Logf("Todo1 started: %s", todo1Read.Started.String())
 	t.Logf("Todo2 started: %s", todo2Read.Started.String())
 	t.Logf("Todo3 started: %s", todo3Read.Started.String())
-	
+
 	results, err := searchEngine.Search("task", filters, 10)
 	if err != nil {
 		t.Fatalf("Failed to search with date filter: %v", err)
@@ -125,11 +125,11 @@ func updateTodoStartDate(basePath, todoID string, newDate time.Time) error {
 	if err != nil {
 		return fmt.Errorf("failed to read todo file: %w", err)
 	}
-	
+
 	// Simple regex replace for the started date
 	contentStr := string(content)
 	newValue := fmt.Sprintf(`started: "%s"`, newDate.Format(time.RFC3339))
-	
+
 	// Find and replace the started date
 	lines := strings.Split(contentStr, "\n")
 	for i, line := range lines {
@@ -138,7 +138,7 @@ func updateTodoStartDate(basePath, todoID string, newDate time.Time) error {
 			break
 		}
 	}
-	
+
 	// Write back
 	updatedContent := strings.Join(lines, "\n")
 	return ioutil.WriteFile(filePath, []byte(updatedContent), 0644)
@@ -155,7 +155,7 @@ func TestBleveDateRangeQuery_EndDateOnly(t *testing.T) {
 
 	// Create todos with different dates
 	manager := NewTestTodoManager(tempDir)
-	
+
 	// Create todo from 10 days ago
 	todo1, err := manager.CreateTodo("Old task", "high", "feature")
 	if err != nil {
@@ -202,7 +202,7 @@ func TestBleveDateRangeQuery_EndDateOnly(t *testing.T) {
 	filters := map[string]string{
 		"date_to": sevenDaysAgo.Format("2006-01-02"),
 	}
-	
+
 	results, err := searchEngine.Search("task", filters, 10)
 	if err != nil {
 		t.Fatalf("Failed to search with date filter: %v", err)
@@ -233,7 +233,7 @@ func TestBleveDateRangeQuery_BothDates(t *testing.T) {
 
 	// Create todos with different dates
 	manager := NewTestTodoManager(tempDir)
-	
+
 	// Create todo from 15 days ago (should NOT be in range)
 	todo1, err := manager.CreateTodo("Very old task", "high", "feature")
 	if err != nil {
@@ -291,16 +291,16 @@ func TestBleveDateRangeQuery_BothDates(t *testing.T) {
 	// Should return todo2 (8 days ago) and todo3 (5 days ago)
 	tenDaysAgo := time.Now().UTC().AddDate(0, 0, -10)
 	fourDaysAgo := time.Now().UTC().AddDate(0, 0, -4)
-	
+
 	filters := map[string]string{
 		"date_from": tenDaysAgo.Format("2006-01-02"),
 		"date_to":   fourDaysAgo.Format("2006-01-02"),
 	}
-	
+
 	// Debug: Log the date range being used
 	t.Logf("Searching with date range: %s to %s", filters["date_from"], filters["date_to"])
 	t.Logf("Expected to find todos between: %s and %s", tenDaysAgo.String(), fourDaysAgo.String())
-	
+
 	results, err := searchEngine.Search("task", filters, 10)
 	if err != nil {
 		t.Fatalf("Failed to search with date range filter: %v", err)
@@ -312,7 +312,7 @@ func TestBleveDateRangeQuery_BothDates(t *testing.T) {
 		for i, r := range results {
 			t.Logf("Result %d: ID=%s, Task=%s", i, r.ID, r.Task)
 		}
-		
+
 		// Debug: Log all todo dates
 		todo1Read, _ := manager.ReadTodo(todo1.ID)
 		todo2Read, _ := manager.ReadTodo(todo2.ID)

@@ -12,7 +12,7 @@ func TestServerOptions(t *testing.T) {
 		validate func(*testing.T, *TodoServer)
 	}{
 		{
-			name: "WithTransport",
+			name:   "WithTransport",
 			option: WithTransport("http"),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.transport != "http" {
@@ -21,7 +21,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithSessionTimeout",
+			name:   "WithSessionTimeout",
 			option: WithSessionTimeout(5 * time.Minute),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.sessionTimeout != 5*time.Minute {
@@ -30,7 +30,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithManagerTimeout",
+			name:   "WithManagerTimeout",
 			option: WithManagerTimeout(10 * time.Minute),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.managerTimeout != 10*time.Minute {
@@ -39,7 +39,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHeartbeatInterval",
+			name:   "WithHeartbeatInterval",
 			option: WithHeartbeatInterval(30 * time.Second),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.heartbeatInterval != 30*time.Second {
@@ -48,7 +48,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithNoAutoArchive",
+			name:   "WithNoAutoArchive",
 			option: WithNoAutoArchive(true),
 			validate: func(t *testing.T, s *TodoServer) {
 				if !s.noAutoArchive {
@@ -57,7 +57,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHTTPRequestTimeout",
+			name:   "WithHTTPRequestTimeout",
 			option: WithHTTPRequestTimeout(60 * time.Second),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.requestTimeout != 60*time.Second {
@@ -66,7 +66,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHTTPReadTimeout",
+			name:   "WithHTTPReadTimeout",
 			option: WithHTTPReadTimeout(15 * time.Second),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.httpReadTimeout != 15*time.Second {
@@ -75,7 +75,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHTTPWriteTimeout",
+			name:   "WithHTTPWriteTimeout",
 			option: WithHTTPWriteTimeout(15 * time.Second),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.httpWriteTimeout != 15*time.Second {
@@ -84,7 +84,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHTTPIdleTimeout",
+			name:   "WithHTTPIdleTimeout",
 			option: WithHTTPIdleTimeout(120 * time.Second),
 			validate: func(t *testing.T, s *TodoServer) {
 				if s.httpIdleTimeout != 120*time.Second {
@@ -93,7 +93,7 @@ func TestServerOptions(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a minimal server with the option
@@ -107,7 +107,7 @@ func TestServerOptions(t *testing.T) {
 func TestMultipleServerOptions(t *testing.T) {
 	// Test that multiple options can be applied
 	server := &TodoServer{}
-	
+
 	options := []ServerOption{
 		WithTransport("stdio"),
 		WithSessionTimeout(10 * time.Minute),
@@ -119,11 +119,11 @@ func TestMultipleServerOptions(t *testing.T) {
 		WithHTTPWriteTimeout(10 * time.Second),
 		WithHTTPIdleTimeout(60 * time.Second),
 	}
-	
+
 	for _, opt := range options {
 		opt(server)
 	}
-	
+
 	// Validate all options were applied
 	if server.transport != "stdio" {
 		t.Errorf("Expected transport 'stdio', got '%s'", server.transport)

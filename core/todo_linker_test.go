@@ -238,8 +238,8 @@ func TestLinkTodosWithMultipleChildren(t *testing.T) {
 	childIDs := []string{}
 	for i := 1; i <= 3; i++ {
 		child, err := manager.CreateTodo(
-			"Phase "+string(rune('0'+i)), 
-			"medium", 
+			"Phase "+string(rune('0'+i)),
+			"medium",
 			"phase",
 		)
 		if err != nil {

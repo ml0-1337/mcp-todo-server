@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
-	"gopkg.in/yaml.v3"
+
 	"github.com/user/mcp-todo-server/internal/domain"
+	"gopkg.in/yaml.v3"
 )
 
 // parseTodoFile parses a todo file content and returns a domain.Todo
@@ -19,14 +19,14 @@ func parseTodoFile(id, content string) (*domain.Todo, error) {
 
 	// Parse YAML frontmatter
 	var frontmatter struct {
-		TodoID    string    `yaml:"todo_id"`
-		Started   string    `yaml:"started"`
-		Completed string    `yaml:"completed,omitempty"`
-		Status    string    `yaml:"status"`
-		Priority  string    `yaml:"priority"`
-		Type      string    `yaml:"type"`
-		ParentID  string    `yaml:"parent_id,omitempty"`
-		Tags      []string  `yaml:"tags,omitempty"`
+		TodoID    string   `yaml:"todo_id"`
+		Started   string   `yaml:"started"`
+		Completed string   `yaml:"completed,omitempty"`
+		Status    string   `yaml:"status"`
+		Priority  string   `yaml:"priority"`
+		Type      string   `yaml:"type"`
+		ParentID  string   `yaml:"parent_id,omitempty"`
+		Tags      []string `yaml:"tags,omitempty"`
 	}
 
 	if err := yaml.Unmarshal([]byte(parts[1]), &frontmatter); err != nil {

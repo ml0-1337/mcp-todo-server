@@ -165,15 +165,16 @@ lint: ## Run golangci-lint
 .PHONY: fmt
 fmt: ## Format code with go fmt
 	@echo "$(GREEN)Formatting code...$(NC)"
-	@$(GOFMT) -w .
+	@go fmt $$(go list ./... | grep -v /vendor/)
 	@echo "$(GREEN)Code formatting complete$(NC)"
 
 .PHONY: fmt-check
 fmt-check: ## Check if code is formatted
 	@echo "$(GREEN)Checking code formatting...$(NC)"
-	@if [ -n "$$($(GOFMT) -l .)" ]; then \
+	@NEED_FMT=$$(find . -name "*.go" -not -path "./vendor/*" -not -path "./build/*" | xargs gofmt -l); \
+	if [ -n "$$NEED_FMT" ]; then \
 		echo "$(RED)The following files need formatting:$(NC)"; \
-		$(GOFMT) -l .; \
+		echo "$$NEED_FMT"; \
 		exit 1; \
 	else \
 		echo "$(GREEN)All files are properly formatted$(NC)"; \

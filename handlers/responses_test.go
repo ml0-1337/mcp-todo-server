@@ -139,7 +139,7 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
-		
+
 		// Verify prompt is included
 		textContent, ok := result.Content[0].(mcp.TextContent)
 		if !ok {
@@ -168,7 +168,7 @@ func TestResponseFormattersReturnResults(t *testing.T) {
 		if result == nil {
 			t.Fatal("Expected non-nil result")
 		}
-		
+
 		// Verify prompt is included
 		textContent, ok := result.Content[0].(mcp.TextContent)
 		if !ok {

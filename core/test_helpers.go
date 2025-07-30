@@ -33,7 +33,7 @@ func GetTodoPath(basePath, todoID string) string {
 func GetArchivePath(basePath string, todo *Todo, quarter string) string {
 	// Archives are stored within .claude directory structure
 	archiveBase := filepath.Join(basePath, ".claude", "archive")
-	
+
 	if quarter != "" {
 		return filepath.Join(archiveBase, quarter, todo.ID+".md")
 	}
@@ -81,17 +81,17 @@ func VerifyArchiveExists(t *testing.T, basePath string, todo *Todo, quarter stri
 func CreateTestTodoWithContent(t *testing.T, manager *TodoManager, task, content string) *Todo {
 	t.Helper()
 	todo := CreateTestTodo(t, manager, task, "high", "feature")
-	
+
 	// Use ResolveTodoPath to find the created todo
 	path, err := ResolveTodoPath(manager.basePath, todo.ID)
 	if err != nil {
 		t.Fatalf("Failed to resolve todo path: %v", err)
 	}
-	
+
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to write test content: %v", err)
 	}
-	
+
 	return todo
 }
 
@@ -99,18 +99,18 @@ func CreateTestTodoWithContent(t *testing.T, manager *TodoManager, task, content
 func CreateTestTodoWithDate(t *testing.T, manager *TodoManager, task string, startedDate time.Time) *Todo {
 	t.Helper()
 	todo := CreateTestTodo(t, manager, task, "high", "feature")
-	
+
 	// Use ResolveTodoPath to find the created todo
 	path, err := ResolveTodoPath(manager.basePath, todo.ID)
 	if err != nil {
 		t.Fatalf("Failed to resolve todo path: %v", err)
 	}
-	
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("Failed to read todo file: %v", err)
 	}
-	
+
 	// Update the started date in the frontmatter
 	contentStr := string(content)
 	// Replace the started date line
@@ -121,26 +121,26 @@ func CreateTestTodoWithDate(t *testing.T, manager *TodoManager, task string, sta
 			break
 		}
 	}
-	
+
 	// Write back the updated content
 	updatedContent := strings.Join(lines, "\n")
 	if err := os.WriteFile(path, []byte(updatedContent), 0644); err != nil {
 		t.Fatalf("Failed to write updated content: %v", err)
 	}
-	
+
 	// Re-read the todo to get the updated object
 	updatedTodo, err := manager.ReadTodo(todo.ID)
 	if err != nil {
 		t.Fatalf("Failed to re-read todo: %v", err)
 	}
-	
+
 	return updatedTodo
 }
 
 // SetupTestTodoManager creates a TodoManager with a temporary directory
 func SetupTestTodoManager(t *testing.T) (*TodoManager, string, func()) {
 	t.Helper()
-	
+
 	// Use t.TempDir() for automatic cleanup
 	tempDir := t.TempDir()
 
@@ -151,9 +151,9 @@ func SetupTestTodoManager(t *testing.T) (*TodoManager, string, func()) {
 	}
 
 	manager := NewTodoManager(tempDir)
-	
+
 	// Return a no-op cleanup function since t.TempDir() handles it
 	cleanup := func() {}
-	
+
 	return manager, tempDir, cleanup
 }

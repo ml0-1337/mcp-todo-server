@@ -15,11 +15,11 @@ import (
 
 // MigrationStats tracks migration progress
 type MigrationStats struct {
-	Total     int
-	Migrated  int
-	Failed    int
-	Skipped   int
-	Errors    []error
+	Total    int
+	Migrated int
+	Failed   int
+	Skipped  int
+	Errors   []error
 }
 
 // MigrateToDateStructure migrates all todos from flat to date-based structure
@@ -80,7 +80,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		wg.Add(1)
 		go func(f os.FileInfo) {
 			defer wg.Done()
-			
+
 			err := tm.migrateFile(tempDir, f.Name())
 			if err != nil {
 				errChan <- fmt.Errorf("%s: %w", f.Name(), err)
@@ -118,7 +118,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		// Rollback: restore original directory
 		os.RemoveAll(oldTodosDir)
 		os.Rename(tempDir, oldTodosDir)
-		return stats, interrors.NewOperationError("migrate", "todos", 
+		return stats, interrors.NewOperationError("migrate", "todos",
 			fmt.Sprintf("migration failed: %d errors", stats.Failed), nil)
 	}
 
@@ -127,7 +127,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		fmt.Fprintf(os.Stderr, "Warning: failed to remove temp directory: %v\n", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Migration complete: %d migrated, %d failed, %d skipped\n", 
+	fmt.Fprintf(os.Stderr, "Migration complete: %d migrated, %d failed, %d skipped\n",
 		stats.Migrated, stats.Failed, stats.Skipped)
 
 	// Clear path cache after migration
@@ -159,7 +159,7 @@ func (tm *TodoManager) needsMigration(todosDir string) (bool, error) {
 // migrateFile migrates a single todo file to date-based structure
 func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 	sourcePath := filepath.Join(sourceDir, filename)
-	
+
 	// Read the file
 	content, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
@@ -181,7 +181,7 @@ func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 		} else {
 			todo.Started = info.ModTime()
 		}
-		
+
 		// Update the content with the new started date
 		content, err = tm.updateStartedDateInContent(string(content), todo.Started)
 		if err != nil {

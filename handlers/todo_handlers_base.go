@@ -61,7 +61,6 @@ func NewTodoHandlers(todoPath, templatePath string, managerTimeout time.Duration
 	return h, nil
 }
 
-
 // NewTodoHandlersWithDependencies creates new todo handlers with explicit dependencies (for testing)
 func NewTodoHandlersWithDependencies(
 	manager TodoManager,
@@ -71,7 +70,7 @@ func NewTodoHandlersWithDependencies(
 ) *TodoHandlers {
 	// Create factory with provided managers
 	factory := NewManagerFactory(manager, search, stats, templates)
-	
+
 	return &TodoHandlers{
 		factory: factory,
 		// baseManager is nil for test scenarios - tests should set it if needed
@@ -86,7 +85,7 @@ func (h *TodoHandlers) Close() error {
 		close(h.cleanupStop)
 		<-h.cleanupDone
 	}
-	
+
 	// Close the base search engine if it implements Close
 	if h.factory != nil && h.factory.baseSearch != nil {
 		if closer, ok := h.factory.baseSearch.(interface{ Close() error }); ok {
@@ -95,29 +94,29 @@ func (h *TodoHandlers) Close() error {
 			}
 		}
 	}
-	
+
 	// Clean up any cached manager sets
 	if h.factory != nil {
 		h.factory.CleanupStale(0) // Force cleanup all with 0 duration
 	}
-	
+
 	return nil
 }
 
 // cleanupRoutine periodically cleans up stale manager sets
 func (h *TodoHandlers) cleanupRoutine() {
 	defer close(h.cleanupDone)
-	
+
 	// Run cleanup every 10 minutes
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
-	
+
 	// Use configured manager timeout (0 means no cleanup)
 	if h.managerTimeout == 0 {
 		fmt.Fprintln(os.Stderr, "Manager cleanup disabled (timeout=0)")
 		return
 	}
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -131,5 +130,3 @@ func (h *TodoHandlers) cleanupRoutine() {
 		}
 	}
 }
-
-

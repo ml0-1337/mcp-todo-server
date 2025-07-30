@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -20,8 +20,8 @@ func getDefaultSections() map[string]*SectionDefinition {
 
 	// Add all standard sections in order
 	standardSections := []struct {
-		Key   string
-		Title string
+		Key    string
+		Title  string
 		Schema SectionSchema
 	}{
 		{"findings", "Findings & Research", SchemaResearch},
@@ -109,7 +109,7 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		}
 		return interrors.Wrap(err, "failed to resolve todo path")
 	}
-	
+
 	fileContent, err := ioutil.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -176,12 +176,12 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		if err != nil {
 			return interrors.Wrap(err, "failed to update frontmatter")
 		}
-		
+
 		// Write back the updated content
 		if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
 			return interrors.NewOperationError("write", "todo file", "failed to save changes", err)
 		}
-		
+
 		return nil
 	}
 
@@ -193,9 +193,9 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, content string) error {
 	// For now, implement a simple section update
 	// This will be replaced with the sophisticated section updater later
-	
+
 	updatedContent := fileContent
-	
+
 	// Handle special cases
 	if section == "checklist" && operation == "toggle" {
 		updatedContent = toggleChecklistItem(updatedContent, content)
@@ -215,7 +215,7 @@ func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, co
 	if err != nil {
 		return interrors.Wrap(err, "failed to resolve todo path for update")
 	}
-	
+
 	if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
 		return interrors.NewOperationError("write", "todo section", "failed to save section update", err)
 	}
@@ -230,13 +230,13 @@ func updateFrontmatter(content string, todo *Todo) (string, error) {
 	if len(parts) < 3 {
 		return "", interrors.NewValidationError("content", content, "invalid markdown format: missing frontmatter delimiters")
 	}
-	
+
 	// Marshal the updated todo to YAML
 	yamlData, err := yaml.Marshal(todo)
 	if err != nil {
 		return "", interrors.Wrap(err, "failed to marshal todo")
 	}
-	
+
 	// Reconstruct the content with updated frontmatter
 	return "---\n" + string(yamlData) + "---" + parts[2], nil
 }
@@ -244,7 +244,7 @@ func updateFrontmatter(content string, todo *Todo) (string, error) {
 // appendToSection appends content to a section
 func appendToSection(fileContent, section, content string) string {
 	lines := strings.Split(fileContent, "\n")
-	
+
 	// Map section names to their proper titles
 	sectionTitles := map[string]string{
 		"findings":      "Findings & Research",
@@ -256,24 +256,24 @@ func appendToSection(fileContent, section, content string) string {
 		"checklist":     "Checklist",
 		"scratchpad":    "Working Scratchpad",
 	}
-	
+
 	// Get the proper section title
 	sectionTitle := sectionTitles[section]
 	if sectionTitle == "" {
 		// Default to titlecase if not in map
 		sectionTitle = strings.Title(strings.Replace(section, "_", " ", -1))
 	}
-	
+
 	// Only add timestamp for test_results section
 	contentToAppend := content
 	if section == "test_results" {
 		contentToAppend = formatWithTimestamp(content)
 	}
-	
+
 	sectionHeader := "## " + sectionTitle
 	sectionIndex := -1
 	nextSectionIndex := len(lines)
-	
+
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == sectionHeader {
@@ -283,12 +283,12 @@ func appendToSection(fileContent, section, content string) string {
 			break
 		}
 	}
-	
+
 	if sectionIndex == -1 {
 		// Section doesn't exist, append it at the end
 		return fileContent + "\n\n" + sectionHeader + "\n\n" + contentToAppend
 	}
-	
+
 	// Find the last non-empty line in the section
 	lastContentIndex := sectionIndex
 	for i := sectionIndex + 1; i < nextSectionIndex; i++ {
@@ -296,10 +296,10 @@ func appendToSection(fileContent, section, content string) string {
 			lastContentIndex = i
 		}
 	}
-	
+
 	// Insert after the last content
 	insertIndex := lastContentIndex + 1
-	
+
 	// Handle spacing
 	if lastContentIndex > sectionIndex {
 		// There's existing content, add newline before appending
@@ -313,20 +313,20 @@ func appendToSection(fileContent, section, content string) string {
 		}
 		// No need to add extra newline, the structure is already correct
 	}
-	
+
 	// Insert the content
 	newLines := make([]string, 0, len(lines)+1)
 	newLines = append(newLines, lines[:insertIndex]...)
 	newLines = append(newLines, contentToAppend)
 	newLines = append(newLines, lines[insertIndex:]...)
-	
+
 	return strings.Join(newLines, "\n")
 }
 
 // replaceSection replaces a section's content
 func replaceSection(fileContent, section, content string) string {
 	lines := strings.Split(fileContent, "\n")
-	
+
 	// Map section names to their proper titles
 	sectionTitles := map[string]string{
 		"findings":      "Findings & Research",
@@ -338,18 +338,18 @@ func replaceSection(fileContent, section, content string) string {
 		"checklist":     "Checklist",
 		"scratchpad":    "Working Scratchpad",
 	}
-	
+
 	// Get the proper section title
 	sectionTitle := sectionTitles[section]
 	if sectionTitle == "" {
 		// Default to titlecase if not in map
 		sectionTitle = strings.Title(strings.Replace(section, "_", " ", -1))
 	}
-	
+
 	sectionHeader := "## " + sectionTitle
 	sectionIndex := -1
 	nextSectionIndex := len(lines)
-	
+
 	// Find the section
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -360,18 +360,18 @@ func replaceSection(fileContent, section, content string) string {
 			break
 		}
 	}
-	
+
 	if sectionIndex == -1 {
 		// Section doesn't exist, append it at the end
 		return fileContent + "\n\n" + sectionHeader + "\n\n" + content
 	}
-	
+
 	// Build the new content
 	newLines := make([]string, 0, len(lines))
-	
+
 	// Add all lines before the section
 	newLines = append(newLines, lines[:sectionIndex+1]...)
-	
+
 	// Add empty line after header if content is not empty
 	if content != "" {
 		newLines = append(newLines, "")
@@ -379,7 +379,7 @@ func replaceSection(fileContent, section, content string) string {
 		contentLines := strings.Split(strings.TrimSpace(content), "\n")
 		newLines = append(newLines, contentLines...)
 	}
-	
+
 	// Add lines after the section (skip old section content)
 	if nextSectionIndex < len(lines) {
 		// Add empty line before next section if we added content
@@ -389,14 +389,14 @@ func replaceSection(fileContent, section, content string) string {
 		// Add all remaining lines starting from the next section
 		newLines = append(newLines, lines[nextSectionIndex:]...)
 	}
-	
+
 	return strings.Join(newLines, "\n")
 }
 
 // prependToSection prepends content to a section
 func prependToSection(fileContent, section, content string) string {
 	lines := strings.Split(fileContent, "\n")
-	
+
 	// Map section names to their proper titles
 	sectionTitles := map[string]string{
 		"findings":      "Findings & Research",
@@ -408,23 +408,23 @@ func prependToSection(fileContent, section, content string) string {
 		"checklist":     "Checklist",
 		"scratchpad":    "Working Scratchpad",
 	}
-	
+
 	// Get the proper section title
 	sectionTitle := sectionTitles[section]
 	if sectionTitle == "" {
 		// Default to titlecase if not in map
 		sectionTitle = strings.Title(strings.Replace(section, "_", " ", -1))
 	}
-	
+
 	// Only add timestamp for test_results section
 	contentToPrepend := content
 	if section == "test_results" {
 		contentToPrepend = formatWithTimestamp(content)
 	}
-	
+
 	sectionHeader := "## " + sectionTitle
 	sectionIndex := -1
-	
+
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == sectionHeader {
@@ -432,32 +432,32 @@ func prependToSection(fileContent, section, content string) string {
 			break
 		}
 	}
-	
+
 	if sectionIndex == -1 {
 		// Section doesn't exist, append it at the end
 		return fileContent + "\n\n" + sectionHeader + "\n\n" + contentToPrepend
 	}
-	
+
 	// Find where to insert the content (right after the section header)
 	insertIndex := sectionIndex + 1
-	
+
 	// Skip the first empty line after header if it exists
 	if insertIndex < len(lines) && strings.TrimSpace(lines[insertIndex]) == "" {
 		insertIndex++
 	}
-	
+
 	// Insert the content at the beginning of the section
 	newLines := make([]string, 0, len(lines)+2)
 	newLines = append(newLines, lines[:insertIndex]...)
 	newLines = append(newLines, contentToPrepend)
-	
+
 	// Add empty line if there's existing content
 	if insertIndex < len(lines) && strings.TrimSpace(lines[insertIndex]) != "" {
 		newLines = append(newLines, "")
 	}
-	
+
 	newLines = append(newLines, lines[insertIndex:]...)
-	
+
 	return strings.Join(newLines, "\n")
 }
 
@@ -480,7 +480,7 @@ func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, er
 		// Use ScanDateRange for optimized scanning
 		startDate := cutoffTime
 		endDate := time.Now()
-		
+
 		paths, err := ScanDateRange(tm.basePath, startDate, endDate)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ListTodos: Error in ScanDateRange: %v\n", err)

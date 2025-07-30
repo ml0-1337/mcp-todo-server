@@ -119,7 +119,7 @@ func TestListTools(t *testing.T) {
 			t.Errorf("Expected tool %s not found", name)
 		}
 	}
-	
+
 	// Verify todo_archive is NOT in the list (auto-archive is default)
 	for _, tool := range tools {
 		if tool.Name == "todo_archive" {

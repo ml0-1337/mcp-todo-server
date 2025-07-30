@@ -9,19 +9,19 @@ import (
 var (
 	// ErrNotFound indicates a requested resource was not found
 	ErrNotFound = errors.New("not found")
-	
+
 	// ErrValidation indicates invalid input or parameters
 	ErrValidation = errors.New("validation error")
-	
+
 	// ErrOperation indicates a failed operation
 	ErrOperation = errors.New("operation failed")
-	
+
 	// ErrPermission indicates insufficient permissions
 	ErrPermission = errors.New("permission denied")
-	
+
 	// ErrConflict indicates a resource conflict
 	ErrConflict = errors.New("conflict")
-	
+
 	// ErrInternal indicates an internal server error
 	ErrInternal = errors.New("internal error")
 )
@@ -80,28 +80,28 @@ func GetCategory(err error) ErrorCategory {
 	if err == nil {
 		return CategoryUnknown
 	}
-	
+
 	// Check for custom error types first
 	var todoErr *TodoError
 	if As(err, &todoErr) {
 		return todoErr.Category
 	}
-	
+
 	var valErr *ValidationError
 	if As(err, &valErr) {
 		return CategoryValidation
 	}
-	
+
 	var notFoundErr *NotFoundError
 	if As(err, &notFoundErr) {
 		return CategoryNotFound
 	}
-	
+
 	var opErr *OperationError
 	if As(err, &opErr) {
 		return CategoryOperation
 	}
-	
+
 	// Check sentinel errors
 	switch {
 	case Is(err, ErrNotFound):

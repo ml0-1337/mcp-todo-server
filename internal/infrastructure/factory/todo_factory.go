@@ -11,12 +11,12 @@ import (
 func CreateTodoManager(basePath string) *adapters.TodoManagerAdapter {
 	// Create repository
 	repo := filesystem.NewTodoRepository(basePath)
-	
+
 	// Create service
 	service := application.NewTodoService(repo)
-	
+
 	// Create adapter
 	adapter := adapters.NewTodoManagerAdapter(service, repo, basePath)
-	
+
 	return adapter
 }

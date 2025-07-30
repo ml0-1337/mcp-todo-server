@@ -143,44 +143,44 @@ func TestFindNodeByID(t *testing.T) {
 	roots := buildTestHierarchy()
 
 	tests := []struct {
-		name        string
-		id          string
-		shouldFind  bool
-		expectedID  string
+		name       string
+		id         string
+		shouldFind bool
+		expectedID string
 	}{
 		{
-			name:        "find root node",
-			id:          "root1",
-			shouldFind:  true,
-			expectedID:  "root1",
+			name:       "find root node",
+			id:         "root1",
+			shouldFind: true,
+			expectedID: "root1",
 		},
 		{
-			name:        "find child node",
-			id:          "child1",
-			shouldFind:  true,
-			expectedID:  "child1",
+			name:       "find child node",
+			id:         "child1",
+			shouldFind: true,
+			expectedID: "child1",
 		},
 		{
-			name:        "find grandchild node",
-			id:          "grandchild1",
-			shouldFind:  true,
-			expectedID:  "grandchild1",
+			name:       "find grandchild node",
+			id:         "grandchild1",
+			shouldFind: true,
+			expectedID: "grandchild1",
 		},
 		{
-			name:        "find node in second tree",
-			id:          "child3",
-			shouldFind:  true,
-			expectedID:  "child3",
+			name:       "find node in second tree",
+			id:         "child3",
+			shouldFind: true,
+			expectedID: "child3",
 		},
 		{
-			name:        "node not found",
-			id:          "nonexistent",
-			shouldFind:  false,
+			name:       "node not found",
+			id:         "nonexistent",
+			shouldFind: false,
 		},
 		{
-			name:        "empty ID",
-			id:          "",
-			shouldFind:  false,
+			name:       "empty ID",
+			id:         "",
+			shouldFind: false,
 		},
 	}
 
@@ -295,7 +295,7 @@ func TestGetNodePath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetNodePath(roots, tt.id)
-			
+
 			if tt.expectedPath == nil {
 				if result != nil {
 					t.Errorf("GetNodePath() expected nil, but got path")
@@ -362,7 +362,7 @@ func TestGetPathToNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := getPathToNode(tt.node, tt.targetID, []*TodoNode{})
-			
+
 			if tt.expectedPath == nil {
 				if result != nil {
 					t.Errorf("getPathToNode() expected nil, but got path")
@@ -387,14 +387,14 @@ func TestGetPathToNode(t *testing.T) {
 // TestFlattenHierarchy tests converting hierarchy to flat list
 func TestFlattenHierarchy(t *testing.T) {
 	tests := []struct {
-		name         string
-		roots        []*TodoNode
-		expectedIDs  []string
+		name        string
+		roots       []*TodoNode
+		expectedIDs []string
 	}{
 		{
-			name:         "empty hierarchy",
-			roots:        []*TodoNode{},
-			expectedIDs:  []string{},
+			name:        "empty hierarchy",
+			roots:       []*TodoNode{},
+			expectedIDs: []string{},
 		},
 		{
 			name: "single node",
@@ -404,9 +404,9 @@ func TestFlattenHierarchy(t *testing.T) {
 			expectedIDs: []string{"single"},
 		},
 		{
-			name:         "complex hierarchy",
-			roots:        buildTestHierarchy(),
-			expectedIDs:  []string{"root1", "child1", "grandchild1", "child2", "root2", "child3"},
+			name:        "complex hierarchy",
+			roots:       buildTestHierarchy(),
+			expectedIDs: []string{"root1", "child1", "grandchild1", "child2", "root2", "child3"},
 		},
 		{
 			name: "wide hierarchy",
@@ -425,7 +425,7 @@ func TestFlattenHierarchy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := FlattenHierarchy(tt.roots)
-			
+
 			if len(result) != len(tt.expectedIDs) {
 				t.Errorf("FlattenHierarchy() returned %d todos, want %d", len(result), len(tt.expectedIDs))
 				return
@@ -474,7 +474,7 @@ func TestFlattenNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := flattenNode(tt.node)
-			
+
 			if len(result) != len(tt.expectedIDs) {
 				t.Errorf("flattenNode() returned %d todos, want %d", len(result), len(tt.expectedIDs))
 				return
@@ -521,7 +521,7 @@ func TestHierarchyOperationsEdgeCases(t *testing.T) {
 		// Create a deep hierarchy (10 levels)
 		var root *TodoNode
 		var current *TodoNode
-		
+
 		for i := 0; i < 10; i++ {
 			node := createTestNode(string(rune('a'+i)), "Task", "")
 			if root == nil {

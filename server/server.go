@@ -4,43 +4,43 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
-	"sync"
-	"time"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/user/mcp-todo-server/handlers"
 	ctxkeys "github.com/user/mcp-todo-server/internal/context"
 	"github.com/user/mcp-todo-server/internal/logging"
 	"github.com/user/mcp-todo-server/utils"
+	"net/http"
+	"os"
+	"sync"
+	"time"
 )
 
 // TodoServer represents the MCP server for todo management
 type TodoServer struct {
-	mcpServer         *server.MCPServer
-	handlers          *handlers.TodoHandlers
-	transport         string
-	
+	mcpServer *server.MCPServer
+	handlers  *handlers.TodoHandlers
+	transport string
+
 	// HTTP transport layers (each serves a specific purpose):
-	httpServer        *server.StreamableHTTPServer    // Base MCP HTTP server from mark3labs/mcp-go
-	stableTransport   *StableHTTPTransport            // Stability wrapper - fixes connection issues, adds queuing & heartbeats
-	httpWrapper       *StreamableHTTPServerWrapper    // Middleware layer - adds session management & header extraction
-	
+	httpServer      *server.StreamableHTTPServer // Base MCP HTTP server from mark3labs/mcp-go
+	stableTransport *StableHTTPTransport         // Stability wrapper - fixes connection issues, adds queuing & heartbeats
+	httpWrapper     *StreamableHTTPServerWrapper // Middleware layer - adds session management & header extraction
+
 	startTime         time.Time
 	sessionTimeout    time.Duration
 	managerTimeout    time.Duration
 	heartbeatInterval time.Duration
 	noAutoArchive     bool
-	
+
 	// HTTP timeout configurations
-	requestTimeout    time.Duration
-	httpReadTimeout   time.Duration
-	httpWriteTimeout  time.Duration
-	httpIdleTimeout   time.Duration
-	
-	closeMu           sync.Mutex
-	closed            bool
+	requestTimeout   time.Duration
+	httpReadTimeout  time.Duration
+	httpWriteTimeout time.Duration
+	httpIdleTimeout  time.Duration
+
+	closeMu sync.Mutex
+	closed  bool
 }
 
 // ServerOption is a function that configures a TodoServer
@@ -112,7 +112,7 @@ func WithHTTPIdleTimeout(timeout time.Duration) ServerOption {
 // NewTodoServer creates a new MCP todo server with all tools registered
 func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 	logging.Infof("Creating new TodoServer...")
-	
+
 	// Resolve paths dynamically
 	todoPath, err := utils.ResolveTodoPath()
 	if err != nil {
@@ -139,11 +139,11 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		startTime:         time.Now(),
 		sessionTimeout:    7 * 24 * time.Hour, // Default: 7 days
 		managerTimeout:    24 * time.Hour,     // Default: 24 hours
-		heartbeatInterval: 30 * time.Second,    // Default: 30 seconds
-		requestTimeout:    30 * time.Second,    // Default: 30 seconds
-		httpReadTimeout:   60 * time.Second,    // Default: 60 seconds
-		httpWriteTimeout:  60 * time.Second,    // Default: 60 seconds
-		httpIdleTimeout:   120 * time.Second,   // Default: 120 seconds (unchanged)
+		heartbeatInterval: 30 * time.Second,   // Default: 30 seconds
+		requestTimeout:    30 * time.Second,   // Default: 30 seconds
+		httpReadTimeout:   60 * time.Second,   // Default: 60 seconds
+		httpWriteTimeout:  60 * time.Second,   // Default: 60 seconds
+		httpIdleTimeout:   120 * time.Second,  // Default: 120 seconds (unchanged)
 	}
 
 	// Apply options
@@ -171,7 +171,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		// 1. Base StreamableHTTPServer (MCP protocol implementation)
 		// 2. StableHTTPTransport (fixes connection stability issues)
 		// 3. StreamableHTTPServerWrapper (adds session management)
-		
+
 		// Create HTTP server with context function to pass through request context
 		options := []server.StreamableHTTPOption{
 			server.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
@@ -180,17 +180,17 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 				if workingDir != "" {
 					ctx = context.WithValue(ctx, ctxkeys.WorkingDirectoryKey, workingDir)
 				}
-				
+
 				// Extract session ID from header
 				sessionID := r.Header.Get("Mcp-Session-Id")
 				if sessionID != "" {
 					ctx = context.WithValue(ctx, ctxkeys.SessionIDKey, sessionID)
 				}
-				
+
 				return ctx
 			}),
 		}
-		
+
 		// Add heartbeat interval if configured
 		if ts.heartbeatInterval > 0 {
 			logging.Infof("Configuring heartbeat interval: %v", ts.heartbeatInterval)
@@ -198,9 +198,9 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 		} else {
 			logging.Infof("Heartbeat disabled (interval=0)")
 		}
-		
+
 		ts.httpServer = server.NewStreamableHTTPServer(s, options...)
-		
+
 		// Create stable transport wrapper
 		ts.stableTransport = NewStableHTTPTransport(
 			ts.httpServer,
@@ -208,7 +208,7 @@ func NewTodoServer(opts ...ServerOption) (*TodoServer, error) {
 			WithConnectionTimeout(ts.sessionTimeout),
 			WithMaxRequestsPerConnection(1000),
 		)
-		
+
 		// Wrap with middleware for header extraction
 		ts.httpWrapper = NewStreamableHTTPServerWrapper(ts.stableTransport, ts.sessionTimeout)
 	}
@@ -227,19 +227,19 @@ func (ts *TodoServer) ListTools() []mcp.Tool {
 		mcp.NewTool("todo_update", mcp.WithDescription("Add progress notes, test results, or findings to a todo. Update status when blocked or completed (auto-archives on completion).")),
 		mcp.NewTool("todo_search", mcp.WithDescription("Find past solutions, code snippets, or similar work across all your todos. Searches through task descriptions, findings, and test results.")),
 	}
-	
+
 	// Only include todo_archive if auto-archive is disabled
 	if ts.noAutoArchive {
 		tools = append(tools, mcp.NewTool("todo_archive", mcp.WithDescription("Move a completed todo to the archive folder organized by date. Usually happens automatically when you mark a todo as completed.")))
 	}
-	
+
 	tools = append(tools, []mcp.Tool{
 		mcp.NewTool("todo_template", mcp.WithDescription("Start with a pre-structured todo for common tasks. Templates include sections and checklists tailored to specific workflows.")),
 		mcp.NewTool("todo_link", mcp.WithDescription("Connect related tasks together. Useful for dependencies, blocking relationships, or grouping related work.")),
 		mcp.NewTool("todo_stats", mcp.WithDescription("View your productivity metrics: completed tasks, time spent, task distribution, and work patterns.")),
 		mcp.NewTool("todo_clean", mcp.WithDescription("Maintain your todo system by archiving old incomplete tasks or finding potential duplicates.")),
 	}...)
-	
+
 	return tools
 }
 
@@ -491,20 +491,20 @@ func (ts *TodoServer) registerTools() {
 func (ts *TodoServer) Close() error {
 	ts.closeMu.Lock()
 	defer ts.closeMu.Unlock()
-	
+
 	// Check if already closed
 	if ts.closed {
 		return nil
 	}
-	
+
 	// Mark as closed
 	ts.closed = true
-	
+
 	// Stop cleanup routine if present
 	if ts.httpWrapper != nil {
 		ts.httpWrapper.Stop()
 	}
-	
+
 	// Shutdown stable transport if present
 	if ts.stableTransport != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -513,7 +513,7 @@ func (ts *TodoServer) Close() error {
 			fmt.Fprintf(os.Stderr, "Error shutting down stable transport: %v\n", err)
 		}
 	}
-	
+
 	// Shutdown HTTP server if present
 	if ts.httpServer != nil {
 		ctx := context.Background()
@@ -521,15 +521,14 @@ func (ts *TodoServer) Close() error {
 			return err
 		}
 	}
-	
+
 	// Close handlers
 	if ts.handlers != nil {
 		return ts.handlers.Close()
 	}
-	
+
 	return nil
 }
-
 
 // StartStdio starts the MCP server in STDIO mode
 func (ts *TodoServer) StartStdio() error {
@@ -547,21 +546,21 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 	if ts.httpWrapper == nil {
 		return fmt.Errorf("HTTP server not initialized")
 	}
-	
+
 	// Use custom HTTP server with middleware
 	http.Handle("/mcp", ts.httpWrapper)
-	
+
 	// Add health check endpoint
 	http.HandleFunc("/health", ts.handleHealthCheck)
-	
+
 	// Add heartbeat endpoint for stable transport
 	http.HandleFunc("/mcp/heartbeat", ts.handleHeartbeat)
-	
+
 	// Add debug endpoints
 	http.HandleFunc("/debug/connections", ts.handleDebugConnections)
 	http.HandleFunc("/debug/sessions", ts.handleDebugSessions)
 	http.HandleFunc("/debug/transport", ts.handleDebugTransport)
-	
+
 	// Configure server with proper timeouts for connection resilience
 	server := &http.Server{
 		Addr:         addr,
@@ -569,7 +568,7 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 		WriteTimeout: ts.httpWriteTimeout,
 		IdleTimeout:  ts.httpIdleTimeout,
 	}
-	
+
 	logging.Infof("Starting HTTP server with middleware on %s", addr)
 	return server.ListenAndServe()
 }
@@ -578,7 +577,7 @@ func (ts *TodoServer) StartHTTP(addr string) error {
 func (ts *TodoServer) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	// Calculate uptime
 	uptime := time.Since(ts.startTime)
-	
+
 	// Get session count if using HTTP
 	sessionCount := 0
 	if ts.httpWrapper != nil && ts.httpWrapper.sessionManager != nil {
@@ -586,22 +585,22 @@ func (ts *TodoServer) handleHealthCheck(w http.ResponseWriter, r *http.Request) 
 		sessionCount = len(ts.httpWrapper.sessionManager.sessions)
 		ts.httpWrapper.sessionManager.mu.RUnlock()
 	}
-	
+
 	// Build health response
 	health := map[string]interface{}{
-		"status":       "healthy",
-		"uptime":       uptime.String(),
-		"uptimeMs":     uptime.Milliseconds(),
-		"serverTime":   time.Now().Format(time.RFC3339),
-		"transport":    ts.transport,
-		"version":      "2.0.0",
-		"sessions":     sessionCount,
+		"status":     "healthy",
+		"uptime":     uptime.String(),
+		"uptimeMs":   uptime.Milliseconds(),
+		"serverTime": time.Now().Format(time.RFC3339),
+		"transport":  ts.transport,
+		"version":    "2.0.0",
+		"sessions":   sessionCount,
 	}
-	
+
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	
+
 	// Write response
 	if err := json.NewEncoder(w).Encode(health); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding health response: %v\n", err)
@@ -614,16 +613,16 @@ func (ts *TodoServer) handleDebugConnections(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "Debug endpoint only available in HTTP mode", http.StatusNotImplemented)
 		return
 	}
-	
+
 	// Get session stats
 	stats := ts.httpWrapper.sessionManager.GetSessionStats()
-	
+
 	// Add server info
 	debug := map[string]interface{}{
 		"server": map[string]interface{}{
-			"uptime":     time.Since(ts.startTime).String(),
-			"startTime":  ts.startTime.Format(time.RFC3339),
-			"transport":  ts.transport,
+			"uptime":    time.Since(ts.startTime).String(),
+			"startTime": ts.startTime.Format(time.RFC3339),
+			"transport": ts.transport,
 		},
 		"sessions": stats,
 		"request": map[string]interface{}{
@@ -632,7 +631,7 @@ func (ts *TodoServer) handleDebugConnections(w http.ResponseWriter, r *http.Requ
 			"headers":    r.Header,
 		},
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(debug)
 }
@@ -643,11 +642,11 @@ func (ts *TodoServer) handleDebugSessions(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Debug endpoint only available in HTTP mode", http.StatusNotImplemented)
 		return
 	}
-	
+
 	sm := ts.httpWrapper.sessionManager
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	sessions := make([]map[string]interface{}, 0)
 	for id, session := range sm.sessions {
 		sessions = append(sessions, map[string]interface{}{
@@ -657,13 +656,13 @@ func (ts *TodoServer) handleDebugSessions(w http.ResponseWriter, r *http.Request
 			"inactiveDuration": time.Since(session.LastActivity).String(),
 		})
 	}
-	
+
 	response := map[string]interface{}{
 		"totalSessions": len(sessions),
 		"sessions":      sessions,
 		"serverTime":    time.Now().Format(time.RFC3339),
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -674,9 +673,9 @@ func (ts *TodoServer) handleDebugTransport(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Stable transport not available", http.StatusNotImplemented)
 		return
 	}
-	
+
 	metrics := ts.stableTransport.GetMetrics()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(metrics)
 }

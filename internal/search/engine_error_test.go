@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 )
 
@@ -14,13 +14,13 @@ func TestDirectoryWalkError(t *testing.T) {
 	tempDir := t.TempDir()
 	indexPath := filepath.Join(tempDir, "test.bleve")
 	todosPath := filepath.Join(tempDir, "todos")
-	
+
 	// Create todos directory
 	err := os.MkdirAll(todosPath, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create todos directory: %v", err)
 	}
-	
+
 	// Create a valid todo file
 	todoContent := `---
 todo_id: test-todo
@@ -32,14 +32,14 @@ status: in_progress
 	if err != nil {
 		t.Fatalf("Failed to create test todo: %v", err)
 	}
-	
+
 	// Create engine
 	engine, err := NewEngine(indexPath, todosPath)
 	if err != nil {
 		t.Fatalf("Failed to create engine: %v", err)
 	}
 	defer engine.Close()
-	
+
 	// Create a subdirectory with no read permissions
 	badDir := filepath.Join(todosPath, "noaccess")
 	err = os.Mkdir(badDir, 0000)
@@ -47,29 +47,29 @@ status: in_progress
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 	defer os.Chmod(badDir, 0755) // Restore permissions for cleanup
-	
+
 	// Try to index - should handle the permission error gracefully
 	todo := &domain.Todo{
-		ID: "test-todo-2",
-		Task: "Another test todo",
-		Status: "in_progress",
-		Started: time.Now(),
-		Type: "feature",
+		ID:       "test-todo-2",
+		Task:     "Another test todo",
+		Status:   "in_progress",
+		Started:  time.Now(),
+		Type:     "feature",
 		Priority: "medium",
 	}
 	err = engine.Index(todo, "Another test todo content")
-	
+
 	// Indexing individual todo should succeed
 	if err != nil {
 		t.Errorf("Expected indexing to succeed, got: %v", err)
 	}
-	
+
 	// Verify the accessible todo was indexed
 	results, err := engine.Search("test todo", nil, 10)
 	if err != nil {
 		t.Errorf("Search failed: %v", err)
 	}
-	
+
 	if len(results) < 1 {
 		t.Errorf("Expected at least 1 result, got %d", len(results))
 	}
@@ -80,13 +80,13 @@ func TestInvalidDateFormat(t *testing.T) {
 	tempDir := t.TempDir()
 	indexPath := filepath.Join(tempDir, "test.bleve")
 	todosPath := filepath.Join(tempDir, "todos")
-	
+
 	// Create todos directory
 	err := os.MkdirAll(todosPath, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create todos directory: %v", err)
 	}
-	
+
 	// Create test todos
 	todos := []struct {
 		id      string
@@ -113,21 +113,21 @@ status: in_progress
 `,
 		},
 	}
-	
+
 	for _, todo := range todos {
 		err = os.WriteFile(filepath.Join(todosPath, todo.id+".md"), []byte(todo.content), 0644)
 		if err != nil {
 			t.Fatalf("Failed to create test todo: %v", err)
 		}
 	}
-	
+
 	// Create engine
 	engine, err := NewEngine(indexPath, todosPath)
 	if err != nil {
 		t.Fatalf("Failed to create engine: %v", err)
 	}
 	defer engine.Close()
-	
+
 	// Test invalid date formats in search
 	testCases := []struct {
 		name        string
@@ -160,7 +160,7 @@ status: in_progress
 			expectError: false,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			filters := make(map[string]string)
@@ -170,9 +170,9 @@ status: in_progress
 			if tc.dateTo != "" {
 				filters["date_to"] = tc.dateTo
 			}
-			
+
 			results, err := engine.Search("task", filters, 10)
-			
+
 			if tc.expectError {
 				if err == nil {
 					t.Error("Expected error for invalid date format")

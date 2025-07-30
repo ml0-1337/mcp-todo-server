@@ -3,7 +3,7 @@ package core
 import (
 	"os"
 	"path/filepath"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 

@@ -30,29 +30,29 @@ func main() {
 			break
 		}
 	}
-	
+
 	// Redirect ALL logging to stderr immediately if STDIO mode
 	if isStdio {
 		log.SetOutput(os.Stderr)
 	}
-	
+
 	// Now safe to log
 	logging.Logf("MCP Todo Server starting...")
-	
+
 	// Parse command line flags
 	var (
-		transport        = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
-		port             = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
-		host             = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
-		version          = flag.Bool("version", false, "Print version and exit")
-		sessionTimeout   = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
-		managerTimeout   = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
+		transport         = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
+		port              = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
+		host              = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
+		version           = flag.Bool("version", false, "Print version and exit")
+		sessionTimeout    = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
+		managerTimeout    = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
 		heartbeatInterval = flag.Duration("heartbeat-interval", 30*time.Second, "HTTP heartbeat interval (default: 30s, 0 to disable)")
-		noAutoArchive    = flag.Bool("no-auto-archive", false, "Disable automatic archiving when todo status is set to completed")
-		requestTimeout   = flag.Duration("request-timeout", 30*time.Second, "HTTP request timeout (default: 30s, 0 to disable)")
-		httpReadTimeout  = flag.Duration("http-read-timeout", 60*time.Second, "HTTP server read timeout (default: 60s)")
-		httpWriteTimeout = flag.Duration("http-write-timeout", 60*time.Second, "HTTP server write timeout (default: 60s)")
-		httpIdleTimeout  = flag.Duration("http-idle-timeout", 120*time.Second, "HTTP server idle timeout (default: 120s)")
+		noAutoArchive     = flag.Bool("no-auto-archive", false, "Disable automatic archiving when todo status is set to completed")
+		requestTimeout    = flag.Duration("request-timeout", 30*time.Second, "HTTP request timeout (default: 30s, 0 to disable)")
+		httpReadTimeout   = flag.Duration("http-read-timeout", 60*time.Second, "HTTP server read timeout (default: 60s)")
+		httpWriteTimeout  = flag.Duration("http-write-timeout", 60*time.Second, "HTTP server write timeout (default: 60s)")
+		httpIdleTimeout   = flag.Duration("http-idle-timeout", 120*time.Second, "HTTP server idle timeout (default: 120s)")
 	)
 	flag.Parse()
 
@@ -77,12 +77,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to create server lock: %v", err)
 		}
-		
+
 		err = serverLock.TryLock()
 		if err != nil {
 			log.Fatalf("Failed to acquire server lock: %v", err)
 		}
-		
+
 		logging.Logf("Acquired exclusive lock for port %s", *port)
 	}
 

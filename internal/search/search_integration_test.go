@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 )
 

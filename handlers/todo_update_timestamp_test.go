@@ -2,15 +2,15 @@ package handlers
 
 import (
 	"context"
-	"testing"
 	"github.com/user/mcp-todo-server/core"
+	"testing"
 )
 
 // Test 10: Integration test - update via handlers works without timestamps
 func TestHandleTodoUpdate_AcceptsContentWithoutTimestamps(t *testing.T) {
 	// Create mock managers
 	mockManager := NewMockTodoManager()
-	
+
 	// Setup todo with results section
 	testTodo := &core.Todo{
 		ID:       "test-results-todo",
@@ -27,7 +27,7 @@ func TestHandleTodoUpdate_AcceptsContentWithoutTimestamps(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Mock ReadTodo to return our test todo
 	mockManager.ReadTodoFunc = func(id string) (*core.Todo, error) {
 		if id == "test-results-todo" {
@@ -35,7 +35,7 @@ func TestHandleTodoUpdate_AcceptsContentWithoutTimestamps(t *testing.T) {
 		}
 		return nil, nil
 	}
-	
+
 	// Track if UpdateTodo was called
 	updateCalled := false
 	mockManager.UpdateTodoFunc = func(id, section, operation, content string, metadata map[string]string) error {
@@ -43,11 +43,11 @@ func TestHandleTodoUpdate_AcceptsContentWithoutTimestamps(t *testing.T) {
 		// The content is passed through to core.UpdateTodo which will add timestamps
 		return nil
 	}
-	
+
 	mockSearch := &MockSearchEngine{}
 	mockStats := &MockStatsEngine{}
 	mockTemplates := &MockTemplateManager{}
-	
+
 	// Create handlers
 	handlers := NewTodoHandlersWithDependencies(
 		mockManager,
@@ -55,7 +55,7 @@ func TestHandleTodoUpdate_AcceptsContentWithoutTimestamps(t *testing.T) {
 		mockStats,
 		mockTemplates,
 	)
-	
+
 	// Create update request without timestamp
 	request := &MockCallToolRequest{
 		Arguments: map[string]interface{}{
@@ -65,23 +65,23 @@ func TestHandleTodoUpdate_AcceptsContentWithoutTimestamps(t *testing.T) {
 			"content":   "Test completed successfully",
 		},
 	}
-	
+
 	// Call handler
 	result, err := handlers.HandleTodoUpdate(context.Background(), request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoUpdate() error = %v", err)
 	}
-	
+
 	// Verify success
 	if result.IsError {
 		t.Error("Expected success but got error")
 	}
-	
+
 	// Verify UpdateTodo was called
 	if !updateCalled {
 		t.Error("Expected UpdateTodo to be called")
 	}
-	
+
 	// The handlers layer passes content through to core.UpdateTodo
 	// which handles the automatic timestamping
 }

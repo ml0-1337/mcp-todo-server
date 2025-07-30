@@ -56,11 +56,11 @@ func TestCreateTodoManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setup(t, tt.basePath)
-			
+
 			adapter := CreateTodoManager(tt.basePath)
-			
+
 			tt.validate(t, adapter)
-			
+
 			// Additional validation: test that the adapter is functional
 			t.Run("adapter is functional", func(t *testing.T) {
 				// Create a todo to verify the adapter works
@@ -80,7 +80,7 @@ func TestCreateTodoManager(t *testing.T) {
 				if todo.Type != "feature" {
 					t.Errorf("Expected type 'feature', got '%s'", todo.Type)
 				}
-				
+
 				// Read the todo back
 				readTodo, err := adapter.ReadTodo(todo.ID)
 				if err != nil {
@@ -97,14 +97,14 @@ func TestCreateTodoManager(t *testing.T) {
 func TestFactoryIntegration(t *testing.T) {
 	// Test that multiple managers can work with the same base path
 	basePath := t.TempDir()
-	
+
 	// Create first manager and add a todo
 	manager1 := CreateTodoManager(basePath)
 	todo1, err := manager1.CreateTodo("First todo", "medium", "bug")
 	if err != nil {
 		t.Fatalf("Failed to create todo with manager1: %v", err)
 	}
-	
+
 	// Create second manager and verify it can see the todo
 	manager2 := CreateTodoManager(basePath)
 	readTodo, err := manager2.ReadTodo(todo1.ID)
@@ -114,13 +114,13 @@ func TestFactoryIntegration(t *testing.T) {
 	if readTodo.Task != "First todo" {
 		t.Errorf("Expected task 'First todo', got '%s'", readTodo.Task)
 	}
-	
+
 	// Create todo with second manager
 	todo2, err := manager2.CreateTodo("Second todo", "low", "refactor")
 	if err != nil {
 		t.Fatalf("Failed to create todo with manager2: %v", err)
 	}
-	
+
 	// Verify first manager can see both todos
 	readTodo1, err := manager1.ReadTodo(todo1.ID)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestFactoryIntegration(t *testing.T) {
 	if readTodo1.Task != "First todo" {
 		t.Errorf("Expected task 'First todo', got '%s'", readTodo1.Task)
 	}
-	
+
 	readTodo2, err := manager1.ReadTodo(todo2.ID)
 	if err != nil {
 		t.Fatalf("Failed to read todo2 with manager1: %v", err)

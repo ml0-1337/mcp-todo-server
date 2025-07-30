@@ -119,9 +119,9 @@ func TestSaveTodo(t *testing.T) {
 			Type:     "research",
 			Sections: map[string]*SectionDefinition{
 				"custom_section": {
-					Title:   "## Custom Research Section",
-					Schema:  SchemaFreeform,
-					Order:   5,
+					Title:  "## Custom Research Section",
+					Schema: SchemaFreeform,
+					Order:  5,
 				},
 			},
 		}
@@ -256,80 +256,80 @@ func TestListTodos(t *testing.T) {
 
 	// Test cases
 	tests := []struct {
-		name         string
-		status       string
-		priority     string
-		days         int
+		name          string
+		status        string
+		priority      string
+		days          int
 		expectedCount int
 	}{
 		{
-			name:         "all todos",
-			status:       "",
-			priority:     "",
-			days:         0,
+			name:          "all todos",
+			status:        "",
+			priority:      "",
+			days:          0,
 			expectedCount: 5,
 		},
 		{
-			name:         "filter by status in_progress",
-			status:       "in_progress",
-			priority:     "",
-			days:         0,
+			name:          "filter by status in_progress",
+			status:        "in_progress",
+			priority:      "",
+			days:          0,
 			expectedCount: 3,
 		},
 		{
-			name:         "filter by status completed",
-			status:       "completed",
-			priority:     "",
-			days:         0,
+			name:          "filter by status completed",
+			status:        "completed",
+			priority:      "",
+			days:          0,
 			expectedCount: 2,
 		},
 		{
-			name:         "filter by priority high",
-			status:       "",
-			priority:     "high",
-			days:         0,
+			name:          "filter by priority high",
+			status:        "",
+			priority:      "high",
+			days:          0,
 			expectedCount: 2,
 		},
 		{
-			name:         "filter by priority low",
-			status:       "",
-			priority:     "low",
-			days:         0,
+			name:          "filter by priority low",
+			status:        "",
+			priority:      "low",
+			days:          0,
 			expectedCount: 2,
 		},
 		{
-			name:         "filter by days (last 3 days)",
-			status:       "",
-			priority:     "",
-			days:         3,
+			name:          "filter by days (last 3 days)",
+			status:        "",
+			priority:      "",
+			days:          3,
 			expectedCount: 3, // recent (0,1,2 days old)
 		},
 		{
-			name:         "combined filters: high priority in_progress",
-			status:       "in_progress",
-			priority:     "high",
-			days:         0,
+			name:          "combined filters: high priority in_progress",
+			status:        "in_progress",
+			priority:      "high",
+			days:          0,
 			expectedCount: 1,
 		},
 		{
-			name:         "combined filters: completed in last 7 days",
-			status:       "completed",
-			priority:     "",
-			days:         7,
+			name:          "combined filters: completed in last 7 days",
+			status:        "completed",
+			priority:      "",
+			days:          7,
 			expectedCount: 1, // Only 1 completed todo within last 7 days (the 5 days old one)
 		},
 		{
-			name:         "status all should return all",
-			status:       "all",
-			priority:     "",
-			days:         0,
+			name:          "status all should return all",
+			status:        "all",
+			priority:      "",
+			days:          0,
 			expectedCount: 5,
 		},
 		{
-			name:         "priority all should return all",
-			status:       "",
-			priority:     "all",
-			days:         0,
+			name:          "priority all should return all",
+			status:        "",
+			priority:      "all",
+			days:          0,
 			expectedCount: 5,
 		},
 	}
@@ -369,12 +369,12 @@ func TestListTodos(t *testing.T) {
 	t.Run("handle missing directory", func(t *testing.T) {
 		badManager := NewTodoManager("/non/existent/path")
 		todos, err := badManager.ListTodos("", "", 0)
-		
+
 		// Should return empty list, not error (missing todos directory is valid state)
 		if err != nil {
 			t.Errorf("Expected no error for non-existent directory, got: %v", err)
 		}
-		
+
 		// Should return empty list
 		if todos == nil {
 			t.Error("Expected empty list, got nil")
@@ -445,17 +445,17 @@ func TestArchiveOldTodos(t *testing.T) {
 			t.Errorf("ArchiveOldTodos() archived %d todos, want 1", count)
 		}
 
-		// Check archive directory exists  
+		// Check archive directory exists
 		// The archive directory is created relative to the basePath
 		archivePath := filepath.Join(tempDir, ".claude", "archive")
-		
+
 		// With the current logic, only recentCompleted (3 days old) should be archived
 		// The older ones (15, 20 days) are NOT within last 7 days
 		_, err = ResolveTodoPath(tempDir, recentCompleted.ID)
 		if err == nil {
 			t.Error("Recent completed (3 days old) should be archived")
 		}
-		
+
 		// These should NOT be archived (older than 7 days)
 		_, err = ResolveTodoPath(tempDir, oldCompleted1.ID)
 		if err != nil {
@@ -472,7 +472,7 @@ func TestArchiveOldTodos(t *testing.T) {
 		if err != nil {
 			t.Error("Old in-progress todo should not be archived")
 		}
-		
+
 		// Check that archived files exist somewhere in archive folder
 		// Note: The actual archive path depends on the started date
 		var archivedIDs []string
@@ -489,11 +489,11 @@ func TestArchiveOldTodos(t *testing.T) {
 				return nil
 			})
 		}
-		
+
 		if len(archivedIDs) != 1 {
 			t.Errorf("Expected 1 archived todo, found %d: %v", len(archivedIDs), archivedIDs)
 		}
-		
+
 		// Verify it's the right one
 		if len(archivedIDs) == 1 && archivedIDs[0] != recentCompleted.ID {
 			t.Errorf("Wrong todo archived. Expected %s, got %s", recentCompleted.ID, archivedIDs[0])
@@ -592,9 +592,9 @@ func TestFindDuplicateTodos(t *testing.T) {
 		// Create new manager with unique todos only
 		tempDir2, _ := ioutil.TempDir("", "no-duplicates-test-*")
 		defer os.RemoveAll(tempDir2)
-		
+
 		manager2 := NewTodoManager(tempDir2)
-		
+
 		uniqueTasks := []string{
 			"Task one",
 			"Task two",
@@ -602,19 +602,19 @@ func TestFindDuplicateTodos(t *testing.T) {
 			"Different task",
 			"Another unique task",
 		}
-		
+
 		for _, task := range uniqueTasks {
 			_, err := manager2.CreateTodo(task, "high", "feature")
 			if err != nil {
 				t.Fatalf("Failed to create todo: %v", err)
 			}
 		}
-		
+
 		duplicates, err := manager2.FindDuplicateTodos()
 		if err != nil {
 			t.Fatalf("Failed to find duplicates: %v", err)
 		}
-		
+
 		if len(duplicates) != 0 {
 			t.Errorf("FindDuplicateTodos() found %d groups for unique todos, want 0", len(duplicates))
 		}
@@ -624,14 +624,14 @@ func TestFindDuplicateTodos(t *testing.T) {
 	t.Run("empty directory", func(t *testing.T) {
 		tempDir3, _ := ioutil.TempDir("", "empty-duplicates-test-*")
 		defer os.RemoveAll(tempDir3)
-		
+
 		manager3 := NewTodoManager(tempDir3)
-		
+
 		duplicates, err := manager3.FindDuplicateTodos()
 		if err != nil {
 			t.Fatalf("Failed to find duplicates: %v", err)
 		}
-		
+
 		if len(duplicates) != 0 {
 			t.Errorf("FindDuplicateTodos() found %d groups in empty dir, want 0", len(duplicates))
 		}
@@ -653,7 +653,7 @@ func BenchmarkListTodos(b *testing.B) {
 	// Create many todos
 	priorities := []string{"high", "medium", "low"}
 	statuses := []string{"in_progress", "completed", "blocked"}
-	
+
 	for i := 0; i < 100; i++ {
 		todo, _ := manager.CreateTodo("Benchmark task", priorities[i%3], "feature")
 		if i%3 != 0 {

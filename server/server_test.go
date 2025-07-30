@@ -9,7 +9,7 @@ import (
 // Test 1: MCP server should start and register tools successfully
 func TestServerInitialization(t *testing.T) {
 	t.Helper()
-	
+
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 
@@ -84,7 +84,7 @@ func TestTodoArchive_ToolRegistration(t *testing.T) {
 	// Setup test environment
 	setupTestEnv := func(t *testing.T) {
 		tempDir := t.TempDir()
-		
+
 		oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 		oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 		t.Cleanup(func() {
@@ -103,7 +103,7 @@ func TestTodoArchive_ToolRegistration(t *testing.T) {
 
 	t.Run("todo_archive tool should not appear in tools list by default", func(t *testing.T) {
 		setupTestEnv(t)
-		
+
 		// Create server with default options (auto-archive enabled, noAutoArchive=false)
 		server, err := NewTodoServer()
 		if err != nil {
@@ -139,7 +139,7 @@ func TestTodoArchive_ToolRegistration(t *testing.T) {
 
 	t.Run("todo_archive tool should appear when auto-archive is disabled", func(t *testing.T) {
 		setupTestEnv(t)
-		
+
 		// Create server with auto-archive disabled
 		server, err := NewTodoServer(WithNoAutoArchive(true))
 		if err != nil {

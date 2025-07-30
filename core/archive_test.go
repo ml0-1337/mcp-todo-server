@@ -68,7 +68,6 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 	})
 }
 
-
 // Test 17: todo_archive should update completed timestamp
 func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	// Setup test environment
@@ -240,7 +239,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		} else {
 			if _, err := os.Stat(originalPath); os.IsNotExist(err) {
 				t.Error("Original todo should still exist after failed archive")
-				
+
 				// Check if file was moved to archive
 				archivePath := filepath.Join(archiveDir, todo.ID+".md")
 				if _, err := os.Stat(archivePath); err == nil {
@@ -287,7 +286,7 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	} else {
 		t.Logf("Deleted todo3 file at: %s", todo3Path)
 	}
-	
+
 	// Verify it's really gone
 	if _, err := os.Stat(todo3Path); !os.IsNotExist(err) {
 		t.Error("Todo3 file still exists after deletion")
@@ -393,23 +392,23 @@ func TestArchiveCreatesDirectoryWithinClaudeStructure(t *testing.T) {
 	// Check where archive was created - it should be within .claude structure
 	now := time.Now()
 	dailyPath := GetDailyPath(now)
-	
+
 	// Current behavior: archive is created one level up from basePath
 	currentArchivePath := filepath.Join(filepath.Dir(tempDir), "archive", dailyPath, todo.ID+".md")
-	
+
 	// Desired behavior: archive should be within .claude directory
 	desiredArchivePath := filepath.Join(tempDir, ".claude", "archive", dailyPath, todo.ID+".md")
-	
+
 	// Check that archive should be in .claude structure (this will fail initially)
 	if _, err := os.Stat(desiredArchivePath); os.IsNotExist(err) {
 		t.Errorf("Archive should be within .claude structure at: %s", desiredArchivePath)
 	}
-	
+
 	// Check that archive should NOT be in parent directory
 	if _, err := os.Stat(currentArchivePath); !os.IsNotExist(err) {
 		t.Errorf("Archive should NOT be in parent directory: %s", currentArchivePath)
 	}
-	
+
 	// Log paths for clarity
 	t.Logf("Base path: %s", tempDir)
 	t.Logf("Current archive path: %s", currentArchivePath)

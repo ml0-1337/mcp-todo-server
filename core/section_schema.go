@@ -5,7 +5,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -284,14 +284,14 @@ var standardSectionMappings = map[string]struct {
 	Key    string
 	Schema SectionSchema
 }{
-	"## Findings & Research":      {Key: "findings", Schema: SchemaResearch},
-	"## Web Searches":             {Key: "web_searches", Schema: SchemaResearch},
-	"## Test Strategy":            {Key: "test_strategy", Schema: SchemaStrategy},
-	"## Test List":                {Key: "test_list", Schema: SchemaChecklist},
-	"## Test Cases":               {Key: "tests", Schema: SchemaTestCases},
-	"## Test Results Log":         {Key: "test_results", Schema: SchemaResults},
-	"## Checklist":                {Key: "checklist", Schema: SchemaChecklist},
-	"## Working Scratchpad":       {Key: "scratchpad", Schema: SchemaFreeform},
+	"## Findings & Research": {Key: "findings", Schema: SchemaResearch},
+	"## Web Searches":        {Key: "web_searches", Schema: SchemaResearch},
+	"## Test Strategy":       {Key: "test_strategy", Schema: SchemaStrategy},
+	"## Test List":           {Key: "test_list", Schema: SchemaChecklist},
+	"## Test Cases":          {Key: "tests", Schema: SchemaTestCases},
+	"## Test Results Log":    {Key: "test_results", Schema: SchemaResults},
+	"## Checklist":           {Key: "checklist", Schema: SchemaChecklist},
+	"## Working Scratchpad":  {Key: "scratchpad", Schema: SchemaFreeform},
 }
 
 // InferSectionsFromMarkdown analyzes markdown content to infer section definitions

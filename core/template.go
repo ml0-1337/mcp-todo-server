@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 

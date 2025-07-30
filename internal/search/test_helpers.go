@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 	"gopkg.in/yaml.v3"
 )
@@ -26,7 +26,7 @@ func NewTestTodoManager(basePath string) *TestTodoManager {
 func (tm *TestTodoManager) CreateTodo(task, priority, todoType string) (*domain.Todo, error) {
 	// Generate ID
 	id := generateTestID(task)
-	
+
 	// Create todo
 	todo := &domain.Todo{
 		ID:       id,
@@ -36,12 +36,12 @@ func (tm *TestTodoManager) CreateTodo(task, priority, todoType string) (*domain.
 		Priority: priority,
 		Type:     todoType,
 	}
-	
+
 	// Write to file
 	if err := tm.writeTodo(todo); err != nil {
 		return nil, err
 	}
-	
+
 	return todo, nil
 }
 
@@ -55,7 +55,7 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 
 	// Create the todo file with frontmatter
 	filename := filepath.Join(dir, fmt.Sprintf("%s.md", todo.ID))
-	
+
 	// Create frontmatter
 	frontmatter := map[string]interface{}{
 		"todo_id":  todo.ID,
@@ -64,11 +64,11 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 		"priority": todo.Priority,
 		"type":     todo.Type,
 	}
-	
+
 	if !todo.Completed.IsZero() {
 		frontmatter["completed"] = todo.Completed.Format(time.RFC3339)
 	}
-	
+
 	// Marshal the frontmatter
 	yamlData, err := yaml.Marshal(frontmatter)
 	if err != nil {
@@ -97,7 +97,7 @@ func (tm *TestTodoManager) ReadTodo(id string) (*domain.Todo, error) {
 		}
 		return nil, fmt.Errorf("failed to read todo file: %w", err)
 	}
-	
+
 	return parseTodoFile(id, string(content))
 }
 
@@ -109,7 +109,7 @@ func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, me
 	if err != nil {
 		return fmt.Errorf("failed to read todo file: %w", err)
 	}
-	
+
 	// If we're appending content to a section
 	if operation == "append" && section != "" && content != "" {
 		// Find and update the section
@@ -131,14 +131,14 @@ func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, me
 		}
 		return ioutil.WriteFile(filePath, fileContent, 0644)
 	}
-	
+
 	// If we're updating metadata, read the todo and update it
 	if metadata != nil {
 		todo, err := tm.ReadTodo(id)
 		if err != nil {
 			return err
 		}
-		
+
 		// Update metadata
 		for key, value := range metadata {
 			switch key {
@@ -162,11 +162,11 @@ func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, me
 				}
 			}
 		}
-		
+
 		// Write the updated todo back
 		return tm.writeTodo(todo)
 	}
-	
+
 	return nil
 }
 

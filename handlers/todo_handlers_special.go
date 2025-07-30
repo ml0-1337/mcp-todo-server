@@ -80,7 +80,7 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 	if linker == nil {
 		return HandleError(fmt.Errorf("Linking feature not available with current manager")), nil
 	}
-	
+
 	err = linker.LinkTodos(parentID, childID, linkType)
 	if err != nil {
 		return HandleError(err), nil

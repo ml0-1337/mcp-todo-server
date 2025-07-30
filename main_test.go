@@ -53,7 +53,7 @@ func TestMainFunction(t *testing.T) {
 			flag.StringVar(&transport, "transport", "http", "Transport type")
 			flag.StringVar(&port, "port", "8080", "Port for HTTP transport")
 			flag.StringVar(&host, "host", "localhost", "Host for HTTP transport")
-			
+
 			err := flag.CommandLine.Parse(os.Args[1:])
 			if err != nil && !tt.wantError {
 				t.Errorf("Unexpected error parsing flags: %v", err)
@@ -65,9 +65,9 @@ func TestMainFunction(t *testing.T) {
 // TestStdioModeDetection tests the STDIO mode detection logic
 func TestStdioModeDetection(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		isStdio  bool
+		name    string
+		args    []string
+		isStdio bool
 	}{
 		{
 			name:    "stdio with equals",
@@ -75,7 +75,7 @@ func TestStdioModeDetection(t *testing.T) {
 			isStdio: true,
 		},
 		{
-			name:    "stdio with space", 
+			name:    "stdio with space",
 			args:    []string{"-transport", "stdio"},
 			isStdio: true,
 		},
@@ -128,12 +128,12 @@ func TestVersionFlag(t *testing.T) {
 	// Test version flag parsing
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	version := fs.Bool("version", false, "Print version")
-	
+
 	err := fs.Parse([]string{"-version"})
 	if err != nil {
 		t.Fatalf("Failed to parse version flag: %v", err)
 	}
-	
+
 	if !*version {
 		t.Error("Version flag should be true")
 	}
@@ -142,10 +142,10 @@ func TestVersionFlag(t *testing.T) {
 // TestEnvironmentVariableHandling tests CLAUDE_TODO_NO_AUTO_ARCHIVE env var
 func TestEnvironmentVariableHandling(t *testing.T) {
 	tests := []struct {
-		name              string
-		envValue          string
-		flagValue         bool
-		expectedValue     bool
+		name          string
+		envValue      string
+		flagValue     bool
+		expectedValue bool
 	}{
 		{
 			name:          "env true overrides flag false",
@@ -184,10 +184,10 @@ func TestEnvironmentVariableHandling(t *testing.T) {
 			// Save and restore env var
 			oldEnv := os.Getenv("CLAUDE_TODO_NO_AUTO_ARCHIVE")
 			defer os.Setenv("CLAUDE_TODO_NO_AUTO_ARCHIVE", oldEnv)
-			
+
 			// Set test env value
 			os.Setenv("CLAUDE_TODO_NO_AUTO_ARCHIVE", tt.envValue)
-			
+
 			// Simulate the env var handling logic
 			noAutoArchive := tt.flagValue
 			if envNoAutoArchive := os.Getenv("CLAUDE_TODO_NO_AUTO_ARCHIVE"); envNoAutoArchive != "" {
@@ -195,7 +195,7 @@ func TestEnvironmentVariableHandling(t *testing.T) {
 					noAutoArchive = true
 				}
 			}
-			
+
 			if noAutoArchive != tt.expectedValue {
 				t.Errorf("noAutoArchive = %v, want %v", noAutoArchive, tt.expectedValue)
 			}
@@ -206,11 +206,11 @@ func TestEnvironmentVariableHandling(t *testing.T) {
 // TestFlagParsing tests command-line flag parsing
 func TestFlagParsing(t *testing.T) {
 	tests := []struct {
-		name           string
-		args           []string
-		wantTransport  string
-		wantPort       string
-		wantHost       string
+		name          string
+		args          []string
+		wantTransport string
+		wantPort      string
+		wantHost      string
 	}{
 		{
 			name:          "default values",
@@ -253,7 +253,7 @@ func TestFlagParsing(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a new FlagSet for each test
 			fs := flag.NewFlagSet("test", flag.ContinueOnError)
-			
+
 			// Define flags
 			transport := fs.String("transport", "http", "Transport type")
 			port := fs.String("port", "8080", "Port for HTTP transport")
@@ -282,44 +282,44 @@ func TestFlagParsing(t *testing.T) {
 // TestDurationFlags tests duration flag parsing
 func TestDurationFlags(t *testing.T) {
 	tests := []struct {
-		name                   string
-		args                   []string
-		wantSessionTimeout     time.Duration
-		wantManagerTimeout     time.Duration
-		wantHeartbeatInterval  time.Duration
-		wantRequestTimeout     time.Duration
+		name                  string
+		args                  []string
+		wantSessionTimeout    time.Duration
+		wantManagerTimeout    time.Duration
+		wantHeartbeatInterval time.Duration
+		wantRequestTimeout    time.Duration
 	}{
 		{
-			name:                   "default values",
-			args:                   []string{},
-			wantSessionTimeout:     7 * 24 * time.Hour,
-			wantManagerTimeout:     24 * time.Hour,
-			wantHeartbeatInterval:  30 * time.Second,
-			wantRequestTimeout:     30 * time.Second,
+			name:                  "default values",
+			args:                  []string{},
+			wantSessionTimeout:    7 * 24 * time.Hour,
+			wantManagerTimeout:    24 * time.Hour,
+			wantHeartbeatInterval: 30 * time.Second,
+			wantRequestTimeout:    30 * time.Second,
 		},
 		{
-			name:                   "custom session timeout",
-			args:                   []string{"-session-timeout=1h"},
-			wantSessionTimeout:     1 * time.Hour,
-			wantManagerTimeout:     24 * time.Hour,
-			wantHeartbeatInterval:  30 * time.Second,
-			wantRequestTimeout:     30 * time.Second,
+			name:                  "custom session timeout",
+			args:                  []string{"-session-timeout=1h"},
+			wantSessionTimeout:    1 * time.Hour,
+			wantManagerTimeout:    24 * time.Hour,
+			wantHeartbeatInterval: 30 * time.Second,
+			wantRequestTimeout:    30 * time.Second,
 		},
 		{
-			name:                   "disable timeouts with 0",
-			args:                   []string{"-session-timeout=0", "-heartbeat-interval=0"},
-			wantSessionTimeout:     0,
-			wantManagerTimeout:     24 * time.Hour,
-			wantHeartbeatInterval:  0,
-			wantRequestTimeout:     30 * time.Second,
+			name:                  "disable timeouts with 0",
+			args:                  []string{"-session-timeout=0", "-heartbeat-interval=0"},
+			wantSessionTimeout:    0,
+			wantManagerTimeout:    24 * time.Hour,
+			wantHeartbeatInterval: 0,
+			wantRequestTimeout:    30 * time.Second,
 		},
 		{
-			name:                   "all custom durations",
-			args:                   []string{"-session-timeout=2h", "-manager-timeout=12h", "-heartbeat-interval=1m", "-request-timeout=1m"},
-			wantSessionTimeout:     2 * time.Hour,
-			wantManagerTimeout:     12 * time.Hour,
-			wantHeartbeatInterval:  1 * time.Minute,
-			wantRequestTimeout:     1 * time.Minute,
+			name:                  "all custom durations",
+			args:                  []string{"-session-timeout=2h", "-manager-timeout=12h", "-heartbeat-interval=1m", "-request-timeout=1m"},
+			wantSessionTimeout:    2 * time.Hour,
+			wantManagerTimeout:    12 * time.Hour,
+			wantHeartbeatInterval: 1 * time.Minute,
+			wantRequestTimeout:    1 * time.Minute,
 		},
 	}
 
@@ -327,7 +327,7 @@ func TestDurationFlags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a new FlagSet for each test
 			fs := flag.NewFlagSet("test", flag.ContinueOnError)
-			
+
 			// Define duration flags as in main.go
 			sessionTimeout := fs.Duration("session-timeout", 7*24*time.Hour, "Session timeout")
 			managerTimeout := fs.Duration("manager-timeout", 24*time.Hour, "Manager timeout")
@@ -361,19 +361,19 @@ func TestDurationFlags(t *testing.T) {
 func TestHTTPTimeoutFlags(t *testing.T) {
 	// Create a new FlagSet
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	
+
 	// Define HTTP timeout flags
 	httpReadTimeout := fs.Duration("http-read-timeout", 60*time.Second, "HTTP read timeout")
 	httpWriteTimeout := fs.Duration("http-write-timeout", 60*time.Second, "HTTP write timeout")
 	httpIdleTimeout := fs.Duration("http-idle-timeout", 120*time.Second, "HTTP idle timeout")
-	
+
 	// Test with custom values
 	args := []string{"-http-read-timeout=30s", "-http-write-timeout=45s", "-http-idle-timeout=90s"}
 	err := fs.Parse(args)
 	if err != nil {
 		t.Fatalf("Failed to parse flags: %v", err)
 	}
-	
+
 	// Verify values
 	if *httpReadTimeout != 30*time.Second {
 		t.Errorf("httpReadTimeout = %v, want %v", *httpReadTimeout, 30*time.Second)
@@ -407,7 +407,7 @@ func (m *MockSignalNotifier) Notify(c chan<- os.Signal, sig ...os.Signal) {
 func (m *MockSignalNotifier) SendSignal(sig os.Signal) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	for c, sigs := range m.handlers {
 		if slices.Contains(sigs, sig) {
 			select {
@@ -422,10 +422,10 @@ func (m *MockSignalNotifier) SendSignal(sig os.Signal) {
 func TestSignalHandling(t *testing.T) {
 	// This test verifies the signal channel setup
 	sigChan := make(chan os.Signal, 1)
-	
+
 	// Simulate signal notification setup
 	signals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
-	
+
 	// Verify channel can receive signals
 	for _, sig := range signals {
 		t.Run(fmt.Sprintf("handle_%v", sig), func(t *testing.T) {
@@ -436,7 +436,7 @@ func TestSignalHandling(t *testing.T) {
 			case <-time.After(100 * time.Millisecond):
 				t.Error("Failed to send signal to channel")
 			}
-			
+
 			// Receive signal from channel
 			select {
 			case received := <-sigChan:
@@ -453,9 +453,9 @@ func TestSignalHandling(t *testing.T) {
 // TestErrorChannelHandling tests error channel behavior
 func TestErrorChannelHandling(t *testing.T) {
 	errChan := make(chan error, 1)
-	
+
 	testError := fmt.Errorf("test server error")
-	
+
 	// Send error
 	select {
 	case errChan <- testError:
@@ -463,7 +463,7 @@ func TestErrorChannelHandling(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Error("Failed to send error to channel")
 	}
-	
+
 	// Receive error
 	select {
 	case err := <-errChan:
@@ -560,7 +560,7 @@ func TestHTTPAddressFormatting(t *testing.T) {
 // BenchmarkFlagParsing benchmarks flag parsing
 func BenchmarkFlagParsing(b *testing.B) {
 	args := []string{"-transport=http", "-port=8080", "-host=localhost"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		fs := flag.NewFlagSet("bench", flag.ContinueOnError)
@@ -570,7 +570,6 @@ func BenchmarkFlagParsing(b *testing.B) {
 		fs.Parse(args)
 	}
 }
-
 
 // TestMainStartupMessages tests that appropriate startup messages are logged
 func TestMainStartupMessages(t *testing.T) {

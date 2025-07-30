@@ -689,7 +689,7 @@ func TestSearchFiltering(t *testing.T) {
 		// Search for "search" with date filter - last 7 days
 		// Use UTC to match how dates are stored in the index
 		sevenDaysAgo := time.Now().UTC().AddDate(0, 0, -7)
-		
+
 		filters := map[string]string{
 			"date_from": sevenDaysAgo.Format("2006-01-02"),
 		}

@@ -18,7 +18,7 @@ func TestConnectionStateString(t *testing.T) {
 		{ConnectionState(99), "unknown"},
 		{ConnectionState(-1), "unknown"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.expected, func(t *testing.T) {
 			if got := tt.state.String(); got != tt.expected {
@@ -37,14 +37,14 @@ func TestStableHTTPConnectionGetters(t *testing.T) {
 		Created:          time.Now(),
 		LastActivity:     time.Now(),
 	}
-	
+
 	// Test initial state
 	conn.State.Store(int32(StateActive))
-	
+
 	if state := ConnectionState(conn.State.Load()); state != StateActive {
 		t.Errorf("Expected state %v, got %v", StateActive, state)
 	}
-	
+
 	// Test state transitions
 	conn.State.Store(int32(StateClosing))
 	if state := ConnectionState(conn.State.Load()); state != StateClosing {
@@ -59,24 +59,24 @@ func TestHTTPRequest(t *testing.T) {
 		body:     []byte(`{"test": "data"}`),
 		response: make(chan *httpResponse, 1),
 	}
-	
+
 	// Test request fields
 	if req.id != "req-123" {
 		t.Errorf("Expected request id 'req-123', got %s", req.id)
 	}
-	
+
 	if string(req.body) != `{"test": "data"}` {
 		t.Errorf("Expected request body to match")
 	}
-	
+
 	// Test response channel
 	resp := &httpResponse{
 		body:       []byte(`{"result": "ok"}`),
 		statusCode: 200,
 	}
-	
+
 	req.response <- resp
-	
+
 	select {
 	case received := <-req.response:
 		if received.statusCode != 200 {
@@ -90,7 +90,7 @@ func TestHTTPRequest(t *testing.T) {
 	}
 }
 
-// TestHTTPResponse tests httpResponse struct  
+// TestHTTPResponse tests httpResponse struct
 func TestHTTPResponse(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -136,7 +136,7 @@ func TestHTTPResponse(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.resp.statusCode != tt.expect.statusCode {

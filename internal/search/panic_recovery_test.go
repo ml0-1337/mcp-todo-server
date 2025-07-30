@@ -27,7 +27,7 @@ func TestSafeExecute(t *testing.T) {
 			fn: func() error {
 				return errors.New("test error")
 			},
-			wantErr:  true,
+			wantErr: true,
 			errCheck: func(err error) bool {
 				return err.Error() == "test error"
 			},
@@ -49,15 +49,15 @@ func TestSafeExecute(t *testing.T) {
 			wantErr: false, // SafeExecute recovers without setting error
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := SafeExecute(tt.operation, tt.fn)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SafeExecute() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			
+
 			if tt.errCheck != nil && err != nil && !tt.errCheck(err) {
 				t.Errorf("SafeExecute() error = %v, expected different error", err)
 			}
@@ -70,7 +70,7 @@ func TestSafeExecuteWithResult(t *testing.T) {
 		result, err := SafeExecuteWithResult("test-success", func() (string, error) {
 			return "success", nil
 		})
-		
+
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -78,12 +78,12 @@ func TestSafeExecuteWithResult(t *testing.T) {
 			t.Errorf("Expected result 'success', got '%s'", result)
 		}
 	})
-	
+
 	t.Run("operation returns error", func(t *testing.T) {
 		result, err := SafeExecuteWithResult("test-error", func() (int, error) {
 			return 0, errors.New("test error")
 		})
-		
+
 		if err == nil || err.Error() != "test error" {
 			t.Errorf("Expected 'test error', got %v", err)
 		}
@@ -91,12 +91,12 @@ func TestSafeExecuteWithResult(t *testing.T) {
 			t.Errorf("Expected zero value result, got %d", result)
 		}
 	})
-	
+
 	t.Run("operation panics with string", func(t *testing.T) {
 		result, err := SafeExecuteWithResult("test-panic", func() (string, error) {
 			panic("test panic")
 		})
-		
+
 		if err == nil {
 			t.Errorf("Expected error from panic, got nil")
 		} else if err.Error() != "operation test-panic panicked: test panic" {
@@ -106,12 +106,12 @@ func TestSafeExecuteWithResult(t *testing.T) {
 			t.Errorf("Expected empty string result, got '%s'", result)
 		}
 	})
-	
+
 	t.Run("operation panics with error", func(t *testing.T) {
 		result, err := SafeExecuteWithResult("test-panic-error", func() (int, error) {
 			panic(errors.New("panic with error"))
 		})
-		
+
 		if err == nil {
 			t.Errorf("Expected error from panic, got nil")
 		} else if err.Error() != "operation test-panic-error panicked: panic with error" {
@@ -121,12 +121,12 @@ func TestSafeExecuteWithResult(t *testing.T) {
 			t.Errorf("Expected zero value result, got %d", result)
 		}
 	})
-	
+
 	t.Run("operation panics with nil", func(t *testing.T) {
 		result, err := SafeExecuteWithResult("test-panic-nil", func() (bool, error) {
 			panic(nil)
 		})
-		
+
 		if err == nil {
 			t.Errorf("Expected error from panic, got nil")
 		} else if err.Error() != "operation test-panic-nil panicked: panic called with nil argument" {
@@ -136,24 +136,24 @@ func TestSafeExecuteWithResult(t *testing.T) {
 			t.Errorf("Expected false result, got %v", result)
 		}
 	})
-	
+
 	t.Run("complex type zero value", func(t *testing.T) {
 		type ComplexType struct {
 			Name  string
 			Value int
 			Items []string
 		}
-		
+
 		result, err := SafeExecuteWithResult("test-complex-panic", func() (ComplexType, error) {
 			panic("complex panic")
 		})
-		
+
 		if err == nil {
 			t.Error("Expected error from panic")
 		} else if err.Error() != "operation test-complex-panic panicked: complex panic" {
 			t.Errorf("Expected error 'operation test-complex-panic panicked: complex panic', got %v", err)
 		}
-		
+
 		// Verify zero value is returned
 		if result.Name != "" || result.Value != 0 || len(result.Items) != 0 {
 			t.Errorf("Expected zero value for ComplexType, got %+v", result)
@@ -164,7 +164,7 @@ func TestSafeExecuteWithResult(t *testing.T) {
 func TestSafeExecute_MultipleOperations(t *testing.T) {
 	// Test that multiple SafeExecute calls don't interfere with each other
 	errorsChan := make(chan error, 3)
-	
+
 	// Run multiple operations concurrently
 	go func() {
 		err := SafeExecute("op1", func() error {
@@ -172,21 +172,21 @@ func TestSafeExecute_MultipleOperations(t *testing.T) {
 		})
 		errorsChan <- err
 	}()
-	
+
 	go func() {
 		err := SafeExecute("op2", func() error {
 			panic("panic in op2")
 		})
 		errorsChan <- err
 	}()
-	
+
 	go func() {
 		err := SafeExecute("op3", func() error {
 			return errors.New("error in op3")
 		})
 		errorsChan <- err
 	}()
-	
+
 	// Collect results
 	var nilCount, errorCount int
 	for i := 0; i < 3; i++ {
@@ -197,7 +197,7 @@ func TestSafeExecute_MultipleOperations(t *testing.T) {
 			errorCount++
 		}
 	}
-	
+
 	// We expect 2 nil results (successful op and recovered panic) and 1 error
 	if nilCount != 2 {
 		t.Errorf("Expected 2 nil results, got %d", nilCount)

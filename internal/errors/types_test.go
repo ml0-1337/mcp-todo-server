@@ -9,7 +9,7 @@ import (
 
 func TestTodoError(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
 		name      string
 		todoError *interrors.TodoError
@@ -54,13 +54,13 @@ func TestTodoError(t *testing.T) {
 			want: "general error",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.todoError.Error(); got != tt.want {
 				t.Errorf("TodoError.Error() = %v, want %v", got, tt.want)
 			}
-			
+
 			// Test Unwrap
 			if tt.todoError.Cause != nil {
 				if unwrapped := tt.todoError.Unwrap(); unwrapped != tt.todoError.Cause {
@@ -73,11 +73,11 @@ func TestTodoError(t *testing.T) {
 
 func TestValidationError(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
-		name  string
-		err   *interrors.ValidationError
-		want  string
+		name string
+		err  *interrors.ValidationError
+		want string
 	}{
 		{
 			name: "validation error with field",
@@ -93,13 +93,13 @@ func TestValidationError(t *testing.T) {
 			want: "validation error: invalid input format",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.err.Error(); got != tt.want {
 				t.Errorf("ValidationError.Error() = %v, want %v", got, tt.want)
 			}
-			
+
 			// Check that it unwraps to ErrValidation
 			if unwrapped := tt.err.Unwrap(); !interrors.Is(unwrapped, interrors.ErrValidation) {
 				t.Errorf("ValidationError should unwrap to ErrValidation")
@@ -110,7 +110,7 @@ func TestValidationError(t *testing.T) {
 
 func TestNotFoundError(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
 		name string
 		err  *interrors.NotFoundError
@@ -136,13 +136,13 @@ func TestNotFoundError(t *testing.T) {
 			want: "resource not found",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.err.Error(); got != tt.want {
 				t.Errorf("NotFoundError.Error() = %v, want %v", got, tt.want)
 			}
-			
+
 			// Check that it unwraps to ErrNotFound
 			if unwrapped := tt.err.Unwrap(); !interrors.Is(unwrapped, interrors.ErrNotFound) {
 				t.Errorf("NotFoundError should unwrap to ErrNotFound")
@@ -153,9 +153,9 @@ func TestNotFoundError(t *testing.T) {
 
 func TestOperationError(t *testing.T) {
 	t.Helper()
-	
+
 	baseErr := fmt.Errorf("disk full")
-	
+
 	tests := []struct {
 		name string
 		err  *interrors.OperationError
@@ -189,13 +189,13 @@ func TestOperationError(t *testing.T) {
 			want: "operation 'index' failed",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.err.Error(); got != tt.want {
 				t.Errorf("OperationError.Error() = %v, want %v", got, tt.want)
 			}
-			
+
 			// Check unwrap behavior
 			unwrapped := tt.err.Unwrap()
 			if tt.err.Cause != nil {
@@ -213,7 +213,7 @@ func TestOperationError(t *testing.T) {
 
 func TestMultiError(t *testing.T) {
 	t.Helper()
-	
+
 	tests := []struct {
 		name   string
 		errors []error
@@ -248,18 +248,18 @@ func TestMultiError(t *testing.T) {
 			want: "multiple errors: [error 1; error 2]",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			multiErr := interrors.NewMultiError()
 			for _, err := range tt.errors {
 				multiErr.Add(err)
 			}
-			
+
 			if got := multiErr.Error(); got != tt.want {
 				t.Errorf("MultiError.Error() = %v, want %v", got, tt.want)
 			}
-			
+
 			// Test HasErrors
 			hasErrors := len(tt.errors) > 0
 			for _, err := range tt.errors {
@@ -267,11 +267,11 @@ func TestMultiError(t *testing.T) {
 					hasErrors = len(tt.errors) > 1 // Only if there are non-nil errors
 				}
 			}
-			
+
 			if multiErr.HasErrors() != hasErrors {
 				t.Errorf("MultiError.HasErrors() = %v, want %v", multiErr.HasErrors(), hasErrors)
 			}
-			
+
 			// Test Unwrap
 			if len(tt.errors) > 0 && tt.errors[0] != nil {
 				if multiErr.Unwrap() != tt.errors[0] {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	
+
 	"github.com/user/mcp-todo-server/internal/logging"
 )
 
@@ -99,12 +99,12 @@ func ResolveTodoPath() (string, error) {
 func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
 	// Build todo path from provided working directory
 	todoPath := filepath.Join(workingDir, ".claude", "todos")
-	
+
 	// Ensure directory exists
 	if err := os.MkdirAll(todoPath, 0755); err != nil {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
-	
+
 	logging.Infof("Using todo directory from working dir: %s", todoPath)
 	return todoPath, nil
 }

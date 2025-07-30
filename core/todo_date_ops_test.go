@@ -93,9 +93,9 @@ func TestListTodos_NestedDirectories(t *testing.T) {
 
 	// Create todos in different date directories
 	todos := []struct {
-		id    string
-		task  string
-		date  time.Time
+		id   string
+		task string
+		date time.Time
 	}{
 		{"nested-1", "Task 1", time.Date(2025, 1, 18, 0, 0, 0, 0, time.UTC)},
 		{"nested-2", "Task 2", time.Date(2025, 1, 19, 0, 0, 0, 0, time.UTC)},
