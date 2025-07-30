@@ -87,8 +87,20 @@ func (h *TodoHandlers) Close() error {
 		<-h.cleanupDone
 	}
 	
-	// Factory manages cleanup of all search engines
-	// No need to close individual search engines here
+	// Close the base search engine if it implements Close
+	if h.factory != nil && h.factory.baseSearch != nil {
+		if closer, ok := h.factory.baseSearch.(interface{ Close() error }); ok {
+			if err := closer.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing search engine: %v\n", err)
+			}
+		}
+	}
+	
+	// Clean up any cached manager sets
+	if h.factory != nil {
+		h.factory.CleanupStale(0) // Force cleanup all with 0 duration
+	}
+	
 	return nil
 }
 

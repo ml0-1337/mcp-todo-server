@@ -1,7 +1,9 @@
 package lock
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	
 	"github.com/gofrs/flock"
@@ -57,6 +59,10 @@ func TestServerLock_TryLock(t *testing.T) {
 
 func TestServerLock_PreventDuplicates(t *testing.T) {
 	port := "8082"
+	
+	// Clean up any stale lock files first
+	lockPath := filepath.Join(os.TempDir(), fmt.Sprintf("mcp-todo-server-%s.lock", port))
+	os.Remove(lockPath) // Ignore error, file might not exist
 	
 	// Create first lock
 	lock1, err := NewServerLock(port)

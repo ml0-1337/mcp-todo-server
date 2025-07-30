@@ -76,3 +76,4 @@ __debug_bin
 # Claude specific temporary files
 .claude/
 .mcp.json
+*.cover

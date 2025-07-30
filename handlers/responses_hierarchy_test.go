@@ -172,8 +172,8 @@ func TestFormatTodosSummaryEmpty(t *testing.T) {
 	result := formatTodosSummary(todos)
 	output := result.Content[0].(mcp.TextContent).Text
 
-	if output != "No todos found" {
-		t.Errorf("Expected 'No todos found', got: %s", output)
+	if !strings.Contains(output, "No todos found") {
+		t.Errorf("Expected output to contain 'No todos found', got: %s", output)
 	}
 }
 

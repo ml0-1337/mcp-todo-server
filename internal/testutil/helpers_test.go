@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 	
+	"github.com/user/mcp-todo-server/core"
 	"github.com/user/mcp-todo-server/internal/testutil"
 )
 
@@ -41,9 +42,11 @@ func TestSetupTestTodoManager(t *testing.T) {
 		t.Errorf("Expected task %q, got %q", task, todo.Task)
 	}
 	
-	// Verify todo file exists
-	todoPath := filepath.Join(todosDir, todo.ID+".md")
-	if _, err := os.Stat(todoPath); os.IsNotExist(err) {
+	// Verify todo file exists (using ResolveTodoPath to handle date-based structure)
+	todoPath, err := core.ResolveTodoPath(tempDir, todo.ID)
+	if err != nil {
+		t.Errorf("Failed to resolve todo path: %v", err)
+	} else if _, err := os.Stat(todoPath); os.IsNotExist(err) {
 		t.Errorf("Expected todo file to exist: %s", todoPath)
 	}
 }
