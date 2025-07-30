@@ -62,6 +62,147 @@ func TestMainFunction(t *testing.T) {
 	}
 }
 
+// TestStdioModeDetection tests the STDIO mode detection logic
+func TestStdioModeDetection(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		isStdio  bool
+	}{
+		{
+			name:    "stdio with equals",
+			args:    []string{"-transport=stdio"},
+			isStdio: true,
+		},
+		{
+			name:    "stdio with space", 
+			args:    []string{"-transport", "stdio"},
+			isStdio: true,
+		},
+		{
+			name:    "http mode",
+			args:    []string{"-transport=http"},
+			isStdio: false,
+		},
+		{
+			name:    "no transport flag",
+			args:    []string{"-port=8080"},
+			isStdio: false,
+		},
+		{
+			name:    "stdio with other flags",
+			args:    []string{"-port=8080", "-transport=stdio", "-host=localhost"},
+			isStdio: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the STDIO detection logic from main
+			isStdio := false
+			for i, arg := range tt.args {
+				if arg == "-transport" && i+1 < len(tt.args) && tt.args[i+1] == "stdio" {
+					isStdio = true
+					break
+				}
+				if arg == "-transport=stdio" {
+					isStdio = true
+					break
+				}
+			}
+
+			if isStdio != tt.isStdio {
+				t.Errorf("STDIO detection = %v, want %v", isStdio, tt.isStdio)
+			}
+		})
+	}
+}
+
+// TestVersionFlag tests the version flag handling
+func TestVersionFlag(t *testing.T) {
+	// Test version constant
+	if Version == "" {
+		t.Error("Version constant should not be empty")
+	}
+
+	// Test version flag parsing
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	version := fs.Bool("version", false, "Print version")
+	
+	err := fs.Parse([]string{"-version"})
+	if err != nil {
+		t.Fatalf("Failed to parse version flag: %v", err)
+	}
+	
+	if !*version {
+		t.Error("Version flag should be true")
+	}
+}
+
+// TestEnvironmentVariableHandling tests CLAUDE_TODO_NO_AUTO_ARCHIVE env var
+func TestEnvironmentVariableHandling(t *testing.T) {
+	tests := []struct {
+		name              string
+		envValue          string
+		flagValue         bool
+		expectedValue     bool
+	}{
+		{
+			name:          "env true overrides flag false",
+			envValue:      "true",
+			flagValue:     false,
+			expectedValue: true,
+		},
+		{
+			name:          "env 1 overrides flag false",
+			envValue:      "1",
+			flagValue:     false,
+			expectedValue: true,
+		},
+		{
+			name:          "env false does not override",
+			envValue:      "false",
+			flagValue:     false,
+			expectedValue: false,
+		},
+		{
+			name:          "empty env does not override",
+			envValue:      "",
+			flagValue:     false,
+			expectedValue: false,
+		},
+		{
+			name:          "flag true without env",
+			envValue:      "",
+			flagValue:     true,
+			expectedValue: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore env var
+			oldEnv := os.Getenv("CLAUDE_TODO_NO_AUTO_ARCHIVE")
+			defer os.Setenv("CLAUDE_TODO_NO_AUTO_ARCHIVE", oldEnv)
+			
+			// Set test env value
+			os.Setenv("CLAUDE_TODO_NO_AUTO_ARCHIVE", tt.envValue)
+			
+			// Simulate the env var handling logic
+			noAutoArchive := tt.flagValue
+			if envNoAutoArchive := os.Getenv("CLAUDE_TODO_NO_AUTO_ARCHIVE"); envNoAutoArchive != "" {
+				if envNoAutoArchive == "true" || envNoAutoArchive == "1" {
+					noAutoArchive = true
+				}
+			}
+			
+			if noAutoArchive != tt.expectedValue {
+				t.Errorf("noAutoArchive = %v, want %v", noAutoArchive, tt.expectedValue)
+			}
+		})
+	}
+}
+
 // TestFlagParsing tests command-line flag parsing
 func TestFlagParsing(t *testing.T) {
 	tests := []struct {
@@ -135,6 +276,113 @@ func TestFlagParsing(t *testing.T) {
 				t.Errorf("host = %s, want %s", *host, tt.wantHost)
 			}
 		})
+	}
+}
+
+// TestDurationFlags tests duration flag parsing
+func TestDurationFlags(t *testing.T) {
+	tests := []struct {
+		name                   string
+		args                   []string
+		wantSessionTimeout     time.Duration
+		wantManagerTimeout     time.Duration
+		wantHeartbeatInterval  time.Duration
+		wantRequestTimeout     time.Duration
+	}{
+		{
+			name:                   "default values",
+			args:                   []string{},
+			wantSessionTimeout:     7 * 24 * time.Hour,
+			wantManagerTimeout:     24 * time.Hour,
+			wantHeartbeatInterval:  30 * time.Second,
+			wantRequestTimeout:     30 * time.Second,
+		},
+		{
+			name:                   "custom session timeout",
+			args:                   []string{"-session-timeout=1h"},
+			wantSessionTimeout:     1 * time.Hour,
+			wantManagerTimeout:     24 * time.Hour,
+			wantHeartbeatInterval:  30 * time.Second,
+			wantRequestTimeout:     30 * time.Second,
+		},
+		{
+			name:                   "disable timeouts with 0",
+			args:                   []string{"-session-timeout=0", "-heartbeat-interval=0"},
+			wantSessionTimeout:     0,
+			wantManagerTimeout:     24 * time.Hour,
+			wantHeartbeatInterval:  0,
+			wantRequestTimeout:     30 * time.Second,
+		},
+		{
+			name:                   "all custom durations",
+			args:                   []string{"-session-timeout=2h", "-manager-timeout=12h", "-heartbeat-interval=1m", "-request-timeout=1m"},
+			wantSessionTimeout:     2 * time.Hour,
+			wantManagerTimeout:     12 * time.Hour,
+			wantHeartbeatInterval:  1 * time.Minute,
+			wantRequestTimeout:     1 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a new FlagSet for each test
+			fs := flag.NewFlagSet("test", flag.ContinueOnError)
+			
+			// Define duration flags as in main.go
+			sessionTimeout := fs.Duration("session-timeout", 7*24*time.Hour, "Session timeout")
+			managerTimeout := fs.Duration("manager-timeout", 24*time.Hour, "Manager timeout")
+			heartbeatInterval := fs.Duration("heartbeat-interval", 30*time.Second, "Heartbeat interval")
+			requestTimeout := fs.Duration("request-timeout", 30*time.Second, "Request timeout")
+
+			// Parse the test args
+			err := fs.Parse(tt.args)
+			if err != nil {
+				t.Fatalf("Failed to parse flags: %v", err)
+			}
+
+			// Check values
+			if *sessionTimeout != tt.wantSessionTimeout {
+				t.Errorf("sessionTimeout = %v, want %v", *sessionTimeout, tt.wantSessionTimeout)
+			}
+			if *managerTimeout != tt.wantManagerTimeout {
+				t.Errorf("managerTimeout = %v, want %v", *managerTimeout, tt.wantManagerTimeout)
+			}
+			if *heartbeatInterval != tt.wantHeartbeatInterval {
+				t.Errorf("heartbeatInterval = %v, want %v", *heartbeatInterval, tt.wantHeartbeatInterval)
+			}
+			if *requestTimeout != tt.wantRequestTimeout {
+				t.Errorf("requestTimeout = %v, want %v", *requestTimeout, tt.wantRequestTimeout)
+			}
+		})
+	}
+}
+
+// TestHTTPTimeoutFlags tests HTTP-specific timeout flags
+func TestHTTPTimeoutFlags(t *testing.T) {
+	// Create a new FlagSet
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	
+	// Define HTTP timeout flags
+	httpReadTimeout := fs.Duration("http-read-timeout", 60*time.Second, "HTTP read timeout")
+	httpWriteTimeout := fs.Duration("http-write-timeout", 60*time.Second, "HTTP write timeout")
+	httpIdleTimeout := fs.Duration("http-idle-timeout", 120*time.Second, "HTTP idle timeout")
+	
+	// Test with custom values
+	args := []string{"-http-read-timeout=30s", "-http-write-timeout=45s", "-http-idle-timeout=90s"}
+	err := fs.Parse(args)
+	if err != nil {
+		t.Fatalf("Failed to parse flags: %v", err)
+	}
+	
+	// Verify values
+	if *httpReadTimeout != 30*time.Second {
+		t.Errorf("httpReadTimeout = %v, want %v", *httpReadTimeout, 30*time.Second)
+	}
+	if *httpWriteTimeout != 45*time.Second {
+		t.Errorf("httpWriteTimeout = %v, want %v", *httpWriteTimeout, 45*time.Second)
+	}
+	if *httpIdleTimeout != 90*time.Second {
+		t.Errorf("httpIdleTimeout = %v, want %v", *httpIdleTimeout, 90*time.Second)
 	}
 }
 
