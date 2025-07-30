@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -72,6 +73,24 @@ func (r *TodoRepository) Save(ctx context.Context, todo *domain.Todo) error {
 	// Construct the full content
 	content := fmt.Sprintf("---\n%s---\n\n# %s\n", string(frontmatter), todo.Task)
 	
+	// Add sections as markdown content
+	if len(todo.Sections) > 0 {
+		// Sort sections by order
+		var sectionKeys []string
+		for key := range todo.Sections {
+			sectionKeys = append(sectionKeys, key)
+		}
+		sort.Slice(sectionKeys, func(i, j int) bool {
+			return todo.Sections[sectionKeys[i]].Order < todo.Sections[sectionKeys[j]].Order
+		})
+		
+		// Add each section
+		for _, key := range sectionKeys {
+			section := todo.Sections[key]
+			content += fmt.Sprintf("\n## %s\n\n%s\n", section.Title, section.Content)
+		}
+	}
+	
 	// Write to file
 	filePath := r.todoPath(todo.ID)
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
@@ -130,6 +149,12 @@ func (r *TodoRepository) List(ctx context.Context, filters repository.ListFilter
 	defer r.mu.RUnlock()
 	
 	var todos []*domain.Todo
+	
+	// Check if directory exists
+	if _, err := os.Stat(r.basePath); os.IsNotExist(err) {
+		// Return empty list for non-existent directory
+		return todos, nil
+	}
 	
 	// Walk through all todo files
 	err := filepath.Walk(r.basePath, func(path string, info os.FileInfo, err error) error {
