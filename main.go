@@ -19,10 +19,10 @@ import (
 const (
 	// Version is the current version of the MCP Todo Server
 	Version = "2.1.0"
-	
+
 	// stdioTransport indicates STDIO transport mode
 	stdioTransport = "stdio"
-	
+
 	// httpTransport indicates HTTP transport mode
 	httpTransport = "http"
 )

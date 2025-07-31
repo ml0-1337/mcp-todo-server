@@ -69,7 +69,7 @@ func TestStableHTTPTransportOptions(t *testing.T) {
 func TestStableHTTPTransportServeHTTP(t *testing.T) {
 	// This test needs to be refactored to not depend on MCP protocol details
 	// For now, test basic transport creation and skip the actual HTTP handling
-	
+
 	// Create a minimal MCP server for testing
 	mcpServer := server.NewMCPServer("Test", "1.0.0")
 	baseServer := server.NewStreamableHTTPServer(mcpServer)
@@ -80,57 +80,57 @@ func TestStableHTTPTransportServeHTTP(t *testing.T) {
 	if transport == nil {
 		t.Fatal("Expected transport to be created")
 	}
-	
+
 	// Test basic properties
 	if transport.baseServer == nil {
 		t.Error("Expected baseServer to be set")
 	}
-	
+
 	// Skip the actual HTTP handling test as it requires proper MCP protocol setup
 	// The original test was sending plain HTTP requests to paths like "/test"
 	// but StreamableHTTPServer expects MCP JSON-RPC protocol
 	t.Log("Skipping HTTP handling tests - requires MCP protocol mock")
-	
+
 	// TODO: Implement proper tests with MCP protocol mock
 	// The tests below are commented out as they cause timeouts
 	// because they send plain HTTP to a server expecting MCP JSON-RPC
-	
-	/*
-	tests := []struct {
-		name           string
-		method         string
-		path           string
-		body           string
-		expectedStatus int
-	}{
-		{
-			name:           "GET request",
-			method:         "GET",
-			path:           "/test",
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "POST request",
-			method:         "POST",
-			path:           "/test",
-			body:           `{"test": "data"}`,
-			expectedStatus: http.StatusOK,
-		},
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, bytes.NewReader([]byte(tt.body)))
-			if tt.body != "" {
-				req.Header.Set("Content-Type", "application/json")
-			}
-			w := httptest.NewRecorder()
-			transport.ServeHTTP(w, req)
-			if w.Result().StatusCode == 0 {
-				t.Error("Expected status code to be set")
-			}
-		})
-	}
+	/*
+		tests := []struct {
+			name           string
+			method         string
+			path           string
+			body           string
+			expectedStatus int
+		}{
+			{
+				name:           "GET request",
+				method:         "GET",
+				path:           "/test",
+				expectedStatus: http.StatusOK,
+			},
+			{
+				name:           "POST request",
+				method:         "POST",
+				path:           "/test",
+				body:           `{"test": "data"}`,
+				expectedStatus: http.StatusOK,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				req := httptest.NewRequest(tt.method, tt.path, bytes.NewReader([]byte(tt.body)))
+				if tt.body != "" {
+					req.Header.Set("Content-Type", "application/json")
+				}
+				w := httptest.NewRecorder()
+				transport.ServeHTTP(w, req)
+				if w.Result().StatusCode == 0 {
+					t.Error("Expected status code to be set")
+				}
+			})
+		}
 	*/
 }
 

@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gofrs/flock"
 )
 
 func TestServerLock_NewServerLock(t *testing.T) {
-	port := "8080"
+	port := "9080"
 	lock, err := NewServerLock(port)
 
 	if err != nil {
@@ -33,7 +36,7 @@ func TestServerLock_NewServerLock(t *testing.T) {
 }
 
 func TestServerLock_TryLock(t *testing.T) {
-	port := "8081"
+	port := "9081"
 	lock, err := NewServerLock(port)
 	if err != nil {
 		t.Fatalf("NewServerLock failed: %v", err)
@@ -58,7 +61,7 @@ func TestServerLock_TryLock(t *testing.T) {
 }
 
 func TestServerLock_PreventDuplicates(t *testing.T) {
-	port := "8082"
+	port := "9082"
 
 	// Clean up any stale lock files first
 	lockPath := filepath.Join(os.TempDir(), fmt.Sprintf("mcp-todo-server-%s.lock", port))
@@ -103,7 +106,7 @@ func TestServerLock_PreventDuplicates(t *testing.T) {
 }
 
 func TestServerLock_Unlock(t *testing.T) {
-	port := "8083"
+	port := "9083"
 	lock, err := NewServerLock(port)
 	if err != nil {
 		t.Fatalf("NewServerLock failed: %v", err)
@@ -133,7 +136,7 @@ func TestServerLock_Unlock(t *testing.T) {
 }
 
 func TestServerLock_ReleaseAfterUnlock(t *testing.T) {
-	port := "8084"
+	port := "9084"
 
 	// Create and acquire first lock
 	lock1, err := NewServerLock(port)
@@ -167,7 +170,7 @@ func TestServerLock_ReleaseAfterUnlock(t *testing.T) {
 
 func TestServerLock_DeadProcessCleanup(t *testing.T) {
 	// This test simulates what happens when a process dies without cleanup
-	port := "8085"
+	port := "9085"
 
 	// Create a lock and manually write a fake PID to simulate dead process
 	lock, err := NewServerLock(port)
@@ -198,89 +201,96 @@ func TestServerLock_DeadProcessCleanup(t *testing.T) {
 }
 
 func TestServerLock_ConcurrentAccess(t *testing.T) {
-	port := "8086"
+	// Use a unique port to avoid conflicts with other tests
+	port := fmt.Sprintf("9%d", 10000+os.Getpid()%1000)
 	numGoroutines := 10
-	successCount := 0
-	errorCount := 0
+	var successCount int32
+	var errorCount int32
 
-	results := make(chan bool, numGoroutines)
+	// Clean up any stale lock file before test
+	lockPath := filepath.Join(os.TempDir(), fmt.Sprintf("mcp-todo-server-%s.lock", port))
+	os.Remove(lockPath)       // Ignore error, file might not exist
+	defer os.Remove(lockPath) // Clean up after test
+
+	// Small delay to ensure file system operations complete
+	time.Sleep(50 * time.Millisecond)
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
 	startChan := make(chan struct{})
 
 	// Launch multiple goroutines trying to acquire the same lock
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
+			defer wg.Done()
+
 			// Wait for all goroutines to be ready
 			<-startChan
 
 			lock, err := NewServerLock(port)
 			if err != nil {
-				results <- false
+				atomic.AddInt32(&errorCount, 1)
 				return
 			}
 
 			// Try to acquire lock and hold it briefly
 			err = lock.TryLock()
-			success := err == nil
+			if err == nil {
+				// Successfully acquired lock
+				atomic.AddInt32(&successCount, 1)
 
-			if success {
 				// Hold the lock for a moment to ensure overlap
-				// time.Sleep(10 * time.Millisecond) // Not using time, keep it simple
-				for i := 0; i < 1000000; i++ {
-					// Small busy wait to ensure some overlap
-				}
-				lock.Unlock()
-			}
+				time.Sleep(5 * time.Millisecond)
 
-			results <- success
+				lock.Unlock()
+			} else {
+				atomic.AddInt32(&errorCount, 1)
+			}
 		}()
 	}
 
 	// Start all goroutines at once
 	close(startChan)
 
-	// Collect results
-	for i := 0; i < numGoroutines; i++ {
-		success := <-results
-		if success {
-			successCount++
-		} else {
-			errorCount++
-		}
-	}
+	// Wait for all goroutines to complete
+	wg.Wait()
 
 	// Exactly one should succeed
-	if successCount != 1 {
-		t.Errorf("Expected exactly 1 success, got %d", successCount)
+	finalSuccess := atomic.LoadInt32(&successCount)
+	finalError := atomic.LoadInt32(&errorCount)
+
+	if finalSuccess != 1 {
+		t.Errorf("Expected exactly 1 success, got %d", finalSuccess)
 	}
 
-	if errorCount != numGoroutines-1 {
-		t.Errorf("Expected %d errors, got %d", numGoroutines-1, errorCount)
+	if finalError != int32(numGoroutines-1) {
+		t.Errorf("Expected %d errors, got %d", numGoroutines-1, finalError)
 	}
 }
 
 func TestServerLock_DifferentPorts(t *testing.T) {
 	// Different ports should not interfere with each other
-	lock1, err := NewServerLock("8087")
+	lock1, err := NewServerLock("9087")
 	if err != nil {
-		t.Fatalf("NewServerLock for port 8087 failed: %v", err)
+		t.Fatalf("NewServerLock for port 9087 failed: %v", err)
 	}
 	defer lock1.Unlock()
 
-	lock2, err := NewServerLock("8088")
+	lock2, err := NewServerLock("9088")
 	if err != nil {
-		t.Fatalf("NewServerLock for port 8088 failed: %v", err)
+		t.Fatalf("NewServerLock for port 9088 failed: %v", err)
 	}
 	defer lock2.Unlock()
 
 	// Both should be able to acquire locks
 	err = lock1.TryLock()
 	if err != nil {
-		t.Fatalf("Lock for port 8087 should succeed: %v", err)
+		t.Fatalf("Lock for port 9087 should succeed: %v", err)
 	}
 
 	err = lock2.TryLock()
 	if err != nil {
-		t.Fatalf("Lock for port 8088 should succeed: %v", err)
+		t.Fatalf("Lock for port 9088 should succeed: %v", err)
 	}
 
 	// Both should be locked

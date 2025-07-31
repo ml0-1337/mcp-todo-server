@@ -344,8 +344,8 @@ func TestResolveTodoPath_CreatesDirectory(t *testing.T) {
 	info, err := os.Stat(todoPath)
 	if err == nil {
 		mode := info.Mode().Perm()
-		if mode != 0755 {
-			t.Errorf("Directory created with wrong permissions: %o; want 755", mode)
+		if mode != 0750 {
+			t.Errorf("Directory created with wrong permissions: %o; want 750", mode)
 		}
 	}
 }
@@ -670,8 +670,8 @@ func TestResolveTodoPathFromWorkingDir(t *testing.T) {
 	info, err := os.Stat(todoPath)
 	if err == nil {
 		mode := info.Mode().Perm()
-		if mode != 0755 {
-			t.Errorf("Directory created with wrong permissions: %o; want 755", mode)
+		if mode != 0750 {
+			t.Errorf("Directory created with wrong permissions: %o; want 750", mode)
 		}
 	}
 }

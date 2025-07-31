@@ -4,7 +4,7 @@ package repository
 
 import (
 	"context"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 )
 
