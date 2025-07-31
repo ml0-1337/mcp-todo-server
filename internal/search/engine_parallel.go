@@ -108,9 +108,12 @@ func (e *Engine) indexExistingTodosParallel() error {
 			}
 
 			if result.doc != nil {
-				batch.Index(result.doc.ID, result.doc)
-				processedCount++
-				totalFileSize += result.fileSize
+				if err := batch.Index(result.doc.ID, result.doc); err != nil {
+					fmt.Fprintf(os.Stderr, "[WARNING] Failed to index %s: %v\n", result.doc.ID, err)
+				} else {
+					processedCount++
+					totalFileSize += result.fileSize
+				}
 			}
 
 		case <-progressTicker.C:

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/user/mcp-todo-server/internal/domain"
+	"github.com/user/mcp-todo-server/internal/logging"
 	"gopkg.in/yaml.v3"
 )
 
@@ -46,9 +47,14 @@ func parseTodoFile(id, content string) (*domain.Todo, error) {
 	// Parse completed time if present
 	var completed time.Time
 	if frontmatter.Completed != "" {
-		completed, _ = time.Parse(time.RFC3339, frontmatter.Completed)
-		if completed.IsZero() {
-			completed, _ = time.Parse("2006-01-02 15:04:05", frontmatter.Completed)
+		var err error
+		completed, err = time.Parse(time.RFC3339, frontmatter.Completed)
+		if err != nil || completed.IsZero() {
+			completed, err = time.Parse("2006-01-02 15:04:05", frontmatter.Completed)
+			if err != nil {
+				// Log warning but continue - completed time is optional
+				logging.Warnf("Failed to parse completed time '%s': %v", frontmatter.Completed, err)
+			}
 		}
 	}
 

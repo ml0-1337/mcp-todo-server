@@ -633,7 +633,9 @@ func (ts *TodoServer) handleDebugConnections(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(debug)
+	if err := json.NewEncoder(w).Encode(debug); err != nil {
+		logging.Errorf("Failed to encode debug response: %v", err)
+	}
 }
 
 // handleDebugSessions shows detailed session information
@@ -664,7 +666,9 @@ func (ts *TodoServer) handleDebugSessions(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logging.Errorf("Failed to encode session response: %v", err)
+	}
 }
 
 // handleDebugTransport shows stable transport metrics
@@ -677,7 +681,9 @@ func (ts *TodoServer) handleDebugTransport(w http.ResponseWriter, r *http.Reques
 	metrics := ts.stableTransport.GetMetrics()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		logging.Errorf("Failed to encode metrics response: %v", err)
+	}
 }
 
 // handleHeartbeat handles heartbeat requests for the stable transport

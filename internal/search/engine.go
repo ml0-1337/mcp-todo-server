@@ -199,8 +199,11 @@ func (e *Engine) indexExistingTodos() error {
 		doc.Tests = extractSection(string(content), "## Test Cases")
 
 		// Add to batch
-		batch.Index(todoID, doc)
-		processedCount++
+		if err := batch.Index(todoID, doc); err != nil {
+			logging.Errorf("Failed to index todo %s: %v", todoID, err)
+		} else {
+			processedCount++
+		}
 
 		// Log slow files
 		fileTime := time.Since(fileStart)
@@ -409,7 +412,9 @@ func (e *Engine) Search(queryStr string, filters map[string]string, limit int) (
 				dateRangeQuery = bleve.NewDateRangeInclusiveQuery(veryOldDate, *toTime, &trueVal, &trueVal)
 			}
 
-			dateRangeQuery.(*query.DateRangeQuery).SetField("started")
+			if drq, ok := dateRangeQuery.(*query.DateRangeQuery); ok {
+				drq.SetField("started")
+			}
 			queries = append(queries, dateRangeQuery)
 		}
 

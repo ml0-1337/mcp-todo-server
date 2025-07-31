@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -724,8 +725,13 @@ func TestResolveTodoPathFromWorkingDir_ExistingDirectory(t *testing.T) {
 
 // Test 23: ResolveTodoPathFromWorkingDir handles permission errors
 func TestResolveTodoPathFromWorkingDir_PermissionError(t *testing.T) {
-	// Skip if running as root
-	if os.Geteuid() == 0 {
+	// Skip on Windows - permission handling is different
+	if runtime.GOOS == "windows" {
+		t.Skip("Test is not applicable on Windows")
+	}
+	
+	// Skip if running as root (Unix-specific check)
+	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
 		t.Skip("Test cannot run as root")
 	}
 
