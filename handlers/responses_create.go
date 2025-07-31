@@ -16,7 +16,10 @@ func FormatTodoCreateResponse(todo *core.Todo, filePath string) *mcp.CallToolRes
 		"message": fmt.Sprintf("Todo created successfully: %s", todo.ID),
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 
 	// Add contextual prompts
 	prompt := getCreatePrompts(todo.Type, false)
@@ -50,7 +53,10 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 		}
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 
 	// Add contextual prompts
 	prompt := getCreatePrompts(todo.Type, false)
@@ -193,7 +199,10 @@ func FormatTodoTemplateResponse(todo *core.Todo, filePath string, template strin
 		"template": fmt.Sprintf("Applied %s template", template),
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 
 	// Add contextual prompts for template
 	prompt := getTemplatePrompts(template)

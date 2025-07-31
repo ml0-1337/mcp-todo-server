@@ -14,7 +14,8 @@ import (
 
 // GetDailyPath returns the daily archive path YYYY/MM/DD for a given time
 func GetDailyPath(t time.Time) string {
-	return filepath.Join(t.Format("2006"), t.Format("01"), t.Format("02"))
+	// Use forward slashes for consistent cross-platform behavior
+	return fmt.Sprintf("%s/%s/%s", t.Format("2006"), t.Format("01"), t.Format("02"))
 }
 
 // ArchiveTodo moves a todo to the archive folder and sets completed timestamp

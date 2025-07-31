@@ -59,7 +59,10 @@ func formatSingleTodoWithContent(todo *core.Todo, content string, format string)
 		}
 		data["sections"] = sectionData
 
-		jsonData, _ := json.MarshalIndent(data, "", "  ")
+		jsonData, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+		}
 		return mcp.NewToolResultText(string(jsonData))
 	}
 
@@ -88,7 +91,10 @@ func formatSingleTodo(todo *core.Todo, format string) *mcp.CallToolResult {
 			data["parent_id"] = todo.ParentID
 		}
 
-		jsonData, _ := json.MarshalIndent(data, "", "  ")
+		jsonData, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+		}
 		return mcp.NewToolResultText(string(jsonData))
 	}
 
@@ -120,7 +126,10 @@ func formatTodosFull(todos []*core.Todo) *mcp.CallToolResult {
 		results = append(results, data)
 	}
 
-	jsonData, _ := json.MarshalIndent(results, "", "  ")
+	jsonData, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }
 

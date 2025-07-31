@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -208,6 +209,10 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 
 	// Test scenario 3: Verify atomicity with write failure
 	t.Run("Verify atomicity on write failure", func(t *testing.T) {
+		// Skip on Windows - permission handling is different
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping write failure test on Windows")
+		}
 		// Create a test todo
 		todo, err := manager.CreateTodo("Test write failure", "low", "refactor")
 		if err != nil {

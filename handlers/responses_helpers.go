@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 	"strings"
@@ -143,6 +144,9 @@ func formatTodosFullWithContent(todos []*core.Todo, contents map[string]string) 
 		results = append(results, data)
 	}
 
-	jsonData, _ := json.MarshalIndent(results, "", "  ")
+	jsonData, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }

@@ -3,6 +3,7 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -109,7 +110,8 @@ func TestMarkdownFileCreation(t *testing.T) {
 	}
 
 	// Check file permissions (should be readable/writable)
-	if fileInfo != nil {
+	// Skip permission check on Windows as it handles permissions differently
+	if fileInfo != nil && runtime.GOOS != "windows" {
 		mode := fileInfo.Mode()
 		if mode.Perm() != 0600 {
 			t.Errorf("File permissions incorrect. Expected 0600, got %o", mode.Perm())
@@ -196,6 +198,10 @@ func TestMarkdownFileCreation(t *testing.T) {
 func TestFileSystemErrorHandling(t *testing.T) {
 	// Test 1: Read-only directory
 	t.Run("Read-only directory error", func(t *testing.T) {
+		// Skip on Windows - permission handling is different
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping read-only directory test on Windows")
+		}
 		// Create temp directory
 		tempDir, err := os.MkdirTemp("", "todo-readonly-test-*")
 		if err != nil {

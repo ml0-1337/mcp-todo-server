@@ -15,7 +15,10 @@ func FormatTodoArchiveResponse(todoID string, archivePath string, todoType strin
 		"message":      fmt.Sprintf("Todo '%s' archived successfully", todoID),
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 
 	// Add contextual prompts for archiving
 	prompt := getArchivePrompts(todoType)
@@ -68,7 +71,10 @@ func getArchivePrompts(todoType string) string {
 
 // FormatTodoStatsResponse formats the response for todo_stats
 func FormatTodoStatsResponse(stats *core.TodoStats) *mcp.CallToolResult {
-	jsonData, _ := json.MarshalIndent(stats, "", "  ")
+	jsonData, err := json.MarshalIndent(stats, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }
 
@@ -81,7 +87,10 @@ func FormatTodoLinkResponse(parentID, childID string, linkType string) *mcp.Call
 		"message":   fmt.Sprintf("Todos linked successfully: %s -> %s", parentID, childID),
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }
 
@@ -92,7 +101,10 @@ func FormatCleanResponse(operation string, result interface{}) *mcp.CallToolResu
 		"result":    result,
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }
 
@@ -108,6 +120,9 @@ func FormatTemplateListResponse(templates []string) *mcp.CallToolResult {
 		"message":   "Available templates",
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }

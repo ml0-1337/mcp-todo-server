@@ -51,7 +51,9 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 	// Step 2: Create new todos directory
 	if err := os.MkdirAll(oldTodosDir, 0755); err != nil {
 		// Attempt rollback
-		os.Rename(tempDir, oldTodosDir)
+		if renameErr := os.Rename(tempDir, oldTodosDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to rollback migration: %v\n", renameErr)
+		}
 		return nil, interrors.Wrap(err, "failed to create new todos directory")
 	}
 
@@ -60,7 +62,9 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 	if err != nil {
 		// Attempt rollback
 		os.RemoveAll(oldTodosDir)
-		os.Rename(tempDir, oldTodosDir)
+		if renameErr := os.Rename(tempDir, oldTodosDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to rollback migration: %v\n", renameErr)
+		}
 		return nil, interrors.Wrap(err, "failed to read migration directory")
 	}
 
@@ -117,7 +121,9 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		fmt.Fprintf(os.Stderr, "Migration had failures, performing rollback...\n")
 		// Rollback: restore original directory
 		os.RemoveAll(oldTodosDir)
-		os.Rename(tempDir, oldTodosDir)
+		if renameErr := os.Rename(tempDir, oldTodosDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to rollback migration after errors: %v\n", renameErr)
+		}
 		return stats, interrors.NewOperationError("migrate", "todos",
 			fmt.Sprintf("migration failed: %d errors", stats.Failed), nil)
 	}

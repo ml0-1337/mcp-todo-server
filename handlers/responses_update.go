@@ -130,7 +130,10 @@ func FormatEnrichedTodoUpdateResponse(todo *core.Todo, content string, section s
 		Progress: progress,
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }
 
@@ -351,6 +354,9 @@ func FormatTodoSectionsResponseWithContent(todo *core.Todo, content string) *mcp
 		"sections": sections,
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }
