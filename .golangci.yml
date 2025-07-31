@@ -163,7 +163,6 @@ issues:
     
   # Exclude files
   exclude-files:
-    - ".*_test\\.go$"
     - "mock_.*\\.go$"
     
   # Maximum issues count per one linter

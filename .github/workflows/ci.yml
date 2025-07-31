@@ -129,7 +129,7 @@ jobs:
       - name: Run integration tests
         run: |
           mv build/mcp-todo-server-linux-amd64 mcp-todo-server
-          ./test_comprehensive.sh
+          ./scripts/test/e2e/test_comprehensive.sh
 
   security-scan:
     name: Security Scan
