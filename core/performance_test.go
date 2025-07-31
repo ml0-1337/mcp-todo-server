@@ -262,8 +262,13 @@ func TestArchivePerformance(t *testing.T) {
 	}
 
 	// Should complete reasonably quickly even with 100 children
-	if elapsed > 5*time.Second {
-		t.Errorf("Archive operation too slow: %v", elapsed)
+	// Allow more time in CI with race detector
+	expectedDuration := 5 * time.Second
+	if isRaceEnabled() {
+		expectedDuration = 30 * time.Second
+	}
+	if elapsed > expectedDuration {
+		t.Errorf("Archive operation too slow: %v (expected < %v)", elapsed, expectedDuration)
 	}
 
 	// Verify all were archived
@@ -338,8 +343,13 @@ func TestStatsWithManyTodos(t *testing.T) {
 	}
 
 	// Should complete quickly even with 500 todos
-	if elapsed > 2*time.Second {
-		t.Errorf("Stats generation too slow: %v", elapsed)
+	// Allow more time in CI with race detector
+	expectedDuration := 2 * time.Second
+	if isRaceEnabled() {
+		expectedDuration = 10 * time.Second
+	}
+	if elapsed > expectedDuration {
+		t.Errorf("Stats generation too slow: %v (expected < %v)", elapsed, expectedDuration)
 	}
 
 	// Verify stats are reasonable
