@@ -2,13 +2,13 @@ package core
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
@@ -56,7 +56,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 	}
 
 	// Step 3: Read all files from temp directory
-	files, err := ioutil.ReadDir(tempDir)
+	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		// Attempt rollback
 		os.RemoveAll(oldTodosDir)
@@ -78,7 +78,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		}
 
 		wg.Add(1)
-		go func(f os.FileInfo) {
+		go func(f os.DirEntry) {
 			defer wg.Done()
 
 			err := tm.migrateFile(tempDir, f.Name())
@@ -138,7 +138,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 
 // needsMigration checks if there are any flat structure todos
 func (tm *TodoManager) needsMigration(todosDir string) (bool, error) {
-	files, err := ioutil.ReadDir(todosDir)
+	files, err := os.ReadDir(todosDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -161,7 +161,7 @@ func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 	sourcePath := filepath.Join(sourceDir, filename)
 
 	// Read the file
-	content, err := ioutil.ReadFile(sourcePath)
+	content, err := os.ReadFile(sourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
@@ -199,7 +199,7 @@ func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 	}
 
 	// Write file to new location
-	if err := ioutil.WriteFile(destPath, content, 0644); err != nil {
+	if err := os.WriteFile(destPath, content, 0600); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

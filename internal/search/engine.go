@@ -1,9 +1,10 @@
+// Package search provides full-text search capabilities for todos using the Bleve search engine.
+// It includes parallel indexing, query parsing, and result highlighting.
 package search
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,7 +166,7 @@ func (e *Engine) indexExistingTodos() error {
 		todoID := strings.TrimSuffix(info.Name(), ".md")
 
 		fileStart := time.Now()
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			skippedCount++
 			logging.Warnf("Failed to read file %s: %v", path, err)

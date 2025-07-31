@@ -1,3 +1,5 @@
+// Package errors provides structured error types and utilities for the MCP Todo Server.
+// It includes categorized errors, error wrapping utilities, and type-safe error checking.
 package errors
 
 import (

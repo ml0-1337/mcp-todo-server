@@ -2,13 +2,13 @@ package core
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
@@ -110,7 +110,7 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		return interrors.Wrap(err, "failed to resolve todo path")
 	}
 
-	fileContent, err := ioutil.ReadFile(filename)
+	fileContent, err := os.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return interrors.NewNotFoundError("todo", id)
@@ -178,7 +178,7 @@ func (tm *TodoManager) UpdateTodo(id, section, operation, content string, metada
 		}
 
 		// Write back the updated content
-		if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
+		if err := os.WriteFile(filename, []byte(updatedContent), 0600); err != nil {
 			return interrors.NewOperationError("write", "todo file", "failed to save changes", err)
 		}
 
@@ -216,7 +216,7 @@ func (tm *TodoManager) updateTodoSection(id, fileContent, section, operation, co
 		return interrors.Wrap(err, "failed to resolve todo path for update")
 	}
 
-	if err := ioutil.WriteFile(filename, []byte(updatedContent), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(updatedContent), 0600); err != nil {
 		return interrors.NewOperationError("write", "todo section", "failed to save section update", err)
 	}
 
@@ -488,7 +488,7 @@ func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, er
 		} else {
 			// Process found files
 			for _, path := range paths {
-				content, err := ioutil.ReadFile(path)
+				content, err := os.ReadFile(path)
 				if err != nil {
 					continue
 				}
@@ -524,7 +524,7 @@ func (tm *TodoManager) ListTodos(status, priority string, days int) ([]*Todo, er
 			return nil
 		}
 
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return nil // Skip files we can't read
 		}

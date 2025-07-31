@@ -7,11 +7,11 @@ import (
 
 // TodoError represents a todo-specific error with context
 type TodoError struct {
+	Cause     error
 	ID        string
 	Operation string
-	Category  ErrorCategory
-	Cause     error
 	Message   string
+	Category  ErrorCategory
 }
 
 // Error implements the error interface
@@ -45,11 +45,11 @@ func (e *TodoError) Unwrap() error {
 // NewTodoError creates a new todo error
 func NewTodoError(id, operation, message string, category ErrorCategory, cause error) *TodoError {
 	return &TodoError{
+		Cause:     cause,
 		ID:        id,
 		Operation: operation,
-		Category:  category,
-		Cause:     cause,
 		Message:   message,
+		Category:  category,
 	}
 }
 

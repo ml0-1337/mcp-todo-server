@@ -1,7 +1,6 @@
 package core
 
 import (
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -122,7 +121,7 @@ func (se *StatsEngine) CalculateTestCoverage(todoID string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	content, err := ioutil.ReadFile(todoPath)
+	content, err := os.ReadFile(todoPath)
 	if err != nil {
 		return 0, err
 	}

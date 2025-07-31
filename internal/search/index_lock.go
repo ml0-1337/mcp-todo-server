@@ -21,7 +21,7 @@ func NewIndexLock(indexPath string) *IndexLock {
 	lockPath := indexPath + ".lock"
 
 	// Ensure the directory for the lock file exists
-	if err := os.MkdirAll(filepath.Dir(lockPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0750); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to create lock directory: %v\n", err)
 	}
 

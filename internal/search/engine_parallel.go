@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -275,7 +274,7 @@ func (e *Engine) readFileWithTimeout(ctx context.Context, filePath string) ([]by
 	resultCh := make(chan result, 1)
 
 	go func() {
-		content, err := ioutil.ReadFile(filePath)
+		content, err := os.ReadFile(filePath)
 		resultCh <- result{
 			content: content,
 			size:    int64(len(content)),

@@ -3,13 +3,13 @@ package core
 import (
 	"bytes"
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
@@ -45,7 +45,7 @@ func (tm *TemplateManager) LoadTemplate(name string) (*Template, error) {
 	}
 
 	// Read template file
-	content, err := ioutil.ReadFile(templatePath)
+	content, err := os.ReadFile(templatePath)
 	if err != nil {
 		return nil, interrors.Wrap(err, "failed to read template")
 	}
@@ -78,7 +78,7 @@ func (tm *TemplateManager) LoadTemplate(name string) (*Template, error) {
 // ListTemplates returns a list of available template names
 func (tm *TemplateManager) ListTemplates() ([]string, error) {
 	// Read directory
-	files, err := ioutil.ReadDir(tm.templatesDir)
+	files, err := os.ReadDir(tm.templatesDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No templates directory exists

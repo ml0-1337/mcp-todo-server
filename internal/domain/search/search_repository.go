@@ -1,3 +1,5 @@
+// Package search defines domain interfaces and types for search functionality.
+// It provides abstractions for search engines and result representations.
 package search
 
 import (

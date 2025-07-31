@@ -1,3 +1,5 @@
+// Package main provides the entry point for the MCP Todo Server.
+// It supports both STDIO and HTTP transport modes for the Model Context Protocol.
 package main
 
 import (
@@ -14,22 +16,33 @@ import (
 	"github.com/user/mcp-todo-server/server"
 )
 
-const Version = "2.1.0"
+const (
+	// Version is the current version of the MCP Todo Server
+	Version = "2.1.0"
+	
+	// stdioTransport indicates STDIO transport mode
+	stdioTransport = "stdio"
+	
+	// httpTransport indicates HTTP transport mode
+	httpTransport = "http"
+)
+
+// isSTDIOMode checks if the server is running in STDIO transport mode
+func isSTDIOMode(args []string) bool {
+	for i, arg := range args {
+		if arg == "-transport" && i+1 < len(args) && args[i+1] == stdioTransport {
+			return true
+		}
+		if arg == "-transport="+stdioTransport {
+			return true
+		}
+	}
+	return false
+}
 
 func main() {
 	// Check if running in STDIO mode before ANY output
-	args := os.Args[1:]
-	isStdio := false
-	for i, arg := range args {
-		if arg == "-transport" && i+1 < len(args) && args[i+1] == "stdio" {
-			isStdio = true
-			break
-		}
-		if arg == "-transport=stdio" {
-			isStdio = true
-			break
-		}
-	}
+	isStdio := isSTDIOMode(os.Args[1:])
 
 	// Redirect ALL logging to stderr immediately if STDIO mode
 	if isStdio {
@@ -72,7 +85,7 @@ func main() {
 	// For HTTP transport, acquire exclusive lock to prevent multiple instances
 	var serverLock *lock.ServerLock
 	var err error
-	if *transport == "http" {
+	if *transport == httpTransport {
 		serverLock, err = lock.NewServerLock(*port)
 		if err != nil {
 			log.Fatalf("Failed to create server lock: %v", err)
@@ -113,14 +126,14 @@ func main() {
 	errChan := make(chan error, 1)
 	go func() {
 		switch *transport {
-		case "stdio":
+		case stdioTransport:
 			// Log to stderr in STDIO mode
 			logging.Logf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
 			logging.Logf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}
-		case "http":
+		case httpTransport:
 			addr := fmt.Sprintf("%s:%s", *host, *port)
 			logging.Logf("Starting MCP Todo Server v%s (HTTP mode) on %s...", Version, addr)
 			logging.Logf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)

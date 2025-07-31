@@ -2,12 +2,12 @@ package core
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
@@ -17,7 +17,7 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	// Use date-based structure
 	datePath := GetDailyPath(todo.Started)
 	dir := filepath.Join(tm.basePath, ".claude", "todos", datePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
 	}
 
@@ -52,7 +52,7 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	}
 
 	// Write to file
-	if err := ioutil.WriteFile(filename, []byte(contentBuilder.String()), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(contentBuilder.String()), 0600); err != nil {
 		return interrors.NewOperationError("write", "todo file", "failed to save todo", err)
 	}
 
@@ -64,7 +64,7 @@ func (tm *TodoManager) writeTodoWithContent(todo *Todo, templateContent string) 
 	// Use date-based structure
 	datePath := GetDailyPath(todo.Started)
 	dir := filepath.Join(tm.basePath, ".claude", "todos", datePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
 	}
 
@@ -89,7 +89,7 @@ func (tm *TodoManager) writeTodoWithContent(todo *Todo, templateContent string) 
 	contentBuilder.WriteString(templateContent)
 
 	// Write to file
-	if err := ioutil.WriteFile(filename, []byte(contentBuilder.String()), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(contentBuilder.String()), 0600); err != nil {
 		return interrors.NewOperationError("write", "todo file", "failed to save todo", err)
 	}
 
@@ -110,7 +110,7 @@ func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
 		return nil, interrors.Wrap(err, "failed to resolve todo path")
 	}
 
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, interrors.NewNotFoundError("todo", id)
@@ -234,7 +234,7 @@ func (tm *TodoManager) ReadTodoContent(id string) (string, error) {
 		return "", fmt.Errorf("failed to resolve todo path: %w", err)
 	}
 
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return "", fmt.Errorf("failed to read todo content: %w", err)
 	}

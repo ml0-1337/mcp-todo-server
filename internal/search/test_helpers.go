@@ -2,7 +2,6 @@ package search
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +48,7 @@ func (tm *TestTodoManager) CreateTodo(task, priority, todoType string) (*domain.
 func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 	// Ensure directory exists
 	dir := filepath.Join(tm.basePath, ".claude", "todos")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -80,7 +79,7 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 		string(yamlData), todo.Task)
 
 	// Write file
-	if err := ioutil.WriteFile(filename, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write todo file: %w", err)
 	}
 
@@ -90,7 +89,7 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 // ReadTodo reads a todo from disk
 func (tm *TestTodoManager) ReadTodo(id string) (*domain.Todo, error) {
 	filePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("todo not found: %s", id)
@@ -105,7 +104,7 @@ func (tm *TestTodoManager) ReadTodo(id string) (*domain.Todo, error) {
 func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
 	// Read the current file content
 	filePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
-	fileContent, err := ioutil.ReadFile(filePath)
+	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read todo file: %w", err)
 	}
@@ -129,7 +128,7 @@ func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, me
 				break
 			}
 		}
-		return ioutil.WriteFile(filePath, fileContent, 0644)
+		return os.WriteFile(filePath, fileContent, 0600)
 	}
 
 	// If we're updating metadata, read the todo and update it

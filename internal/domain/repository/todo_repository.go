@@ -1,7 +1,10 @@
+// Package repository defines interfaces for todo persistence operations.
+// It provides abstractions for storage implementations and filtering capabilities.
 package repository
 
 import (
 	"context"
+	
 	"github.com/user/mcp-todo-server/internal/domain"
 )
 
