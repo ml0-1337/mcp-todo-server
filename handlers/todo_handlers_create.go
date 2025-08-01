@@ -99,8 +99,10 @@ func (h *TodoHandlers) HandleTodoCreate(ctx context.Context, request mcp.CallToo
 
 	// Index the todo for search
 	if search != nil {
-		content, _ := manager.ReadTodoContent(todo.ID)
-		if err := search.IndexTodo(todo, content); err != nil {
+		content, err := manager.ReadTodoContent(todo.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to read todo content for indexing %s: %v\n", todo.ID, err)
+		} else if err := search.IndexTodo(todo, content); err != nil {
 			// Log but don't fail
 			fmt.Fprintf(os.Stderr, "Warning: failed to index todo %s: %v\n", todo.ID, err)
 		}
@@ -138,8 +140,10 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 
 	// Index parent todo
 	if search != nil {
-		content, _ := manager.ReadTodoContent(parentTodo.ID)
-		if err := search.IndexTodo(parentTodo, content); err != nil {
+		content, err := manager.ReadTodoContent(parentTodo.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to read parent todo content for indexing %s: %v\n", parentTodo.ID, err)
+		} else if err := search.IndexTodo(parentTodo, content); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to index parent todo %s: %v\n", parentTodo.ID, err)
 		}
 	}
@@ -179,8 +183,10 @@ func (h *TodoHandlers) HandleTodoCreateMulti(ctx context.Context, request mcp.Ca
 
 		// Index child todo
 		if search != nil {
-			content, _ := manager.ReadTodoContent(childTodo.ID)
-			if err := search.IndexTodo(childTodo, content); err != nil {
+			content, err := manager.ReadTodoContent(childTodo.ID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read child todo content for indexing %s: %v\n", childTodo.ID, err)
+			} else if err := search.IndexTodo(childTodo, content); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to index child todo %s: %v\n", childTodo.ID, err)
 			}
 		}
