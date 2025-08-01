@@ -90,10 +90,16 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 
 		// Re-index if status changed (for non-completed statuses)
 		if _, hasStatus := metadataMap["status"]; hasStatus && search != nil {
-			todo, _ := manager.ReadTodo(params.ID)
-			if todo != nil {
-				content, _ := manager.ReadTodoContent(params.ID)
-				search.IndexTodo(todo, content)
+			todo, err := manager.ReadTodo(params.ID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read todo for re-indexing %s: %v\n", params.ID, err)
+			} else if todo != nil {
+				content, err := manager.ReadTodoContent(params.ID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to read todo content for re-indexing %s: %v\n", params.ID, err)
+				} else if err := search.IndexTodo(todo, content); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to re-index todo %s: %v\n", params.ID, err)
+				}
 			}
 		}
 
@@ -106,9 +112,11 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		// Check if status was set to completed (when auto-archive is disabled)
 		if newStatus, hasStatus := metadataMap["status"]; hasStatus && newStatus == "completed" {
 			// Read todo to get type for contextual prompts
-			todo, _ := manager.ReadTodo(params.ID)
+			todo, err := manager.ReadTodo(params.ID)
 			todoType := ""
-			if todo != nil {
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read todo for type %s: %v\n", params.ID, err)
+			} else if todo != nil {
 				todoType = todo.Type
 			}
 
@@ -129,10 +137,16 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 
 		// Re-index after content update
 		if search != nil {
-			todo, _ := manager.ReadTodo(params.ID)
-			if todo != nil {
-				content, _ := manager.ReadTodoContent(params.ID)
-				search.IndexTodo(todo, content)
+			todo, err := manager.ReadTodo(params.ID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read todo for re-indexing %s: %v\n", params.ID, err)
+			} else if todo != nil {
+				content, err := manager.ReadTodoContent(params.ID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to read todo content for re-indexing %s: %v\n", params.ID, err)
+				} else if err := search.IndexTodo(todo, content); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to re-index todo %s: %v\n", params.ID, err)
+				}
 			}
 		}
 
@@ -144,8 +158,10 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 
 		// Get todo type for contextual prompts
 		todoType := ""
-		todo, _ := manager.ReadTodo(params.ID)
-		if todo != nil {
+		todo, err := manager.ReadTodo(params.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to read todo for type %s: %v\n", params.ID, err)
+		} else if todo != nil {
 			todoType = todo.Type
 		}
 
