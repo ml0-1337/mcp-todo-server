@@ -35,10 +35,7 @@ func (h *TodoHandlers) HandleTodoTemplate(ctx context.Context, request mcp.CallT
 	}
 
 	// Create from template
-	task, err := request.RequireString("task")
-	if err != nil {
-		return HandleError(err), nil
-	}
+	task, _ := request.RequireString("task")
 	priority := request.GetString("priority", "high")
 	todoType := request.GetString("type", "feature")
 
