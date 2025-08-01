@@ -113,7 +113,9 @@ func main() {
 	)
 	if err != nil {
 		if serverLock != nil {
-			serverLock.Unlock()
+			if unlockErr := serverLock.Unlock(); unlockErr != nil {
+				log.Printf("Warning: failed to unlock server lock: %v", unlockErr)
+			}
 		}
 		log.Fatalf("Failed to create server: %v", err)
 	}
