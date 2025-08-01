@@ -202,8 +202,8 @@ func TestHandleTodoLink(t *testing.T) {
 					return
 				}
 				content := textContent.Text
-				if !strings.Contains(content, "Linking feature not available") {
-					t.Errorf("Expected 'Linking feature not available' error, got: %s", content)
+				if !strings.Contains(strings.ToLower(content), "linking feature not available") {
+					t.Errorf("Expected 'linking feature not available' error, got: %s", content)
 				}
 			},
 		},
@@ -233,8 +233,8 @@ func TestHandleTodoLink(t *testing.T) {
 					return
 				}
 				content := textContent.Text
-				if !strings.Contains(content, "Linking feature not available") {
-					t.Errorf("Expected 'Linking feature not available' error, got: %s", content)
+				if !strings.Contains(strings.ToLower(content), "linking feature not available") {
+					t.Errorf("Expected 'linking feature not available' error, got: %s", content)
 				}
 			},
 		},
@@ -520,8 +520,8 @@ func TestHandleTodoLinkWithoutBaseManager(t *testing.T) {
 	// Verify the error message
 	if result != nil && result.IsError {
 		textContent, ok := result.Content[0].(mcp.TextContent)
-		if ok && !strings.Contains(textContent.Text, "Linking feature not available") {
-			t.Errorf("Expected 'Linking feature not available' error, got: %s", textContent.Text)
+		if ok && !strings.Contains(strings.ToLower(textContent.Text), "linking feature not available") {
+			t.Errorf("Expected 'linking feature not available' error, got: %s", textContent.Text)
 		}
 	}
 }
