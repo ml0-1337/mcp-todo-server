@@ -79,7 +79,7 @@ func (h *TodoHandlers) HandleTodoLink(ctx context.Context, request mcp.CallToolR
 	// Create link using the factory's linker
 	linker := h.factory.CreateLinker(manager)
 	if linker == nil {
-		return HandleError(errors.New("linking feature not available with current manager")), nil
+		return HandleError(errors.New("Linking feature not available with current manager")), nil
 	}
 
 	err = linker.LinkTodos(parentID, childID, linkType)
