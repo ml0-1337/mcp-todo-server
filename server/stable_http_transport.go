@@ -253,12 +253,18 @@ func (t *StableHTTPTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 func (t *StableHTTPTransport) getOrCreateConnection(sessionID, workingDir string) *StableHTTPConnection {
 	// Try to get existing connection
 	if existing, ok := t.connections.Load(sessionID); ok {
-		conn := existing.(*StableHTTPConnection)
-		// Update working directory if changed
-		if workingDir != "" && conn.WorkingDirectory != workingDir {
-			conn.WorkingDirectory = workingDir
+		conn, ok := existing.(*StableHTTPConnection)
+		if !ok {
+			logging.StableHTTPf("Invalid connection type for session %s", sessionID)
+			// Fall through to create new connection
+		} else {
+			// Update working directory if changed
+			if workingDir != "" && conn.WorkingDirectory != workingDir {
+				conn.WorkingDirectory = workingDir
+			}
+			conn.LastActivity = time.Now()
+			return conn
 		}
-		return conn
 	}
 
 	// Create new connection
