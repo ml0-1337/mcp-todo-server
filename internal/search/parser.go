@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
-	"gopkg.in/yaml.v3"
+
 	"github.com/user/mcp-todo-server/internal/domain"
+	"github.com/user/mcp-todo-server/internal/logging"
+	"gopkg.in/yaml.v3"
 )
 
 // parseTodoFile parses a todo file content and returns a domain.Todo
@@ -19,14 +20,14 @@ func parseTodoFile(id, content string) (*domain.Todo, error) {
 
 	// Parse YAML frontmatter
 	var frontmatter struct {
-		TodoID    string    `yaml:"todo_id"`
-		Started   string    `yaml:"started"`
-		Completed string    `yaml:"completed,omitempty"`
-		Status    string    `yaml:"status"`
-		Priority  string    `yaml:"priority"`
-		Type      string    `yaml:"type"`
-		ParentID  string    `yaml:"parent_id,omitempty"`
-		Tags      []string  `yaml:"tags,omitempty"`
+		TodoID    string   `yaml:"todo_id"`
+		Started   string   `yaml:"started"`
+		Completed string   `yaml:"completed,omitempty"`
+		Status    string   `yaml:"status"`
+		Priority  string   `yaml:"priority"`
+		Type      string   `yaml:"type"`
+		ParentID  string   `yaml:"parent_id,omitempty"`
+		Tags      []string `yaml:"tags,omitempty"`
 	}
 
 	if err := yaml.Unmarshal([]byte(parts[1]), &frontmatter); err != nil {
@@ -46,9 +47,14 @@ func parseTodoFile(id, content string) (*domain.Todo, error) {
 	// Parse completed time if present
 	var completed time.Time
 	if frontmatter.Completed != "" {
-		completed, _ = time.Parse(time.RFC3339, frontmatter.Completed)
-		if completed.IsZero() {
-			completed, _ = time.Parse("2006-01-02 15:04:05", frontmatter.Completed)
+		var err error
+		completed, err = time.Parse(time.RFC3339, frontmatter.Completed)
+		if err != nil || completed.IsZero() {
+			completed, err = time.Parse("2006-01-02 15:04:05", frontmatter.Completed)
+			if err != nil {
+				// Log warning but continue - completed time is optional
+				logging.Warnf("Failed to parse completed time '%s': %v", frontmatter.Completed, err)
+			}
 		}
 	}
 

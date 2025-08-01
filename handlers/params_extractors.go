@@ -210,7 +210,6 @@ func ExtractTodoArchiveParams(request mcp.CallToolRequest) (*TodoArchiveParams, 
 	}
 	params.ID = id
 
-
 	return params, nil
 }
 

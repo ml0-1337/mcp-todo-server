@@ -52,7 +52,7 @@ Some notes here.
 	if err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
-	
+
 	// Write test todo file
 	todoPath := filepath.Join(todosDir, "test-todo-full.md")
 	err = ioutil.WriteFile(todoPath, []byte(todoContent), 0644)

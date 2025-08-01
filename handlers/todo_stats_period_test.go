@@ -128,7 +128,7 @@ func TestHandleTodoStats_PeriodMonth(t *testing.T) {
 
 	handler := NewTodoHandlersWithDependencies(NewMockTodoManager(), NewMockSearchEngine(), mockStats, NewMockTemplateManager())
 	request := &MockCallToolRequest{Arguments: map[string]interface{}{"period": "month"}}
-	
+
 	_, err := handler.HandleTodoStats(context.Background(), request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoStats returned error: %v", err)
@@ -157,7 +157,7 @@ func TestHandleTodoStats_PeriodQuarter(t *testing.T) {
 
 	handler := NewTodoHandlersWithDependencies(NewMockTodoManager(), NewMockSearchEngine(), mockStats, NewMockTemplateManager())
 	request := &MockCallToolRequest{Arguments: map[string]interface{}{"period": "quarter"}}
-	
+
 	_, err := handler.HandleTodoStats(context.Background(), request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoStats returned error: %v", err)
@@ -186,7 +186,7 @@ func TestHandleTodoStats_PeriodYear(t *testing.T) {
 
 	handler := NewTodoHandlersWithDependencies(NewMockTodoManager(), NewMockSearchEngine(), mockStats, NewMockTemplateManager())
 	request := &MockCallToolRequest{Arguments: map[string]interface{}{"period": "year"}}
-	
+
 	_, err := handler.HandleTodoStats(context.Background(), request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoStats returned error: %v", err)
@@ -213,7 +213,7 @@ func TestHandleTodoStats_InvalidPeriod(t *testing.T) {
 
 	handler := NewTodoHandlersWithDependencies(NewMockTodoManager(), NewMockSearchEngine(), mockStats, NewMockTemplateManager())
 	request := &MockCallToolRequest{Arguments: map[string]interface{}{"period": "invalid-period"}}
-	
+
 	result, err := handler.HandleTodoStats(context.Background(), request.ToCallToolRequest())
 	if err != nil {
 		t.Fatalf("HandleTodoStats returned error: %v", err)

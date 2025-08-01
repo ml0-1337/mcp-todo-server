@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	
+
 	"github.com/user/mcp-todo-server/internal/logging"
 )
 
@@ -87,7 +87,7 @@ func ResolveTodoPath() (string, error) {
 	todoPath := filepath.Join(projectRoot, ".claude", "todos")
 
 	// 5. Ensure directory exists
-	if err := os.MkdirAll(todoPath, 0755); err != nil {
+	if err := os.MkdirAll(todoPath, 0750); err != nil {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
 
@@ -99,12 +99,12 @@ func ResolveTodoPath() (string, error) {
 func ResolveTodoPathFromWorkingDir(workingDir string) (string, error) {
 	// Build todo path from provided working directory
 	todoPath := filepath.Join(workingDir, ".claude", "todos")
-	
+
 	// Ensure directory exists
-	if err := os.MkdirAll(todoPath, 0755); err != nil {
+	if err := os.MkdirAll(todoPath, 0750); err != nil {
 		return "", fmt.Errorf("failed to create todo directory: %w", err)
 	}
-	
+
 	logging.Infof("Using todo directory from working dir: %s", todoPath)
 	return todoPath, nil
 }
@@ -129,14 +129,17 @@ func ResolveTemplatePath() (string, error) {
 	}
 
 	// 4. Find project root for project-relative paths
-	projectRoot, _ := FindProjectRoot(cwd)
-	if projectRoot == "" {
+	projectRoot, err := FindProjectRoot(cwd)
+	if err != nil || projectRoot == "" {
 		projectRoot = cwd
 	}
 
 	// 5. Build candidate paths based on mode
 	var candidates []string
-	homeDir, _ := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "" // Fall back to empty string if home dir cannot be determined
+	}
 
 	switch mode {
 	case "auto":

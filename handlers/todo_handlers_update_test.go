@@ -202,7 +202,7 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 		if !strings.HasPrefix(textContent.Text, expectedPrefix) {
 			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
 		}
-		
+
 		// Verify it contains contextual prompts
 		if !strings.Contains(textContent.Text, "Task completed successfully") {
 			t.Error("Response should contain completion prompts")
@@ -318,7 +318,7 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 		if !strings.HasPrefix(textContent.Text, expectedPrefix) {
 			t.Errorf("Response should start with '%s', got: %s", expectedPrefix, textContent.Text)
 		}
-		
+
 		// Verify it contains contextual prompts
 		if !strings.Contains(textContent.Text, "Task completed successfully") {
 			t.Error("Response should contain completion prompts")
@@ -432,7 +432,7 @@ func TestTodoUpdate_AutoArchive(t *testing.T) {
 
 				// Verify contextual prompt
 				if !strings.Contains(textContent.Text, tc.expectedText) {
-					t.Errorf("Expected contextual prompt for %s type to contain '%s', got: %s", 
+					t.Errorf("Expected contextual prompt for %s type to contain '%s', got: %s",
 						tc.todoType, tc.expectedText, textContent.Text)
 				}
 			})

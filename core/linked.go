@@ -1,11 +1,9 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -91,34 +89,16 @@ func (tm *TodoManager) CreateTodoWithParent(task, priority, todoType, parentID s
 
 // GetChildren returns all todos that have the given parent_id
 func (tm *TodoManager) GetChildren(parentID string) ([]*Todo, error) {
-	// Read all todos in the directory
-	todosDir := filepath.Join(tm.basePath, ".claude", "todos")
-	files, err := ioutil.ReadDir(todosDir)
+	// Use ListTodos to get all todos and filter by parent_id
+	allTodos, err := tm.ListTodos("", "", 0)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// No todos directory exists yet
-			return []*Todo{}, nil
-		}
-		return nil, interrors.Wrap(err, "failed to read todos directory")
+		return nil, interrors.Wrap(err, "failed to list todos")
 	}
 
 	var children []*Todo
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".md") {
-			// Extract ID from filename
-			todoID := strings.TrimSuffix(file.Name(), ".md")
-
-			// Read the todo
-			todo, err := tm.ReadTodo(todoID)
-			if err != nil {
-				// Skip files that can't be read as todos
-				continue
-			}
-
-			// Check if it's a child of the requested parent
-			if todo.ParentID == parentID {
-				children = append(children, todo)
-			}
+	for _, todo := range allTodos {
+		if todo.ParentID == parentID {
+			children = append(children, todo)
 		}
 	}
 

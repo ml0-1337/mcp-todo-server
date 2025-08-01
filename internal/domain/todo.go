@@ -40,15 +40,15 @@ func NewTodo(task, priority, todoType string) (*Todo, error) {
 	if task == "" {
 		return nil, errors.New("task cannot be empty")
 	}
-	
+
 	if priority == "" {
 		priority = "medium"
 	}
-	
+
 	if todoType == "" {
 		todoType = "task"
 	}
-	
+
 	return &Todo{
 		Task:     task,
 		Started:  time.Now(),

@@ -22,7 +22,7 @@ type CircuitBreaker struct {
 	state        CircuitState
 	failureCount int
 	lastFailTime time.Time
-	
+
 	// Configuration
 	failureThreshold int
 	timeout          time.Duration
@@ -41,6 +41,11 @@ func NewCircuitBreaker(failureThreshold int, timeout, resetTimeout time.Duration
 
 // Execute runs the given function with circuit breaker protection
 func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) error {
+	// Check if context is already cancelled
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	cb.mu.RLock()
 	state := cb.state
 	failureCount := cb.failureCount

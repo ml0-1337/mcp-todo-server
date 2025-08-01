@@ -1,9 +1,10 @@
+// Package search provides full-text search capabilities for todos using the Bleve search engine.
+// It includes parallel indexing, query parsing, and result highlighting.
 package search
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,20 +19,20 @@ import (
 
 // Engine manages the bleve search index
 type Engine struct {
-	index           bleve.Index
-	basePath        string
-	lock            *IndexLock
-	circuitBreaker  *CircuitBreaker
+	index          bleve.Index
+	basePath       string
+	lock           *IndexLock
+	circuitBreaker *CircuitBreaker
 }
 
 // NewEngine creates or opens a search index
 func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	startTime := time.Now()
-	
+
 	// Create index lock to prevent concurrent access
 	lockStart := time.Now()
 	indexLock := NewIndexLock(indexPath)
-	
+
 	// Try to acquire lock with timeout
 	err := indexLock.TryLock(10 * time.Second)
 	if err != nil {
@@ -39,7 +40,7 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	}
 	lockTime := time.Since(lockStart)
 	logging.Timingf("Index lock acquisition took %v", lockTime)
-	
+
 	// Check if index exists
 	openStart := time.Now()
 	index, err := bleve.Open(indexPath)
@@ -76,19 +77,19 @@ func NewEngine(indexPath, todosPath string) (*Engine, error) {
 	logging.Infof("Indexing existing todos from %s...", todosPath)
 	indexCtx, indexCancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer indexCancel()
-	
+
 	err = engine.indexExistingTodosWithTimeout(indexCtx)
 	indexingTime := time.Since(indexingStart)
-	
+
 	if err != nil {
 		logging.Warnf("Failed to index existing todos after %v: %v. Search may have incomplete results.", indexingTime, err)
 		// Don't fail engine creation - continue with empty index
 	} else {
 		logging.Infof("Finished indexing existing todos in %v", indexingTime)
 	}
-	
+
 	totalTime := time.Since(startTime)
-	logging.Timingf("Total NewEngine time: %v (lock: %v, open: %v, indexing: %v)", 
+	logging.Timingf("Total NewEngine time: %v (lock: %v, open: %v, indexing: %v)",
 		totalTime, lockTime, openTime, indexingTime)
 
 	return engine, nil
@@ -101,14 +102,14 @@ func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
 		err error
 	}
 	resultCh := make(chan result, 1)
-	
+
 	// Run indexing in goroutine to enable timeout
 	go func() {
 		// Use parallel indexing for better performance
 		err := e.indexExistingTodosParallel()
 		resultCh <- result{err: err}
 	}()
-	
+
 	// Wait for either completion or timeout
 	select {
 	case res := <-resultCh:
@@ -124,7 +125,7 @@ func (e *Engine) indexExistingTodosWithTimeout(ctx context.Context) error {
 // indexExistingTodos indexes all existing todo files
 func (e *Engine) indexExistingTodos() error {
 	totalStart := time.Now()
-	
+
 	// Check if todos directory exists
 	logging.Infof("Starting recursive index of todos directory: %s", e.basePath)
 	if _, err := os.Stat(e.basePath); os.IsNotExist(err) {
@@ -140,7 +141,7 @@ func (e *Engine) indexExistingTodos() error {
 	processedCount := 0
 	skippedCount := 0
 	totalFileSize := int64(0)
-	
+
 	// Walk the directory tree
 	err := filepath.Walk(e.basePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -157,7 +158,7 @@ func (e *Engine) indexExistingTodos() error {
 		if processedCount > 0 && processedCount%10 == 0 {
 			elapsed := time.Since(processStart)
 			rate := float64(processedCount) / elapsed.Seconds()
-			logging.Progressf("Indexed %d files (%.1f files/sec)", 
+			logging.Progressf("Indexed %d files (%.1f files/sec)",
 				processedCount, rate)
 		}
 
@@ -165,7 +166,7 @@ func (e *Engine) indexExistingTodos() error {
 		todoID := strings.TrimSuffix(info.Name(), ".md")
 
 		fileStart := time.Now()
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			skippedCount++
 			logging.Warnf("Failed to read file %s: %v", path, err)
@@ -198,13 +199,16 @@ func (e *Engine) indexExistingTodos() error {
 		doc.Tests = extractSection(string(content), "## Test Cases")
 
 		// Add to batch
-		batch.Index(todoID, doc)
-		processedCount++
-		
+		if err := batch.Index(todoID, doc); err != nil {
+			logging.Errorf("Failed to index todo %s: %v", todoID, err)
+		} else {
+			processedCount++
+		}
+
 		// Log slow files
 		fileTime := time.Since(fileStart)
 		if fileTime > 100*time.Millisecond {
-			logging.Timingf("Slow file %s: %v (size: %d bytes)", 
+			logging.Timingf("Slow file %s: %v (size: %d bytes)",
 				info.Name(), fileTime, len(content))
 		}
 
@@ -214,30 +218,30 @@ func (e *Engine) indexExistingTodos() error {
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("error walking directory: %w", err)
 	}
-	
+
 	processTime := time.Since(processStart)
 	var avgFileSize int64
 	if processedCount > 0 {
 		avgFileSize = totalFileSize / int64(processedCount)
 	}
-	logging.Timingf("Processed %d files in %v (skipped %d, avg size: %d bytes)", 
+	logging.Timingf("Processed %d files in %v (skipped %d, avg size: %d bytes)",
 		processedCount, processTime, skippedCount, avgFileSize)
 
 	// Execute batch with timeout protection
 	batchStart := time.Now()
 	batchCtx, batchCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer batchCancel()
-	
+
 	// Channel to receive batch result
 	type batchResult struct {
 		err error
 	}
 	batchCh := make(chan batchResult, 1)
-	
+
 	// Channel to signal goroutine to stop
 	done := make(chan struct{})
 	defer close(done)
-	
+
 	go func() {
 		defer func() {
 			// Recover from any panics in batch operation
@@ -246,7 +250,7 @@ func (e *Engine) indexExistingTodos() error {
 				batchCh <- batchResult{err: fmt.Errorf("batch operation panicked: %v", r)}
 			}
 		}()
-		
+
 		select {
 		case <-done:
 			// Context cancelled, exit gracefully
@@ -254,7 +258,7 @@ func (e *Engine) indexExistingTodos() error {
 		default:
 			// Proceed with batch operation
 			err := e.index.Batch(batch)
-			
+
 			// Only send result if context is still active
 			select {
 			case batchCh <- batchResult{err: err}:
@@ -264,7 +268,7 @@ func (e *Engine) indexExistingTodos() error {
 			}
 		}
 	}()
-	
+
 	select {
 	case res := <-batchCh:
 		batchTime := time.Since(batchStart)
@@ -296,32 +300,7 @@ func (e *Engine) Close() error {
 }
 
 // HealthCheck returns the health status of the search engine
-func (e *Engine) HealthCheck() map[string]interface{} {
-	health := make(map[string]interface{})
-	
-	// Check circuit breaker state
-	health["circuit_breaker_state"] = e.circuitBreaker.GetState()
-	health["circuit_breaker_failures"] = e.circuitBreaker.GetFailureCount()
-	
-	// Check index lock status
-	if e.lock != nil {
-		health["index_locked"] = e.lock.IsLocked()
-		health["lock_path"] = e.lock.GetLockPath()
-	}
-	
-	// Test basic index functionality
-	testQuery := bleve.NewMatchAllQuery()
-	testRequest := bleve.NewSearchRequest(testQuery)
-	testRequest.Size = 1
-	
-	_, err := e.index.Search(testRequest)
-	health["index_healthy"] = err == nil
-	if err != nil {
-		health["index_error"] = err.Error()
-	}
-	
-	return health
-}
+// HealthCheck is now implemented in engine_health.go
 
 // GetIndexedCount returns the number of indexed documents
 func (e *Engine) GetIndexedCount() (uint64, error) {
@@ -392,7 +371,7 @@ func (e *Engine) Search(queryStr string, filters map[string]string, limit int) (
 
 		// Date range filter using bleve native support
 		var fromTime, toTime *time.Time
-		
+
 		// Parse date_from if provided
 		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
 			// Parse as start of day in UTC
@@ -402,7 +381,7 @@ func (e *Engine) Search(queryStr string, filters map[string]string, limit int) (
 			}
 			fromTime = &t
 		}
-		
+
 		// Parse date_to if provided
 		if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
 			t, err := time.ParseInLocation("2006-01-02", dateTo, time.UTC)
@@ -413,12 +392,12 @@ func (e *Engine) Search(queryStr string, filters map[string]string, limit int) (
 			t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 			toTime = &t
 		}
-		
+
 		// Create date range query if we have at least one date
 		if fromTime != nil || toTime != nil {
 			var dateRangeQuery query.Query
 			trueVal := true
-			
+
 			if fromTime != nil && toTime != nil {
 				// Both dates provided
 				dateRangeQuery = bleve.NewDateRangeInclusiveQuery(*fromTime, *toTime, &trueVal, &trueVal)
@@ -432,8 +411,10 @@ func (e *Engine) Search(queryStr string, filters map[string]string, limit int) (
 				veryOldDate := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 				dateRangeQuery = bleve.NewDateRangeInclusiveQuery(veryOldDate, *toTime, &trueVal, &trueVal)
 			}
-			
-			dateRangeQuery.(*query.DateRangeQuery).SetField("started")
+
+			if drq, ok := dateRangeQuery.(*query.DateRangeQuery); ok {
+				drq.SetField("started")
+			}
 			queries = append(queries, dateRangeQuery)
 		}
 

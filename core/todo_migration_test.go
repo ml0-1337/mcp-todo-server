@@ -121,7 +121,7 @@ type: feature
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	mdCount := 0
 	for _, f := range files {
 		if !f.IsDir() && strings.HasSuffix(f.Name(), ".md") {

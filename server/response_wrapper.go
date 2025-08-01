@@ -32,7 +32,7 @@ func (w *responseWrapper) Header() http.Header {
 func (w *responseWrapper) WriteHeader(code int) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	
+
 	if !w.headerWritten {
 		w.statusCode = code
 		w.headerWritten = true
@@ -43,11 +43,11 @@ func (w *responseWrapper) WriteHeader(code int) {
 func (w *responseWrapper) Write(data []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	
+
 	if !w.headerWritten {
 		w.headerWritten = true
 	}
-	
+
 	return w.body.Write(data)
 }
 

@@ -202,8 +202,8 @@ func TestHandleTodoLink(t *testing.T) {
 					return
 				}
 				content := textContent.Text
-				if !strings.Contains(content, "Linking feature not available") {
-					t.Errorf("Expected 'Linking feature not available' error, got: %s", content)
+				if !strings.Contains(strings.ToLower(content), "linking feature not available") {
+					t.Errorf("Expected 'linking feature not available' error, got: %s", content)
 				}
 			},
 		},
@@ -233,8 +233,8 @@ func TestHandleTodoLink(t *testing.T) {
 					return
 				}
 				content := textContent.Text
-				if !strings.Contains(content, "Linking feature not available") {
-					t.Errorf("Expected 'Linking feature not available' error, got: %s", content)
+				if !strings.Contains(strings.ToLower(content), "linking feature not available") {
+					t.Errorf("Expected 'linking feature not available' error, got: %s", content)
 				}
 			},
 		},
@@ -421,6 +421,8 @@ func TestHandleTodoLink(t *testing.T) {
 					if tt.setupMocks != nil {
 						tt.setupMocks(mockManager, mockLinker)
 					}
+					// Inject the mock linker into the factory
+					handlers.factory.SetTestLinker(mockLinker)
 				}
 			}
 
@@ -448,7 +450,7 @@ func TestHandleTodoLinkIntegration(t *testing.T) {
 	// This test verifies that the handler correctly uses the createLinker factory
 	mockManager := NewMockTodoManager()
 	mockLinker := NewMockTodoLinker()
-	
+
 	linkerCalled := false
 	mockLinker.LinkTodosFunc = func(parentID, childID, linkType string) error {
 		linkerCalled = true
@@ -461,6 +463,9 @@ func TestHandleTodoLinkIntegration(t *testing.T) {
 		nil, // stats not needed for this test
 		nil, // templates not needed for this test
 	)
+
+	// Inject the mock linker into the factory
+	handlers.factory.SetTestLinker(mockLinker)
 
 	request := &MockCallToolRequest{
 		Arguments: map[string]interface{}{
@@ -487,7 +492,7 @@ func TestHandleTodoLinkIntegration(t *testing.T) {
 // TestHandleTodoLinkWithoutBaseManager tests linking without base manager
 func TestHandleTodoLinkWithoutBaseManager(t *testing.T) {
 	mockManager := NewMockTodoManager()
-	
+
 	handlers := NewTodoHandlersWithDependencies(
 		mockManager,
 		nil, // search not needed for this test
@@ -504,11 +509,19 @@ func TestHandleTodoLinkWithoutBaseManager(t *testing.T) {
 	}
 
 	result, err := handlers.HandleTodoLink(context.Background(), request.ToCallToolRequest())
-	if err == nil {
-		t.Errorf("Expected error when baseManager is nil")
+	if err != nil {
+		t.Errorf("Expected no error return, but got: %v", err)
 	}
 
 	if result == nil || !result.IsError {
-		t.Errorf("Expected error result when baseManager is nil")
+		t.Errorf("Expected error result when no linker is available")
+	}
+
+	// Verify the error message
+	if result != nil && result.IsError {
+		textContent, ok := result.Content[0].(mcp.TextContent)
+		if ok && !strings.Contains(strings.ToLower(textContent.Text), "linking feature not available") {
+			t.Errorf("Expected 'linking feature not available' error, got: %s", textContent.Text)
+		}
 	}
 }

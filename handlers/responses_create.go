@@ -16,12 +16,15 @@ func FormatTodoCreateResponse(todo *core.Todo, filePath string) *mcp.CallToolRes
 		"message": fmt.Sprintf("Todo created successfully: %s", todo.ID),
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
+
 	// Add contextual prompts
 	prompt := getCreatePrompts(todo.Type, false)
 	result := string(jsonData) + "\n\n" + prompt
-	
+
 	return mcp.NewToolResultText(result)
 }
 
@@ -50,42 +53,45 @@ func FormatTodoCreateResponseWithHints(todo *core.Todo, filePath string, existin
 		}
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
+
 	// Add contextual prompts
 	prompt := getCreatePrompts(todo.Type, false)
 	result := string(jsonData) + "\n\n" + prompt
-	
+
 	return mcp.NewToolResultText(result)
 }
 
 // FormatTodoCreateMultiResponse formats the response for todo_create_multi
 func FormatTodoCreateMultiResponse(parent *core.Todo, children []*core.Todo) *mcp.CallToolResult {
 	var sb strings.Builder
-	
+
 	sb.WriteString(fmt.Sprintf("Created multi-phase project: %s\n\n", parent.ID))
 	sb.WriteString("📋 Project Structure:\n")
-	
+
 	// Parent
-	sb.WriteString(fmt.Sprintf("[→] %s: %s [%s] [%s]\n", parent.ID, parent.Task, 
+	sb.WriteString(fmt.Sprintf("[→] %s: %s [%s] [%s]\n", parent.ID, parent.Task,
 		strings.ToUpper(parent.Priority), parent.Type))
-	
+
 	// Children
 	for _, child := range children {
 		sb.WriteString(fmt.Sprintf("  └─ %s: %s [%s] [%s]\n", child.ID, child.Task,
 			strings.ToUpper(child.Priority), child.Type))
 	}
-	
+
 	childCount := len(children)
-	sb.WriteString(fmt.Sprintf("\n✅ Successfully created %d todos (1 parent, %d children)\n", 
+	sb.WriteString(fmt.Sprintf("\n✅ Successfully created %d todos (1 parent, %d children)\n",
 		childCount+1, childCount))
-	
+
 	sb.WriteString("\n💡 TIP: Use `todo_read` to see the full hierarchy or `todo_update` to modify individual todos.")
-	
+
 	// Add contextual prompts for multi-phase projects
 	prompt := getCreatePrompts(parent.Type, true)
 	sb.WriteString("\n\n" + prompt)
-	
+
 	return mcp.NewToolResultText(sb.String())
 }
 
@@ -106,28 +112,28 @@ func getCreatePrompts(todoType string, isMultiPhase bool) string {
 			"- Which test scenarios will validate the implementation?\n" +
 			"- Are there any edge cases or error conditions to consider?\n\n" +
 			"Consider using todo_update to add your Test List before implementation."
-	
+
 	case "bug":
 		return "Bug todo created. To effectively resolve this issue:\n\n" +
 			"- Can you reproduce the bug consistently?\n" +
 			"- What is the expected behavior versus actual behavior?\n" +
 			"- Which test would catch this bug in the future?\n\n" +
 			"Start by using todo_update to document reproduction steps."
-	
+
 	case "research":
 		return "Research todo created. To guide your investigation:\n\n" +
 			"- What are the key questions you need to answer?\n" +
 			"- Which resources or documentation should you consult?\n" +
 			"- What would constitute a successful research outcome?\n\n" +
 			"Use todo_update to document findings as you research."
-	
+
 	case "refactor":
 		return "Refactor todo created. To ensure safe code improvements:\n\n" +
 			"- What is the primary goal of this refactoring?\n" +
 			"- Are there existing tests to ensure behavior doesn't change?\n" +
 			"- Which files or components will be affected?\n\n" +
 			"Consider running existing tests first to establish a baseline."
-	
+
 	default:
 		return "Todo created successfully. To make progress:\n\n" +
 			"- What is the first concrete step to take?\n" +
@@ -146,35 +152,35 @@ func getTemplatePrompts(template string) string {
 			"- Add the failing test that reproduces the bug\n" +
 			"- Document your fix approach in the findings section\n\n" +
 			"Begin by using todo_update to fill in the template sections."
-	
+
 	case "feature":
 		return "Feature template applied. To develop effectively:\n\n" +
 			"- Define clear acceptance criteria in the checklist\n" +
 			"- List all test scenarios in the Test List section\n" +
 			"- Consider edge cases and error handling\n\n" +
 			"Start with todo_update to customize the template for your specific feature."
-	
+
 	case "research":
 		return "Research template applied. To conduct thorough research:\n\n" +
 			"- List specific questions to answer in the checklist\n" +
 			"- Document sources and references as you find them\n" +
 			"- Summarize key findings and recommendations\n\n" +
 			"Use todo_update to capture research findings as you progress."
-	
+
 	case "refactor":
 		return "Refactor template applied. To refactor safely:\n\n" +
 			"- Document the current state and problems\n" +
 			"- List all affected files and components\n" +
 			"- Ensure test coverage before making changes\n\n" +
 			"Begin by using todo_update to detail the refactoring plan."
-	
+
 	case "tdd-cycle":
 		return "TDD cycle template applied. To follow test-driven development:\n\n" +
 			"- Start with the Test List - what behaviors need testing?\n" +
 			"- Pick one test and follow Red-Green-Refactor cycle\n" +
 			"- Document each phase in the test results section\n\n" +
 			"Use todo_update to track your TDD progress through each cycle."
-	
+
 	default:
 		return "Template applied successfully. To make it your own:\n\n" +
 			"- Review the template sections and customize as needed\n" +
@@ -193,11 +199,14 @@ func FormatTodoTemplateResponse(todo *core.Todo, filePath string, template strin
 		"template": fmt.Sprintf("Applied %s template", template),
 	}
 
-	jsonData, _ := json.MarshalIndent(response, "", "  ")
-	
+	jsonData, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
+
 	// Add contextual prompts for template
 	prompt := getTemplatePrompts(template)
 	result := string(jsonData) + "\n\n" + prompt
-	
+
 	return mcp.NewToolResultText(result)
 }

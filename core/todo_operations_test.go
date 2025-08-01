@@ -28,7 +28,7 @@ func TestReplaceSection_PreservesSections(t *testing.T) {
 	// Count initial sections
 	content1, _ := manager.ReadTodoContent(todo.ID)
 	initialSections := strings.Count(content1, "## ")
-	
+
 	// Replace findings
 	err = manager.UpdateTodo(todo.ID, "findings", "replace", "New findings content", nil)
 	if err != nil {
@@ -38,17 +38,17 @@ func TestReplaceSection_PreservesSections(t *testing.T) {
 	// Read after replace
 	content2, _ := manager.ReadTodoContent(todo.ID)
 	afterSections := strings.Count(content2, "## ")
-	
+
 	// Check section count
 	if afterSections != initialSections {
 		t.Errorf("Section count changed from %d to %d", initialSections, afterSections)
 	}
-	
+
 	// Check Web Searches specifically (was being deleted due to bug)
 	if !strings.Contains(content2, "## Web Searches") {
 		t.Error("Web Searches section was deleted")
 	}
-	
+
 	// Check for duplication
 	count := strings.Count(content2, "New findings content")
 	if count != 1 {
@@ -90,7 +90,7 @@ func TestReplaceSection_EmptyContent(t *testing.T) {
 	if !strings.Contains(content, "## Findings & Research") {
 		t.Error("Section header was removed")
 	}
-	
+
 	// Verify old content is gone
 	if strings.Contains(content, "Initial content") {
 		t.Error("Old content was not removed")
@@ -130,11 +130,11 @@ func TestPrependToSection_Basic(t *testing.T) {
 	content, _ := manager.ReadTodoContent(todo.ID)
 	prependIdx := strings.Index(content, "Prepended content")
 	existingIdx := strings.Index(content, "Existing content")
-	
+
 	if prependIdx == -1 || existingIdx == -1 {
 		t.Fatal("Content not found")
 	}
-	
+
 	if prependIdx > existingIdx {
 		t.Error("Prepended content appears after existing content")
 	}

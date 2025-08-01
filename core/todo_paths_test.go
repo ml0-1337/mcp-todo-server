@@ -207,7 +207,7 @@ func TestScanDateRange(t *testing.T) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			t.Fatal(err)
 		}
-		
+
 		// Create a todo file
 		todoFile := filepath.Join(dir, "todo-"+filepath.Base(date)+".md")
 		if err := os.WriteFile(todoFile, []byte("content"), 0644); err != nil {

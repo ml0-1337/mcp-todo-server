@@ -1,3 +1,5 @@
+// Package main provides the entry point for the MCP Todo Server.
+// It supports both STDIO and HTTP transport modes for the Model Context Protocol.
 package main
 
 import (
@@ -14,45 +16,56 @@ import (
 	"github.com/user/mcp-todo-server/server"
 )
 
-const Version = "2.1.0"
+const (
+	// Version is the current version of the MCP Todo Server
+	Version = "2.1.0"
+
+	// stdioTransport indicates STDIO transport mode
+	stdioTransport = "stdio"
+
+	// httpTransport indicates HTTP transport mode
+	httpTransport = "http"
+)
+
+// isSTDIOMode checks if the server is running in STDIO transport mode
+func isSTDIOMode(args []string) bool {
+	for i, arg := range args {
+		if arg == "-transport" && i+1 < len(args) && args[i+1] == stdioTransport {
+			return true
+		}
+		if arg == "-transport="+stdioTransport {
+			return true
+		}
+	}
+	return false
+}
 
 func main() {
 	// Check if running in STDIO mode before ANY output
-	args := os.Args[1:]
-	isStdio := false
-	for i, arg := range args {
-		if arg == "-transport" && i+1 < len(args) && args[i+1] == "stdio" {
-			isStdio = true
-			break
-		}
-		if arg == "-transport=stdio" {
-			isStdio = true
-			break
-		}
-	}
-	
+	isStdio := isSTDIOMode(os.Args[1:])
+
 	// Redirect ALL logging to stderr immediately if STDIO mode
 	if isStdio {
 		log.SetOutput(os.Stderr)
 	}
-	
+
 	// Now safe to log
 	logging.Logf("MCP Todo Server starting...")
-	
+
 	// Parse command line flags
 	var (
-		transport        = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
-		port             = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
-		host             = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
-		version          = flag.Bool("version", false, "Print version and exit")
-		sessionTimeout   = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
-		managerTimeout   = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
+		transport         = flag.String("transport", "http", "Transport type: stdio, http (default: http)")
+		port              = flag.String("port", "8080", "Port for HTTP transport (default: 8080)")
+		host              = flag.String("host", "localhost", "Host for HTTP transport (default: localhost)")
+		version           = flag.Bool("version", false, "Print version and exit")
+		sessionTimeout    = flag.Duration("session-timeout", 7*24*time.Hour, "Session timeout duration (default: 7d, 0 to disable)")
+		managerTimeout    = flag.Duration("manager-timeout", 24*time.Hour, "Manager set timeout duration (default: 24h, 0 to disable)")
 		heartbeatInterval = flag.Duration("heartbeat-interval", 30*time.Second, "HTTP heartbeat interval (default: 30s, 0 to disable)")
-		noAutoArchive    = flag.Bool("no-auto-archive", false, "Disable automatic archiving when todo status is set to completed")
-		requestTimeout   = flag.Duration("request-timeout", 30*time.Second, "HTTP request timeout (default: 30s, 0 to disable)")
-		httpReadTimeout  = flag.Duration("http-read-timeout", 60*time.Second, "HTTP server read timeout (default: 60s)")
-		httpWriteTimeout = flag.Duration("http-write-timeout", 60*time.Second, "HTTP server write timeout (default: 60s)")
-		httpIdleTimeout  = flag.Duration("http-idle-timeout", 120*time.Second, "HTTP server idle timeout (default: 120s)")
+		noAutoArchive     = flag.Bool("no-auto-archive", false, "Disable automatic archiving when todo status is set to completed")
+		requestTimeout    = flag.Duration("request-timeout", 30*time.Second, "HTTP request timeout (default: 30s, 0 to disable)")
+		httpReadTimeout   = flag.Duration("http-read-timeout", 60*time.Second, "HTTP server read timeout (default: 60s)")
+		httpWriteTimeout  = flag.Duration("http-write-timeout", 60*time.Second, "HTTP server write timeout (default: 60s)")
+		httpIdleTimeout   = flag.Duration("http-idle-timeout", 120*time.Second, "HTTP server idle timeout (default: 120s)")
 	)
 	flag.Parse()
 
@@ -72,17 +85,17 @@ func main() {
 	// For HTTP transport, acquire exclusive lock to prevent multiple instances
 	var serverLock *lock.ServerLock
 	var err error
-	if *transport == "http" {
+	if *transport == httpTransport {
 		serverLock, err = lock.NewServerLock(*port)
 		if err != nil {
 			log.Fatalf("Failed to create server lock: %v", err)
 		}
-		
+
 		err = serverLock.TryLock()
 		if err != nil {
 			log.Fatalf("Failed to acquire server lock: %v", err)
 		}
-		
+
 		logging.Logf("Acquired exclusive lock for port %s", *port)
 	}
 
@@ -100,7 +113,9 @@ func main() {
 	)
 	if err != nil {
 		if serverLock != nil {
-			serverLock.Unlock()
+			if unlockErr := serverLock.Unlock(); unlockErr != nil {
+				log.Printf("Warning: failed to unlock server lock: %v", unlockErr)
+			}
 		}
 		log.Fatalf("Failed to create server: %v", err)
 	}
@@ -113,14 +128,14 @@ func main() {
 	errChan := make(chan error, 1)
 	go func() {
 		switch *transport {
-		case "stdio":
+		case stdioTransport:
 			// Log to stderr in STDIO mode
 			logging.Logf("Starting MCP Todo Server v%s (STDIO mode)...", Version)
 			logging.Logf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)
 			if err := todoServer.StartStdio(); err != nil {
 				errChan <- err
 			}
-		case "http":
+		case httpTransport:
 			addr := fmt.Sprintf("%s:%s", *host, *port)
 			logging.Logf("Starting MCP Todo Server v%s (HTTP mode) on %s...", Version, addr)
 			logging.Logf("Session timeout: %v, Manager timeout: %v, Heartbeat: %v", *sessionTimeout, *managerTimeout, *heartbeatInterval)

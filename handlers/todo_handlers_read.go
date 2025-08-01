@@ -39,7 +39,7 @@ func (h *TodoHandlers) HandleTodoRead(ctx context.Context, request mcp.CallToolR
 	}
 
 	// Handle list todos
-	fmt.Fprintf(os.Stderr, "HandleTodoRead: Listing todos with status=%s, priority=%s, days=%d\n", 
+	fmt.Fprintf(os.Stderr, "HandleTodoRead: Listing todos with status=%s, priority=%s, days=%d\n",
 		params.Filter.Status, params.Filter.Priority, params.Filter.Days)
 	todos, err := manager.ListTodos(
 		params.Filter.Status,

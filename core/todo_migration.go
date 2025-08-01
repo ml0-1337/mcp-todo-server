@@ -2,24 +2,24 @@ package core
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
 // MigrationStats tracks migration progress
 type MigrationStats struct {
-	Total     int
-	Migrated  int
-	Failed    int
-	Skipped   int
-	Errors    []error
+	Total    int
+	Migrated int
+	Failed   int
+	Skipped  int
+	Errors   []error
 }
 
 // MigrateToDateStructure migrates all todos from flat to date-based structure
@@ -51,16 +51,20 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 	// Step 2: Create new todos directory
 	if err := os.MkdirAll(oldTodosDir, 0755); err != nil {
 		// Attempt rollback
-		os.Rename(tempDir, oldTodosDir)
+		if renameErr := os.Rename(tempDir, oldTodosDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to rollback migration: %v\n", renameErr)
+		}
 		return nil, interrors.Wrap(err, "failed to create new todos directory")
 	}
 
 	// Step 3: Read all files from temp directory
-	files, err := ioutil.ReadDir(tempDir)
+	files, err := os.ReadDir(tempDir)
 	if err != nil {
 		// Attempt rollback
 		os.RemoveAll(oldTodosDir)
-		os.Rename(tempDir, oldTodosDir)
+		if renameErr := os.Rename(tempDir, oldTodosDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to rollback migration: %v\n", renameErr)
+		}
 		return nil, interrors.Wrap(err, "failed to read migration directory")
 	}
 
@@ -78,9 +82,9 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		}
 
 		wg.Add(1)
-		go func(f os.FileInfo) {
+		go func(f os.DirEntry) {
 			defer wg.Done()
-			
+
 			err := tm.migrateFile(tempDir, f.Name())
 			if err != nil {
 				errChan <- fmt.Errorf("%s: %w", f.Name(), err)
@@ -117,8 +121,10 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		fmt.Fprintf(os.Stderr, "Migration had failures, performing rollback...\n")
 		// Rollback: restore original directory
 		os.RemoveAll(oldTodosDir)
-		os.Rename(tempDir, oldTodosDir)
-		return stats, interrors.NewOperationError("migrate", "todos", 
+		if renameErr := os.Rename(tempDir, oldTodosDir); renameErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to rollback migration after errors: %v\n", renameErr)
+		}
+		return stats, interrors.NewOperationError("migrate", "todos",
 			fmt.Sprintf("migration failed: %d errors", stats.Failed), nil)
 	}
 
@@ -127,7 +133,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 		fmt.Fprintf(os.Stderr, "Warning: failed to remove temp directory: %v\n", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Migration complete: %d migrated, %d failed, %d skipped\n", 
+	fmt.Fprintf(os.Stderr, "Migration complete: %d migrated, %d failed, %d skipped\n",
 		stats.Migrated, stats.Failed, stats.Skipped)
 
 	// Clear path cache after migration
@@ -138,7 +144,7 @@ func (tm *TodoManager) MigrateToDateStructure() (*MigrationStats, error) {
 
 // needsMigration checks if there are any flat structure todos
 func (tm *TodoManager) needsMigration(todosDir string) (bool, error) {
-	files, err := ioutil.ReadDir(todosDir)
+	files, err := os.ReadDir(todosDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -159,9 +165,9 @@ func (tm *TodoManager) needsMigration(todosDir string) (bool, error) {
 // migrateFile migrates a single todo file to date-based structure
 func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 	sourcePath := filepath.Join(sourceDir, filename)
-	
+
 	// Read the file
-	content, err := ioutil.ReadFile(sourcePath)
+	content, err := os.ReadFile(sourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
@@ -181,7 +187,7 @@ func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 		} else {
 			todo.Started = info.ModTime()
 		}
-		
+
 		// Update the content with the new started date
 		content, err = tm.updateStartedDateInContent(string(content), todo.Started)
 		if err != nil {
@@ -199,7 +205,7 @@ func (tm *TodoManager) migrateFile(sourceDir, filename string) error {
 	}
 
 	// Write file to new location
-	if err := ioutil.WriteFile(destPath, content, 0644); err != nil {
+	if err := os.WriteFile(destPath, content, 0600); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

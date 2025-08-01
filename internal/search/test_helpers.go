@@ -2,12 +2,11 @@ package search
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 	"gopkg.in/yaml.v3"
 )
@@ -26,7 +25,7 @@ func NewTestTodoManager(basePath string) *TestTodoManager {
 func (tm *TestTodoManager) CreateTodo(task, priority, todoType string) (*domain.Todo, error) {
 	// Generate ID
 	id := generateTestID(task)
-	
+
 	// Create todo
 	todo := &domain.Todo{
 		ID:       id,
@@ -36,12 +35,12 @@ func (tm *TestTodoManager) CreateTodo(task, priority, todoType string) (*domain.
 		Priority: priority,
 		Type:     todoType,
 	}
-	
+
 	// Write to file
 	if err := tm.writeTodo(todo); err != nil {
 		return nil, err
 	}
-	
+
 	return todo, nil
 }
 
@@ -49,13 +48,13 @@ func (tm *TestTodoManager) CreateTodo(task, priority, todoType string) (*domain.
 func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 	// Ensure directory exists
 	dir := filepath.Join(tm.basePath, ".claude", "todos")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	// Create the todo file with frontmatter
 	filename := filepath.Join(dir, fmt.Sprintf("%s.md", todo.ID))
-	
+
 	// Create frontmatter
 	frontmatter := map[string]interface{}{
 		"todo_id":  todo.ID,
@@ -64,11 +63,11 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 		"priority": todo.Priority,
 		"type":     todo.Type,
 	}
-	
+
 	if !todo.Completed.IsZero() {
 		frontmatter["completed"] = todo.Completed.Format(time.RFC3339)
 	}
-	
+
 	// Marshal the frontmatter
 	yamlData, err := yaml.Marshal(frontmatter)
 	if err != nil {
@@ -80,7 +79,7 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 		string(yamlData), todo.Task)
 
 	// Write file
-	if err := ioutil.WriteFile(filename, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write todo file: %w", err)
 	}
 
@@ -90,14 +89,14 @@ func (tm *TestTodoManager) writeTodo(todo *domain.Todo) error {
 // ReadTodo reads a todo from disk
 func (tm *TestTodoManager) ReadTodo(id string) (*domain.Todo, error) {
 	filePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("todo not found: %s", id)
 		}
 		return nil, fmt.Errorf("failed to read todo file: %w", err)
 	}
-	
+
 	return parseTodoFile(id, string(content))
 }
 
@@ -105,11 +104,11 @@ func (tm *TestTodoManager) ReadTodo(id string) (*domain.Todo, error) {
 func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
 	// Read the current file content
 	filePath := filepath.Join(tm.basePath, ".claude", "todos", id+".md")
-	fileContent, err := ioutil.ReadFile(filePath)
+	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read todo file: %w", err)
 	}
-	
+
 	// If we're appending content to a section
 	if operation == "append" && section != "" && content != "" {
 		// Find and update the section
@@ -129,16 +128,16 @@ func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, me
 				break
 			}
 		}
-		return ioutil.WriteFile(filePath, fileContent, 0644)
+		return os.WriteFile(filePath, fileContent, 0600)
 	}
-	
+
 	// If we're updating metadata, read the todo and update it
 	if metadata != nil {
 		todo, err := tm.ReadTodo(id)
 		if err != nil {
 			return err
 		}
-		
+
 		// Update metadata
 		for key, value := range metadata {
 			switch key {
@@ -162,11 +161,11 @@ func (tm *TestTodoManager) UpdateTodo(id, section, operation, content string, me
 				}
 			}
 		}
-		
+
 		// Write the updated todo back
 		return tm.writeTodo(todo)
 	}
-	
+
 	return nil
 }
 

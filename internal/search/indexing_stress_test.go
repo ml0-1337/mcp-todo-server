@@ -16,16 +16,16 @@ func TestInitialIndexingWithRealisticFiles(t *testing.T) {
 	tempDir := t.TempDir()
 	todosDir := filepath.Join(tempDir, ".claude", "todos")
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-	
+
 	err := os.MkdirAll(todosDir, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create todos directory: %v", err)
 	}
-	
+
 	// Create 65 realistic todo files with substantial content
 	t.Logf("Creating 65 realistic todo files...")
 	createStart := time.Now()
-	
+
 	totalSize := int64(0)
 	for i := 0; i < 65; i++ {
 		content := generateRealisticTodoContent(i)
@@ -36,35 +36,35 @@ func TestInitialIndexingWithRealisticFiles(t *testing.T) {
 		}
 		totalSize += int64(len(content))
 	}
-	
+
 	createTime := time.Since(createStart)
 	avgSize := totalSize / 65
-	t.Logf("Created 65 todo files in %v (avg size: %d bytes, total: %d MB)", 
+	t.Logf("Created 65 todo files in %v (avg size: %d bytes, total: %d MB)",
 		createTime, avgSize, totalSize/1024/1024)
-	
+
 	// Time the initial indexing
 	indexStart := time.Now()
-	
+
 	engine, err := NewEngine(indexPath, todosDir)
 	if err != nil {
 		t.Fatalf("Failed to create search engine: %v", err)
 	}
 	defer engine.Close()
-	
+
 	indexTime := time.Since(indexStart)
-	t.Logf("Initial indexing of 65 todos took %v (%.2f todos/sec)", 
+	t.Logf("Initial indexing of 65 todos took %v (%.2f todos/sec)",
 		indexTime, float64(65)/indexTime.Seconds())
-	
+
 	// Verify all todos were indexed
 	count, err := engine.GetIndexedCount()
 	if err != nil {
 		t.Fatalf("Failed to get indexed count: %v", err)
 	}
-	
+
 	if count != 65 {
 		t.Errorf("Expected 65 indexed documents, got %d", count)
 	}
-	
+
 	// Log performance metrics
 	if indexTime > 5*time.Second {
 		t.Logf("WARNING: Indexing took longer than 5 seconds: %v", indexTime)
@@ -80,7 +80,7 @@ func generateRealisticTodoContent(index int) string {
 	findings := generateLargeSection("Findings", index, 3)
 	webSearches := generateLargeSection("Web Searches", index, 2)
 	testCases := generateLargeSection("Test Cases", index, 2)
-	
+
 	// Build the complete todo content
 	return fmt.Sprintf(`---
 todo_id: realistic-todo-%05d
@@ -268,15 +268,15 @@ After investigating the codebase, I found several key insights:
 		generateModuleName((index+1)%10),
 		generateModuleName((index+2)%10),
 		generateModuleName((index+3)%10),
-		75 + index%20,
-		80 + index%15,
-		70 + index%25,
-		60 + index%30,
+		75+index%20,
+		80+index%15,
+		70+index%25,
+		60+index%30,
 		(index%9+1)*10,
 		(index%9+1)*100,
 		(index%9+1)*50,
 		(index%9+1)*10,
 	)
-	
+
 	return strings.Repeat(baseContent, repeatCount)
 }

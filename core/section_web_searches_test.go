@@ -2,7 +2,6 @@ package core
 
 import (
 	"io/ioutil"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -121,8 +120,11 @@ func TestNewTodosIncludeWebSearchesSection(t *testing.T) {
 		t.Fatalf("Failed to create todo: %v", err)
 	}
 
-	// Read the todo file
-	filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
+	// Read the todo file using ResolveTodoPath to handle date-based structure
+	filePath, err := ResolveTodoPath(tempDir, todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to resolve todo path: %v", err)
+	}
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("Failed to read todo file: %v", err)

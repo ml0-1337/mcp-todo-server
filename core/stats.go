@@ -1,14 +1,13 @@
 package core
 
 import (
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -36,78 +35,51 @@ func NewStatsEngine(manager *TodoManager) *StatsEngine {
 	}
 }
 
-// CalculateCompletionRatesByType calculates completion percentage by todo type
-func (se *StatsEngine) CalculateCompletionRatesByType() (map[string]float64, error) {
+// calculateCompletionRates is a generic helper for calculating completion rates by a given field
+func (se *StatsEngine) calculateCompletionRates(getField func(*Todo) string, defaultValue string) (map[string]float64, error) {
 	todos, err := se.getAllTodos()
 	if err != nil {
 		return nil, err
 	}
 
-	// Count by type and status
-	totalByType := make(map[string]int)
-	completedByType := make(map[string]int)
+	// Count by field and status
+	totalByField := make(map[string]int)
+	completedByField := make(map[string]int)
 
 	for _, todo := range todos {
-		todoType := todo.Type
-		if todoType == "" {
-			todoType = "unknown"
+		fieldValue := getField(todo)
+		if fieldValue == "" {
+			fieldValue = defaultValue
 		}
 
-		totalByType[todoType]++
+		totalByField[fieldValue]++
 		if todo.Status == "completed" {
-			completedByType[todoType]++
+			completedByField[fieldValue]++
 		}
 	}
 
 	// Calculate rates
 	rates := make(map[string]float64)
-	for todoType, total := range totalByType {
+	for fieldValue, total := range totalByField {
 		if total > 0 {
-			completed := completedByType[todoType]
+			completed := completedByField[fieldValue]
 			rate := float64(completed) / float64(total) * 100.0
 			// Round to 1 decimal place
-			rates[todoType] = math.Round(rate*10) / 10
+			rates[fieldValue] = math.Round(rate*10) / 10
 		}
 	}
 
 	return rates, nil
 }
 
+// CalculateCompletionRatesByType calculates completion percentage by todo type
+func (se *StatsEngine) CalculateCompletionRatesByType() (map[string]float64, error) {
+	return se.calculateCompletionRates(func(t *Todo) string { return t.Type }, "unknown")
+}
+
 // CalculateCompletionRatesByPriority calculates completion percentage by priority
 func (se *StatsEngine) CalculateCompletionRatesByPriority() (map[string]float64, error) {
-	todos, err := se.getAllTodos()
-	if err != nil {
-		return nil, err
-	}
-
-	// Count by priority and status
-	totalByPriority := make(map[string]int)
-	completedByPriority := make(map[string]int)
-
-	for _, todo := range todos {
-		priority := todo.Priority
-		if priority == "" {
-			priority = "medium"
-		}
-
-		totalByPriority[priority]++
-		if todo.Status == "completed" {
-			completedByPriority[priority]++
-		}
-	}
-
-	// Calculate rates
-	rates := make(map[string]float64)
-	for priority, total := range totalByPriority {
-		if total > 0 {
-			completed := completedByPriority[priority]
-			rate := float64(completed) / float64(total) * 100.0
-			// Round to 1 decimal place
-			rates[priority] = math.Round(rate*10) / 10
-		}
-	}
-
-	return rates, nil
+	return se.calculateCompletionRates(func(t *Todo) string { return t.Priority }, "medium")
 }
 
 // CalculateAverageCompletionTime calculates average time from start to completion
@@ -145,8 +117,11 @@ func (se *StatsEngine) CalculateTestCoverage(todoID string) (float64, error) {
 	}
 
 	// Read the full content to get test section
-	todoPath := filepath.Join(se.manager.basePath, todoID+".md")
-	content, err := ioutil.ReadFile(todoPath)
+	todoPath, err := ResolveTodoPath(se.manager.basePath, todoID)
+	if err != nil {
+		return 0, err
+	}
+	content, err := os.ReadFile(todoPath)
 	if err != nil {
 		return 0, err
 	}
@@ -278,7 +253,7 @@ func (se *StatsEngine) generateStatsFromTodos(todos []*Todo) (*TodoStats, error)
 	// Calculate completion rates only from filtered todos
 	completedByType := make(map[string]int)
 	totalByType := make(map[string]int)
-	
+
 	for _, todo := range todos {
 		todoType := todo.Type
 		if todoType == "" {
@@ -322,32 +297,46 @@ func (se *StatsEngine) generateStatsFromTodos(todos []*Todo) (*TodoStats, error)
 
 // Helper to get all todos
 func (se *StatsEngine) getAllTodos() ([]*Todo, error) {
-	// Read all .md files in the todos directory
+	// Read all .md files in the todos directory tree
 	todosDir := filepath.Join(se.manager.basePath, ".claude", "todos")
-	files, err := ioutil.ReadDir(todosDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// No todos directory exists yet, return empty slice
-			return []*Todo{}, nil
-		}
-		return nil, interrors.Wrap(err, "failed to read todos directory")
-	}
 
 	var todos []*Todo
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".md") {
+
+	// Walk through all subdirectories
+	err := filepath.Walk(todosDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			// If the todos directory doesn't exist, return empty slice
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+
+		// Skip directories
+		if info.IsDir() {
+			return nil
+		}
+
+		// Process only .md files
+		if strings.HasSuffix(info.Name(), ".md") {
 			// Extract ID from filename
-			todoID := strings.TrimSuffix(file.Name(), ".md")
+			todoID := strings.TrimSuffix(info.Name(), ".md")
 
 			// Read the todo
 			todo, err := se.manager.ReadTodo(todoID)
 			if err != nil {
 				// Skip files that can't be read as todos
-				continue
+				return nil
 			}
 
 			todos = append(todos, todo)
 		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, interrors.Wrap(err, "failed to walk todos directory")
 	}
 
 	return todos, nil

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 	"strings"
@@ -12,10 +13,10 @@ import (
 func extractSectionContents(content string) map[string]string {
 	sections := make(map[string]string)
 	lines := strings.Split(content, "\n")
-	
+
 	currentSection := ""
 	var sectionContent strings.Builder
-	
+
 	for _, line := range lines {
 		// Check if it's a section header
 		if strings.HasPrefix(line, "## ") {
@@ -23,7 +24,7 @@ func extractSectionContents(content string) map[string]string {
 			if currentSection != "" {
 				sections[currentSection] = sectionContent.String()
 			}
-			
+
 			// Start new section
 			currentSection = strings.TrimSpace(strings.TrimPrefix(line, "##"))
 			sectionContent.Reset()
@@ -32,19 +33,19 @@ func extractSectionContents(content string) map[string]string {
 			sectionContent.WriteString(line + "\n")
 		}
 	}
-	
+
 	// Save last section
 	if currentSection != "" {
 		sections[currentSection] = sectionContent.String()
 	}
-	
+
 	// Normalize section keys
 	normalized := make(map[string]string)
 	for title, content := range sections {
 		key := normalizeKey(title)
 		normalized[key] = content
 	}
-	
+
 	return normalized
 }
 
@@ -143,6 +144,9 @@ func formatTodosFullWithContent(todos []*core.Todo, contents map[string]string) 
 		results = append(results, data)
 	}
 
-	jsonData, _ := json.MarshalIndent(results, "", "  ")
+	jsonData, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %v", err))
+	}
 	return mcp.NewToolResultText(string(jsonData))
 }

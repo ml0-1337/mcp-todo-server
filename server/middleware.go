@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	ctxkeys "github.com/user/mcp-todo-server/internal/context"
 	"github.com/user/mcp-todo-server/internal/logging"
 )
@@ -35,23 +35,23 @@ func NewSessionManager() *SessionManager {
 func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string) *SessionInfo {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Check if session ID already exists
 	if session, exists := sm.sessions[sessionID]; exists {
 		// Update last activity
 		session.LastActivity = now
-		
+
 		// Update working directory if provided and different
 		if workingDir != "" && session.WorkingDirectory != workingDir {
-			logging.Infof("Updating working directory for session %s: %s -> %s", 
+			logging.Infof("Updating working directory for session %s: %s -> %s",
 				sessionID, session.WorkingDirectory, workingDir)
 			session.WorkingDirectory = workingDir
 		}
 		return session
 	}
-	
+
 	// Create new session
 	session := &SessionInfo{
 		ID:               sessionID,
@@ -59,7 +59,7 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 		LastActivity:     now,
 	}
 	sm.sessions[sessionID] = session
-	
+
 	logging.Infof("Created new session %s with working directory: %s", sessionID, workingDir)
 	return session
 }
@@ -68,7 +68,7 @@ func (sm *SessionManager) GetOrCreateSession(sessionID string, workingDir string
 func (sm *SessionManager) RemoveSession(sessionID string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if _, exists := sm.sessions[sessionID]; exists {
 		delete(sm.sessions, sessionID)
 		logging.Infof("Removed session %s", sessionID)
@@ -79,10 +79,10 @@ func (sm *SessionManager) RemoveSession(sessionID string) {
 func (sm *SessionManager) CleanupStaleSessions(inactivityTimeout time.Duration) int {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	now := time.Now()
 	removedCount := 0
-	
+
 	for id, session := range sm.sessions {
 		if now.Sub(session.LastActivity) > inactivityTimeout {
 			delete(sm.sessions, id)
@@ -90,11 +90,11 @@ func (sm *SessionManager) CleanupStaleSessions(inactivityTimeout time.Duration) 
 			logging.Infof("Removed stale session %s (inactive for %v)", id, now.Sub(session.LastActivity))
 		}
 	}
-	
+
 	if removedCount > 0 {
 		logging.Infof("Cleaned up %d stale sessions", removedCount)
 	}
-	
+
 	return removedCount
 }
 
@@ -109,7 +109,7 @@ func (sm *SessionManager) GetActiveSessions() int {
 func (sm *SessionManager) GetSessionsForDirectory(workingDir string) []*SessionInfo {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	var sessions []*SessionInfo
 	for _, session := range sm.sessions {
 		if session.WorkingDirectory == workingDir {
@@ -119,15 +119,14 @@ func (sm *SessionManager) GetSessionsForDirectory(workingDir string) []*SessionI
 	return sessions
 }
 
-
 // GetSessionStats returns detailed session statistics
 func (sm *SessionManager) GetSessionStats() map[string]interface{} {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	stats := make(map[string]interface{})
 	stats["total_sessions"] = len(sm.sessions)
-	
+
 	// Count sessions per directory
 	dirCount := make(map[string]int)
 	for _, session := range sm.sessions {
@@ -136,7 +135,7 @@ func (sm *SessionManager) GetSessionStats() map[string]interface{} {
 		}
 	}
 	stats["sessions_per_directory"] = dirCount
-	
+
 	return stats
 }
 
@@ -146,25 +145,25 @@ func HTTPMiddleware(sessionManager *SessionManager) func(http.Handler) http.Hand
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Log incoming request details
 			logging.Connectionf("%s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-			
+
 			// Extract working directory from header
 			workingDir := r.Header.Get("X-Working-Directory")
 			if workingDir != "" {
 				logging.Headerf("X-Working-Directory: %s", workingDir)
 			}
-			
+
 			// Extract session ID from header
 			sessionID := r.Header.Get("Mcp-Session-Id")
 			if sessionID != "" {
 				logging.Headerf("Mcp-Session-Id: %s", sessionID)
 			}
-			
+
 			// Log other relevant headers
 			userAgent := r.Header.Get("User-Agent")
 			if userAgent != "" {
 				logging.Headerf("User-Agent: %s", userAgent)
 			}
-			
+
 			// If we have both, manage the session
 			if sessionID != "" && workingDir != "" {
 				session := sessionManager.GetOrCreateSession(sessionID, workingDir)
@@ -189,12 +188,12 @@ func HTTPMiddleware(sessionManager *SessionManager) func(http.Handler) http.Hand
 					sessionManager.mu.Unlock()
 				}
 			}
-			
+
 			// Handle DELETE requests for session cleanup
 			if r.Method == http.MethodDelete && sessionID != "" {
 				sessionManager.RemoveSession(sessionID)
 			}
-			
+
 			// Call the next handler
 			next.ServeHTTP(w, r)
 		})
@@ -220,6 +219,7 @@ type StreamableHTTPServerWrapper struct {
 	sessionTimeout time.Duration
 	cleanupStop    chan struct{}
 	cleanupDone    chan struct{}
+	stopOnce       sync.Once
 }
 
 // NewStreamableHTTPServerWrapper creates a new wrapper with middleware
@@ -232,10 +232,10 @@ func NewStreamableHTTPServerWrapper(streamableServer http.Handler, sessionTimeou
 		cleanupStop:    make(chan struct{}),
 		cleanupDone:    make(chan struct{}),
 	}
-	
+
 	// Start cleanup routine
 	go wrapper.cleanupRoutine()
-	
+
 	return wrapper
 }
 
@@ -249,17 +249,17 @@ func (w *StreamableHTTPServerWrapper) ServeHTTP(rw http.ResponseWriter, r *http.
 // cleanupRoutine periodically cleans up stale sessions
 func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 	defer close(w.cleanupDone)
-	
+
 	// Run cleanup every 5 minutes
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	// Use configured session timeout (0 means no cleanup)
 	if w.sessionTimeout == 0 {
 		logging.Infof("Session cleanup disabled (timeout=0)")
 		return
 	}
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -276,22 +276,24 @@ func (w *StreamableHTTPServerWrapper) cleanupRoutine() {
 
 // Stop stops the cleanup routine
 func (w *StreamableHTTPServerWrapper) Stop() {
-	close(w.cleanupStop)
-	<-w.cleanupDone
+	w.stopOnce.Do(func() {
+		close(w.cleanupStop)
+		<-w.cleanupDone
+	})
 }
 
 // LoggingMiddleware logs incoming requests (optional, for debugging)
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logging.Debugf("HTTP %s %s", r.Method, r.URL.Path)
-		
+
 		// Log interesting headers
 		for name, values := range r.Header {
 			if strings.HasPrefix(name, "X-") || strings.HasPrefix(name, "Mcp-") {
 				logging.Debugf("  Header %s: %s", name, strings.Join(values, ", "))
 			}
 		}
-		
+
 		next.ServeHTTP(w, r)
 	})
 }

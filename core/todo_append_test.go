@@ -1,21 +1,21 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 )
 
-// extractSection extracts content from a specific section in the markdown
-func extractSection(content, sectionHeader string) string {
+// extractFindings extracts content from the "Findings & Research" section in the markdown
+func extractFindings(content string) string {
+	sectionHeader := "Findings & Research"
 	lines := strings.Split(content, "\n")
 	sectionStart := -1
 	sectionEnd := len(lines)
-	
+
 	// Find section start
 	for i, line := range lines {
-		if strings.TrimSpace(line) == "## " + sectionHeader {
+		if strings.TrimSpace(line) == "## "+sectionHeader {
 			sectionStart = i + 1
 			// Skip the standard empty line after section header if present
 			if sectionStart < len(lines) && strings.TrimSpace(lines[sectionStart]) == "" {
@@ -24,11 +24,11 @@ func extractSection(content, sectionHeader string) string {
 			break
 		}
 	}
-	
+
 	if sectionStart == -1 {
 		return ""
 	}
-	
+
 	// Find next section
 	for i := sectionStart; i < len(lines); i++ {
 		if strings.HasPrefix(strings.TrimSpace(lines[i]), "## ") {
@@ -40,20 +40,20 @@ func extractSection(content, sectionHeader string) string {
 			break
 		}
 	}
-	
+
 	// Extract content
 	result := strings.Join(lines[sectionStart:sectionEnd], "\n")
-	
+
 	// Trim trailing newlines
 	result = strings.TrimRight(result, "\n")
-	
+
 	return result
 }
 
 // TestAppendToSection_NormalContent tests appending to a section with normal content
 func TestAppendToSection_NormalContent(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestAppendToSection_NormalContent(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "Initial content\n\nAppended content"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%s\n\nBut got:\n%s", expectedContent, findings)
@@ -97,7 +97,7 @@ func TestAppendToSection_NormalContent(t *testing.T) {
 // TestAppendToSection_LeadingEmptyLines tests the bug case where content starts with empty lines
 func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -134,17 +134,17 @@ func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
-	
+	findings := extractFindings(content)
+
 	// Debug: show the raw content
 	t.Logf("Raw content:\n%s", content)
 	t.Logf("Extracted findings:\n%q", findings)
-	
+
 	// The content should be at the end, and extractSection skips the standard empty line after header
 	expectedContent := "Content after empty lines\n\nThis should be at the end"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%q\n\nBut got:\n%q", expectedContent, findings)
-		
+
 		// Show where the content was actually inserted
 		if strings.Contains(findings, "This should be at the end\n\nContent after empty lines") {
 			t.Errorf("BUG CONFIRMED: Content was inserted in the MIDDLE instead of at the END")
@@ -155,7 +155,7 @@ func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 // TestAppendToSection_EmptySection tests appending to an empty section
 func TestAppendToSection_EmptySection(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestAppendToSection_EmptySection(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "First content"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%s\n\nBut got:\n%s", expectedContent, findings)
@@ -193,7 +193,7 @@ func TestAppendToSection_EmptySection(t *testing.T) {
 // TestAppendToSection_TrailingEmptyLines tests appending when content has trailing empty lines
 func TestAppendToSection_TrailingEmptyLines(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestAppendToSection_TrailingEmptyLines(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "Some content\n\nAppended after trailing"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%q\n\nBut got:\n%q", expectedContent, findings)
@@ -238,7 +238,7 @@ func TestAppendToSection_TrailingEmptyLines(t *testing.T) {
 // TestAppendToSection_MixedEmptyLines tests appending when content has empty lines throughout
 func TestAppendToSection_MixedEmptyLines(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -273,7 +273,7 @@ func TestAppendToSection_MixedEmptyLines(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "First paragraph\n\n\nSecond paragraph\n\nThird paragraph\n\nFourth paragraph"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%q\n\nBut got:\n%q", expectedContent, findings)
@@ -283,7 +283,7 @@ func TestAppendToSection_MixedEmptyLines(t *testing.T) {
 // TestAppendToSection_MultipleAppends tests multiple consecutive appends
 func TestAppendToSection_MultipleAppends(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -320,8 +320,8 @@ func TestAppendToSection_MultipleAppends(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
-	
+	findings := extractFindings(content)
+
 	// Check that all content appears in the correct order
 	expectedOrder := []string{"First content", "Second append", "Third append", "Fourth append"}
 	lastIndex := -1
@@ -339,7 +339,7 @@ func TestAppendToSection_MultipleAppends(t *testing.T) {
 // TestAppendToSection_BugRegressionWithLeadingEmpty ensures the append bug with leading empty lines stays fixed
 func TestAppendToSection_BugRegressionWithLeadingEmpty(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-regression-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-regression-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -368,15 +368,15 @@ func TestAppendToSection_BugRegressionWithLeadingEmpty(t *testing.T) {
 
 	// Read and verify
 	content, _ := manager.ReadTodoContent(todo.ID)
-	
+
 	// Check that content appears in correct order
 	contentIdx := strings.Index(content, "Content with leading empty")
 	appendIdx := strings.Index(content, "This MUST be at the end")
-	
+
 	if contentIdx == -1 || appendIdx == -1 {
 		t.Fatal("Content not found in file")
 	}
-	
+
 	if appendIdx < contentIdx {
 		t.Error("REGRESSION: Appended content appears BEFORE original content - bug has returned!")
 	}
@@ -385,7 +385,7 @@ func TestAppendToSection_BugRegressionWithLeadingEmpty(t *testing.T) {
 // TestAppendToSection_RawFileVerification directly verifies the file content
 func TestAppendToSection_RawFileVerification(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -414,14 +414,14 @@ func TestAppendToSection_RawFileVerification(t *testing.T) {
 
 	// Read the raw file
 	todoPath, _ := ResolveTodoPath(tempDir, todo.ID)
-	rawContent, err := ioutil.ReadFile(todoPath)
+	rawContent, err := os.ReadFile(todoPath)
 	if err != nil {
 		t.Fatalf("Failed to read raw file: %v", err)
 	}
 
 	// Check the raw file content
 	fileStr := string(rawContent)
-	
+
 	// Find the findings section
 	findingsIndex := strings.Index(fileStr, "## Findings & Research")
 	if findingsIndex == -1 {
@@ -438,11 +438,11 @@ func TestAppendToSection_RawFileVerification(t *testing.T) {
 
 	// Extract findings section
 	findingsSection := fileStr[findingsIndex:nextSectionIndex]
-	
+
 	// Verify order in raw content
 	contentIndex := strings.Index(findingsSection, "Content with leading empty")
 	appendIndex := strings.Index(findingsSection, "Should be at end")
-	
+
 	if contentIndex == -1 || appendIndex == -1 {
 		t.Errorf("Could not find expected content in section:\n%s", findingsSection)
 	} else if appendIndex < contentIndex {

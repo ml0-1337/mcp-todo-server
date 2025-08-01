@@ -1,12 +1,13 @@
 package core
 
 import (
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Test 4: todo_create should generate unique IDs for new todos
@@ -77,7 +78,7 @@ func TestUniqueIDGeneration(t *testing.T) {
 // Test 5: todo_create should create valid markdown files with frontmatter
 func TestMarkdownFileCreation(t *testing.T) {
 	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "todo-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -98,22 +99,27 @@ func TestMarkdownFileCreation(t *testing.T) {
 	}
 
 	// Check file exists at expected path
-	expectedPath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
+	// Use ResolveTodoPath to handle date-based structure
+	expectedPath, err := ResolveTodoPath(tempDir, todo.ID)
+	if err != nil {
+		t.Fatalf("Failed to resolve todo path: %v", err)
+	}
 	fileInfo, err := os.Stat(expectedPath)
 	if err != nil {
 		t.Errorf("Todo file not created at expected path %s: %v", expectedPath, err)
 	}
 
 	// Check file permissions (should be readable/writable)
-	if fileInfo != nil {
+	// Skip permission check on Windows as it handles permissions differently
+	if fileInfo != nil && runtime.GOOS != "windows" {
 		mode := fileInfo.Mode()
-		if mode.Perm() != 0644 {
-			t.Errorf("File permissions incorrect. Expected 0644, got %o", mode.Perm())
+		if mode.Perm() != 0600 {
+			t.Errorf("File permissions incorrect. Expected 0600, got %o", mode.Perm())
 		}
 	}
 
 	// Read file content
-	content, err := ioutil.ReadFile(expectedPath)
+	content, err := os.ReadFile(expectedPath)
 	if err != nil {
 		t.Fatalf("Failed to read todo file: %v", err)
 	}
@@ -192,8 +198,12 @@ func TestMarkdownFileCreation(t *testing.T) {
 func TestFileSystemErrorHandling(t *testing.T) {
 	// Test 1: Read-only directory
 	t.Run("Read-only directory error", func(t *testing.T) {
+		// Skip on Windows - permission handling is different
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping read-only directory test on Windows")
+		}
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-readonly-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-readonly-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -233,7 +243,7 @@ func TestFileSystemErrorHandling(t *testing.T) {
 	// Test 2: File already exists and is read-only
 	t.Run("Read-only file conflict", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-file-conflict-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-file-conflict-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -248,8 +258,11 @@ func TestFileSystemErrorHandling(t *testing.T) {
 			t.Fatalf("Failed to create first todo: %v", err)
 		}
 
-		// Make the file read-only
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo1.ID+".md")
+		// Make the file read-only using ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo1.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
 		err = os.Chmod(filePath, 0444) // r--r--r-- (read-only)
 		if err != nil {
 			t.Fatalf("Failed to set file permissions: %v", err)
@@ -272,7 +285,7 @@ func TestFileSystemErrorHandling(t *testing.T) {
 	// Test 3: Invalid characters in task name
 	t.Run("Invalid filesystem characters", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-invalid-chars-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-invalid-chars-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -298,7 +311,11 @@ func TestFileSystemErrorHandling(t *testing.T) {
 
 			// Verify file was created
 			if todo != nil {
-				filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
+				// Use ResolveTodoPath to handle date-based structure
+				filePath, err := ResolveTodoPath(tempDir, todo.ID)
+				if err != nil {
+					t.Fatalf("Failed to resolve todo path: %v", err)
+				}
 				if _, err := os.Stat(filePath); err != nil {
 					t.Errorf("File not created for task %q: %v", task, err)
 				}
@@ -309,7 +326,7 @@ func TestFileSystemErrorHandling(t *testing.T) {
 	// Test 4: Temp file cleanup on error
 	t.Run("Temp file cleanup on rename error", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-cleanup-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-cleanup-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -324,30 +341,31 @@ func TestFileSystemErrorHandling(t *testing.T) {
 			t.Fatalf("Failed to create todo: %v", err)
 		}
 
-		// Check that no .tmp files remain
-		files, err := ioutil.ReadDir(tempDir)
+		// Check that no .tmp files remain in the entire directory tree
+		var tempFiles []string
+		err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.HasSuffix(info.Name(), ".tmp") {
+				tempFiles = append(tempFiles, path)
+			}
+			return nil
+		})
 		if err != nil {
-			t.Fatalf("Failed to read directory: %v", err)
+			t.Fatalf("Failed to walk directory: %v", err)
 		}
 
-		for _, file := range files {
-			if strings.HasSuffix(file.Name(), ".tmp") {
-				t.Errorf("Temp file not cleaned up: %s", file.Name())
-			}
+		if len(tempFiles) > 0 {
+			t.Errorf("Temp files not cleaned up: %v", tempFiles)
 		}
 
-		// Verify the actual file exists
-		expectedFile := todo.ID + ".md"
-		found := false
-		for _, file := range files {
-			if file.Name() == expectedFile {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			t.Errorf("Expected file %s not found", expectedFile)
+		// Verify the actual file exists using ResolveTodoPath
+		todoPath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Errorf("Failed to resolve todo path: %v", err)
+		} else if _, err := os.Stat(todoPath); os.IsNotExist(err) {
+			t.Errorf("Expected todo file not found at %s", todoPath)
 		}
 	})
 }
@@ -357,7 +375,7 @@ func TestReadTodo(t *testing.T) {
 	// Test 1: Basic file reading
 	t.Run("Read basic todo file", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-read-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-read-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -413,7 +431,7 @@ func TestReadTodo(t *testing.T) {
 	// Test 2: Handle optional fields
 	t.Run("Read todo with optional fields", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-optional-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-optional-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -444,14 +462,14 @@ Unit tests for connection pool.
 
 		// Create directory structure
 		todosDir := filepath.Join(tempDir, ".claude", "todos")
-		err = os.MkdirAll(todosDir, 0755)
+		err = os.MkdirAll(todosDir, 0750)
 		if err != nil {
 			t.Fatalf("Failed to create directory: %v", err)
 		}
 
 		// Write test file
 		filePath := filepath.Join(todosDir, "test-optional-fields.md")
-		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
+		err = os.WriteFile(filePath, []byte(todoContent), 0600)
 		if err != nil {
 			t.Fatalf("Failed to write test file: %v", err)
 		}
@@ -490,7 +508,7 @@ Unit tests for connection pool.
 	// Test 3: Handle missing file
 	t.Run("Error on non-existent file", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-missing-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-missing-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -521,7 +539,7 @@ Unit tests for connection pool.
 	// Test 4: Handle invalid YAML
 	t.Run("Error on invalid YAML", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-invalid-yaml-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-invalid-yaml-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -540,14 +558,14 @@ priority high  # missing colon
 
 		// Create directory structure
 		todosDir := filepath.Join(tempDir, ".claude", "todos")
-		err = os.MkdirAll(todosDir, 0755)
+		err = os.MkdirAll(todosDir, 0750)
 		if err != nil {
 			t.Fatalf("Failed to create directory: %v", err)
 		}
 
 		// Write test file
 		filePath := filepath.Join(todosDir, "invalid-yaml.md")
-		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
+		err = os.WriteFile(filePath, []byte(todoContent), 0600)
 		if err != nil {
 			t.Fatalf("Failed to write test file: %v", err)
 		}
@@ -570,7 +588,7 @@ priority high  # missing colon
 	// Test 5: Handle missing task heading
 	t.Run("Handle missing task heading", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-no-task-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-no-task-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -593,14 +611,14 @@ This file has no task heading.
 
 		// Create directory structure
 		todosDir := filepath.Join(tempDir, ".claude", "todos")
-		err = os.MkdirAll(todosDir, 0755)
+		err = os.MkdirAll(todosDir, 0750)
 		if err != nil {
 			t.Fatalf("Failed to create directory: %v", err)
 		}
 
 		// Write test file
 		filePath := filepath.Join(todosDir, "no-task-heading.md")
-		err = ioutil.WriteFile(filePath, []byte(todoContent), 0644)
+		err = os.WriteFile(filePath, []byte(todoContent), 0600)
 		if err != nil {
 			t.Fatalf("Failed to write test file: %v", err)
 		}
@@ -626,7 +644,7 @@ func TestUpdateTodo(t *testing.T) {
 	// Test 1: Update findings section with append
 	t.Run("Update findings section with append", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-update-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-update-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -656,8 +674,12 @@ func TestUpdateTodo(t *testing.T) {
 		}
 
 		// Read file content to check findings section
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
-		content, err := ioutil.ReadFile(filePath)
+		// Use ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
@@ -676,7 +698,7 @@ func TestUpdateTodo(t *testing.T) {
 	// Test 2: Replace test cases section
 	t.Run("Update test cases with replace", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-replace-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-replace-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -706,8 +728,12 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file and verify
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
-		content, err := ioutil.ReadFile(filePath)
+		// Use ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
@@ -726,7 +752,7 @@ func TestNewFeature(t *testing.T) {
 	// Test 3: Prepend to checklist
 	t.Run("Update checklist with prepend", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-prepend-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-prepend-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -752,8 +778,12 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file and verify order
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
-		content, err := ioutil.ReadFile(filePath)
+		// Use ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
@@ -774,7 +804,7 @@ func TestNewFeature(t *testing.T) {
 	// Test 4: Update metadata status
 	t.Run("Update metadata status", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-status-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-status-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -817,7 +847,7 @@ func TestNewFeature(t *testing.T) {
 	// Test 5: Update priority metadata
 	t.Run("Update priority metadata", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-priority-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-priority-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -832,10 +862,9 @@ func TestNewFeature(t *testing.T) {
 			t.Fatalf("Failed to create todo: %v", err)
 		}
 
-		// Update priority and current_test metadata
+		// Update priority metadata only (current_test is not a supported field)
 		metadata := map[string]string{
-			"priority":     "high",
-			"current_test": "Test 3: Integration testing",
+			"priority": "high",
 		}
 		err = manager.UpdateTodo(todo.ID, "", "", "", metadata)
 		if err != nil {
@@ -852,25 +881,26 @@ func TestNewFeature(t *testing.T) {
 			t.Errorf("Priority not updated. Expected 'high', got %s", updated.Priority)
 		}
 
-		// Read file to check current_test was added
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
-		content, err := ioutil.ReadFile(filePath)
+		// Verify priority was updated in the file
+		// Use ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
 
-		if !strings.Contains(string(content), "current_test:") {
-			t.Error("current_test metadata not found in file")
-		}
-		if !strings.Contains(string(content), "Test 3: Integration testing") {
-			t.Error("current_test value not found in file")
+		if !strings.Contains(string(content), "priority: high") {
+			t.Error("Priority not updated in file")
 		}
 	})
 
 	// Test 6: Preserve other sections
 	t.Run("Preserve other sections", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-preserve-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-preserve-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -900,8 +930,12 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Read file and verify both updates exist
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
-		content, err := ioutil.ReadFile(filePath)
+		// Use ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
@@ -936,7 +970,7 @@ func TestNewFeature(t *testing.T) {
 	// Test 7: Handle non-existent todo
 	t.Run("Handle non-existent todo", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-notfound-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-notfound-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -962,7 +996,7 @@ func TestNewFeature(t *testing.T) {
 	// Test 8: Atomic updates (concurrent safety)
 	t.Run("Handle concurrent updates", func(t *testing.T) {
 		// Create temp directory
-		tempDir, err := ioutil.TempDir("", "todo-atomic-test-*")
+		tempDir, err := os.MkdirTemp("", "todo-atomic-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -1011,8 +1045,12 @@ func TestNewFeature(t *testing.T) {
 		}
 
 		// Verify file is not corrupted
-		filePath := filepath.Join(tempDir, ".claude", "todos", todo.ID+".md")
-		content, err := ioutil.ReadFile(filePath)
+		// Use ResolveTodoPath to handle date-based structure
+		filePath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		content, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -139,8 +139,8 @@ func TestIsArchived(t *testing.T) {
 	})
 
 	t.Run("Archived todo is detected", func(t *testing.T) {
-		// Create archive directory
-		archiveDir := filepath.Join(tempDir, "archive", "2025-Q1")
+		// Create archive directory with .claude prefix
+		archiveDir := filepath.Join(tempDir, ".claude", "archive", "2025-Q1")
 		err := os.MkdirAll(archiveDir, 0755)
 		if err != nil {
 			t.Fatalf("Failed to create archive directory: %v", err)
@@ -181,7 +181,7 @@ func TestIsArchived(t *testing.T) {
 		// Create todos in different quarters
 		quarters := []string{"2024-Q4", "2025-Q1", "2025-Q2"}
 		for _, quarter := range quarters {
-			archiveDir := filepath.Join(tempDir, "archive", quarter)
+			archiveDir := filepath.Join(tempDir, ".claude", "archive", quarter)
 			err := os.MkdirAll(archiveDir, 0755)
 			if err != nil {
 				t.Fatalf("Failed to create archive directory %s: %v", quarter, err)
@@ -361,15 +361,19 @@ func generateBaseIDWrapper(tm *TodoManager, task string) string {
 }
 
 func isArchivedWrapper(tm *TodoManager, id string) bool {
-	// Check if file exists in main todo directory first
-	mainPath := GetTodoPath(tm.basePath, id)
-	if _, err := os.Stat(mainPath); err == nil {
-		// File exists in main directory, not archived
-		return false
+	// Try to resolve the todo path - this handles date-based structure
+	todoPath, err := ResolveTodoPath(tm.basePath, id)
+	if err == nil {
+		// Check if file exists at resolved path
+		if _, err := os.Stat(todoPath); err == nil {
+			// File exists in todo directory, not archived
+			return false
+		}
 	}
 
-	// If not in main directory, it should be archived
-	// We can verify by checking that it's NOT in the main directory
+	// If not found in todo directories, assume it's archived
+	// (We could additionally check archive directories, but for test purposes
+	// the absence from todo directories is sufficient)
 	return true
 }
 

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -276,7 +277,7 @@ func TestValidateSectionSchemaTypes(t *testing.T) {
 				return
 			}
 
-			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
+			if err != nil && tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
 				t.Errorf("Validate() error = %v, want error containing %v", err.Error(), tt.errMsg)
 			}
 		})

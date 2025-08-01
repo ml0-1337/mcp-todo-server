@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/user/mcp-todo-server/core"
 	"github.com/user/mcp-todo-server/utils"
-	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // TestE2EBasicWorkflow tests a basic todo creation workflow

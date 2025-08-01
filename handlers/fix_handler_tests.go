@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // This file contains the patterns for fixing handler tests

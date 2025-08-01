@@ -2,13 +2,13 @@ package core
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	
+
+	"gopkg.in/yaml.v3"
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -17,16 +17,16 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	// Use date-based structure
 	datePath := GetDailyPath(todo.Started)
 	dir := filepath.Join(tm.basePath, ".claude", "todos", datePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
 	}
 
 	// Create the todo file with frontmatter
 	filename := filepath.Join(dir, fmt.Sprintf("%s.md", todo.ID))
-	
+
 	// Update path cache
 	globalPathCache.Set(todo.ID, filename)
-	
+
 	// Marshal the frontmatter
 	yamlData, err := yaml.Marshal(todo)
 	if err != nil {
@@ -46,13 +46,13 @@ func (tm *TodoManager) writeTodo(todo *Todo) error {
 	// Write each section according to order
 	for _, section := range orderedSections {
 		contentBuilder.WriteString(fmt.Sprintf("## %s\n\n", section.Definition.Title))
-		
+
 		// Note: Section content is not stored in SectionDefinition
 		// It's stored separately in the markdown file
 	}
 
 	// Write to file
-	if err := ioutil.WriteFile(filename, []byte(contentBuilder.String()), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(contentBuilder.String()), 0600); err != nil {
 		return interrors.NewOperationError("write", "todo file", "failed to save todo", err)
 	}
 
@@ -64,16 +64,16 @@ func (tm *TodoManager) writeTodoWithContent(todo *Todo, templateContent string) 
 	// Use date-based structure
 	datePath := GetDailyPath(todo.Started)
 	dir := filepath.Join(tm.basePath, ".claude", "todos", datePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return interrors.NewOperationError("create", "todos directory", "failed to create directory", err)
 	}
 
 	// Create the todo file with frontmatter
 	filename := filepath.Join(dir, fmt.Sprintf("%s.md", todo.ID))
-	
+
 	// Update path cache
 	globalPathCache.Set(todo.ID, filename)
-	
+
 	// Marshal the frontmatter
 	yamlData, err := yaml.Marshal(todo)
 	if err != nil {
@@ -89,7 +89,7 @@ func (tm *TodoManager) writeTodoWithContent(todo *Todo, templateContent string) 
 	contentBuilder.WriteString(templateContent)
 
 	// Write to file
-	if err := ioutil.WriteFile(filename, []byte(contentBuilder.String()), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(contentBuilder.String()), 0600); err != nil {
 		return interrors.NewOperationError("write", "todo file", "failed to save todo", err)
 	}
 
@@ -110,7 +110,7 @@ func (tm *TodoManager) ReadTodo(id string) (*Todo, error) {
 		return nil, interrors.Wrap(err, "failed to resolve todo path")
 	}
 
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, interrors.NewNotFoundError("todo", id)
@@ -164,17 +164,17 @@ func (tm *TodoManager) parseTodoFile(content string) (*Todo, error) {
 			}
 			continue
 		}
-		
+
 		// Ensure title is set
 		if section.Title == "" {
 			section.Title = key
 		}
-		
+
 		// Initialize metadata if nil
 		if section.Metadata == nil {
 			section.Metadata = make(map[string]interface{})
 		}
-		
+
 		// Handle started field - allow both time.Time and string
 		if started, ok := section.Metadata["started"]; ok {
 			switch v := started.(type) {
@@ -233,8 +233,8 @@ func (tm *TodoManager) ReadTodoContent(id string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve todo path: %w", err)
 	}
-	
-	content, err := ioutil.ReadFile(filename)
+
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return "", fmt.Errorf("failed to read todo content: %w", err)
 	}

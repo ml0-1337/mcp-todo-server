@@ -2,20 +2,20 @@ package core
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	
+
+	"gopkg.in/yaml.v3"
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
-
 // GetDailyPath returns the daily archive path YYYY/MM/DD for a given time
 func GetDailyPath(t time.Time) string {
-	return filepath.Join(t.Format("2006"), t.Format("01"), t.Format("02"))
+	// Use forward slashes for consistent cross-platform behavior
+	return fmt.Sprintf("%s/%s/%s", t.Format("2006"), t.Format("01"), t.Format("02"))
 }
 
 // ArchiveTodo moves a todo to the archive folder and sets completed timestamp
@@ -57,7 +57,7 @@ func (tm *TodoManager) ArchiveTodo(id string) error {
 	}
 
 	// Read the todo file
-	content, err := ioutil.ReadFile(sourcePath)
+	content, err := os.ReadFile(sourcePath)
 	if err != nil {
 		return interrors.Wrap(err, "failed to read todo file")
 	}
@@ -90,7 +90,7 @@ func (tm *TodoManager) ArchiveTodo(id string) error {
 
 	// Create archive directory structure within .claude
 	archiveDir := filepath.Join(tm.basePath, ".claude", "archive", archivePath)
-	err = os.MkdirAll(archiveDir, 0755)
+	err = os.MkdirAll(archiveDir, 0750)
 	if err != nil {
 		return interrors.NewOperationError("create", "archive directory", "failed to create archive directory", err)
 	}
@@ -110,7 +110,7 @@ func (tm *TodoManager) ArchiveTodo(id string) error {
 
 	// Write updated content to temp file in archive directory
 	tempPath := filepath.Join(archiveDir, id+".md.tmp")
-	err = ioutil.WriteFile(tempPath, []byte(updatedContent), 0644)
+	err = os.WriteFile(tempPath, []byte(updatedContent), 0600)
 	if err != nil {
 		return interrors.NewOperationError("write", "temp archive file", "failed to write temp file", err)
 	}
@@ -171,7 +171,7 @@ func isArchived(basePath, id string) bool {
 		// If we can't find it in todos directory, assume it's archived
 		return true
 	}
-	
+
 	// Check if the resolved path is in the archive directory
 	archivePath := filepath.Join(basePath, ".claude", "archive")
 	return strings.HasPrefix(todoPath, archivePath)

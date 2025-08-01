@@ -81,12 +81,12 @@ func TestGetUpdatePrompts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getUpdatePrompts(tt.section, tt.operation, tt.todoType)
-			
+
 			// Check that prompt is not empty
 			if got == "" {
 				t.Errorf("getUpdatePrompts() returned empty string")
 			}
-			
+
 			// Check that all expected words/phrases appear
 			for _, word := range tt.wantWords {
 				if !strings.Contains(got, word) {

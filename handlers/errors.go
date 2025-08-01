@@ -5,7 +5,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"os"
 	"strings"
-	
+
 	interrors "github.com/user/mcp-todo-server/internal/errors"
 )
 
@@ -28,11 +28,11 @@ func HandleError(err error) *mcp.CallToolResult {
 	switch {
 	case interrors.IsNotFound(err):
 		return mcp.NewToolResultError("Todo not found")
-		
+
 	case interrors.IsValidation(err):
 		// Use the full error message which includes field name
 		return mcp.NewToolResultError(err.Error())
-		
+
 	case interrors.IsOperation(err):
 		// Extract specific operation message if available
 		var opErr *interrors.OperationError
@@ -40,13 +40,13 @@ func HandleError(err error) *mcp.CallToolResult {
 			return mcp.NewToolResultError(fmt.Sprintf("%s operation failed: %s", opErr.Operation, opErr.Message))
 		}
 		return mcp.NewToolResultError("Operation failed")
-		
+
 	case interrors.IsPermission(err):
 		return mcp.NewToolResultError("Permission denied")
-		
+
 	case interrors.IsConflict(err):
 		return mcp.NewToolResultError("Resource conflict")
-		
+
 	case interrors.IsInternal(err):
 		return mcp.NewToolResultError("Internal server error")
 

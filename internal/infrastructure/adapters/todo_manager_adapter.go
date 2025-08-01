@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/core"
 	"github.com/user/mcp-todo-server/internal/application"
 	"github.com/user/mcp-todo-server/internal/domain"
@@ -35,7 +35,7 @@ func (a *TodoManagerAdapter) CreateTodo(task, priority, todoType string) (*core.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return a.domainToCoreTodo(domainTodo), nil
 }
 
@@ -49,7 +49,7 @@ func (a *TodoManagerAdapter) ReadTodo(id string) (*core.Todo, error) {
 		}
 		return nil, err
 	}
-	
+
 	return a.domainToCoreTodo(domainTodo), nil
 }
 
@@ -63,20 +63,20 @@ func (a *TodoManagerAdapter) ReadTodoWithContent(id string) (*core.Todo, string,
 		}
 		return nil, "", err
 	}
-	
+
 	return a.domainToCoreTodo(domainTodo), content, nil
 }
 
 // UpdateTodo updates a todo section
 func (a *TodoManagerAdapter) UpdateTodo(id, section, operation, content string, metadata map[string]string) error {
 	ctx := context.Background()
-	
+
 	// For now, we'll implement a simplified version
 	// In a full implementation, this would handle all section operations
 	if metadata != nil && metadata["status"] != "" {
 		return a.service.UpdateTodoStatus(ctx, id, metadata["status"])
 	}
-	
+
 	// For other updates, we need to implement section handling in the service
 	return fmt.Errorf("section updates not yet implemented in adapter")
 }
@@ -95,12 +95,12 @@ func (a *TodoManagerAdapter) ListTodos(status, priority string, days int) ([]*co
 	if err != nil {
 		return nil, err
 	}
-	
+
 	coreTodos := make([]*core.Todo, len(domainTodos))
 	for i, dt := range domainTodos {
 		coreTodos[i] = a.domainToCoreTodo(dt)
 	}
-	
+
 	return coreTodos, nil
 }
 
@@ -119,16 +119,16 @@ func (a *TodoManagerAdapter) ArchiveTodo(id string) error {
 // ArchiveOldTodos archives todos older than specified days
 func (a *TodoManagerAdapter) ArchiveOldTodos(days int) (int, error) {
 	ctx := context.Background()
-	
+
 	// Get todos older than specified days
 	todos, err := a.service.ListTodos(ctx, "", "", 0)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	count := 0
 	cutoff := time.Now().AddDate(0, 0, -days)
-	
+
 	for _, todo := range todos {
 		if todo.IsCompleted() && todo.Completed.Before(cutoff) {
 			if err := a.service.ArchiveTodo(ctx, todo.ID); err == nil {
@@ -136,7 +136,7 @@ func (a *TodoManagerAdapter) ArchiveOldTodos(days int) (int, error) {
 			}
 		}
 	}
-	
+
 	return count, nil
 }
 
@@ -147,14 +147,14 @@ func (a *TodoManagerAdapter) FindDuplicateTodos() ([][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Group by normalized task name
 	groups := make(map[string][]string)
 	for _, todo := range todos {
 		normalized := strings.ToLower(strings.TrimSpace(todo.Task))
 		groups[normalized] = append(groups[normalized], todo.ID)
 	}
-	
+
 	// Find duplicates
 	var duplicates [][]string
 	for _, ids := range groups {
@@ -162,7 +162,7 @@ func (a *TodoManagerAdapter) FindDuplicateTodos() ([][]string, error) {
 			duplicates = append(duplicates, ids)
 		}
 	}
-	
+
 	return duplicates, nil
 }
 
@@ -176,7 +176,7 @@ func (a *TodoManagerAdapter) domainToCoreTodo(dt *domain.Todo) *core.Todo {
 	if dt == nil {
 		return nil
 	}
-	
+
 	// Convert sections
 	sections := make(map[string]*core.SectionDefinition)
 	for k, v := range dt.Sections {
@@ -189,7 +189,7 @@ func (a *TodoManagerAdapter) domainToCoreTodo(dt *domain.Todo) *core.Todo {
 			Metadata: v.Metadata,
 		}
 	}
-	
+
 	return &core.Todo{
 		ID:        dt.ID,
 		Task:      dt.Task,
@@ -209,7 +209,7 @@ func (a *TodoManagerAdapter) coreToDomainTodo(ct *core.Todo) *domain.Todo {
 	if ct == nil {
 		return nil
 	}
-	
+
 	// Convert sections
 	sections := make(map[string]*domain.SectionDefinition)
 	for k, v := range ct.Sections {
@@ -221,7 +221,7 @@ func (a *TodoManagerAdapter) coreToDomainTodo(ct *core.Todo) *domain.Todo {
 			// These would need to be stored in metadata or handled differently
 		}
 	}
-	
+
 	return &domain.Todo{
 		ID:        ct.ID,
 		Task:      ct.Task,

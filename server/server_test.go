@@ -9,7 +9,7 @@ import (
 // Test 1: MCP server should start and register tools successfully
 func TestServerInitialization(t *testing.T) {
 	t.Helper()
-	
+
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 
@@ -48,23 +48,22 @@ func TestServerInitialization(t *testing.T) {
 	// Get the list of registered tools
 	tools := server.ListTools()
 
-	// Expected tools
+	// Expected tools (without todo_archive since auto-archive is enabled by default)
 	expectedTools := []string{
 		"todo_create",
 		"todo_create_multi",
 		"todo_read",
 		"todo_update",
 		"todo_search",
-		// Note: todo_archive is no longer in default list due to auto-archive feature
 		"todo_template",
 		"todo_link",
 		"todo_stats",
 		"todo_clean",
 	}
 
-	// Verify all expected tools are registered (minus 1 for todo_archive)
-	if len(tools) != len(expectedTools)-1 {
-		t.Errorf("Expected %d tools, got %d", len(expectedTools)-1, len(tools))
+	// Verify all expected tools are registered
+	if len(tools) != len(expectedTools) {
+		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(tools))
 	}
 
 	// Check each tool is present
@@ -85,7 +84,7 @@ func TestTodoArchive_ToolRegistration(t *testing.T) {
 	// Setup test environment
 	setupTestEnv := func(t *testing.T) {
 		tempDir := t.TempDir()
-		
+
 		oldTodoPath := os.Getenv("CLAUDE_TODO_PATH")
 		oldTemplatePath := os.Getenv("CLAUDE_TEMPLATE_PATH")
 		t.Cleanup(func() {
@@ -104,7 +103,7 @@ func TestTodoArchive_ToolRegistration(t *testing.T) {
 
 	t.Run("todo_archive tool should not appear in tools list by default", func(t *testing.T) {
 		setupTestEnv(t)
-		
+
 		// Create server with default options (auto-archive enabled, noAutoArchive=false)
 		server, err := NewTodoServer()
 		if err != nil {
@@ -140,7 +139,7 @@ func TestTodoArchive_ToolRegistration(t *testing.T) {
 
 	t.Run("todo_archive tool should appear when auto-archive is disabled", func(t *testing.T) {
 		setupTestEnv(t)
-		
+
 		// Create server with auto-archive disabled
 		server, err := NewTodoServer(WithNoAutoArchive(true))
 		if err != nil {

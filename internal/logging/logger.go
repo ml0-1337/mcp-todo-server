@@ -1,3 +1,5 @@
+// Package logging provides structured logging utilities for the MCP Todo Server.
+// All logging is directed to stderr to avoid interfering with STDIO transport mode.
 package logging
 
 import (

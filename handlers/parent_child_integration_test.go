@@ -80,7 +80,7 @@ func TestParentChildWorkflow(t *testing.T) {
 	}
 
 	readContent := readResult.Content[0].(mcp.TextContent).Text
-	
+
 	// Debug output
 	t.Logf("Read content:\n%s", readContent)
 
@@ -111,14 +111,20 @@ func TestParentChildWorkflow(t *testing.T) {
 		},
 	}
 
-	_, err = handlers.HandleTodoCreate(context.Background(), orphanReq.ToCallToolRequest())
-	if err == nil {
-		t.Fatal("Expected error for phase without parent_id, but got none")
+	orphanResult, err := handlers.HandleTodoCreate(context.Background(), orphanReq.ToCallToolRequest())
+	if err != nil {
+		t.Fatalf("Expected no Go error, but got: %v", err)
+	}
+
+	// The error should be in the result, not as a Go error
+	if orphanResult == nil || !orphanResult.IsError {
+		t.Fatal("Expected error result for phase without parent_id")
 	}
 
 	// Check that the error message is correct
-	if !strings.Contains(err.Error(), "type 'phase' requires parent_id") {
-		t.Errorf("Expected error about parent_id requirement, got: %v", err)
+	orphanContent := orphanResult.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(orphanContent, "type 'phase' requires parent_id") {
+		t.Errorf("Expected error about parent_id requirement, got: %s", orphanContent)
 	}
 
 	// Test 4: Create phase with parent_id
@@ -193,14 +199,19 @@ func TestParentChildWorkflow(t *testing.T) {
 	}
 
 	patternContent := patternResult.Content[0].(mcp.TextContent).Text
-	// Current implementation doesn't include hints, just verify JSON structure
+	// The response contains JSON followed by additional text, so extract just the JSON part
+	jsonPart := patternContent
+	if idx := strings.Index(patternContent, "\n\n"); idx > 0 {
+		jsonPart = patternContent[:idx]
+	}
+
 	var patternResponse map[string]interface{}
-	if err := json.Unmarshal([]byte(patternContent), &patternResponse); err != nil {
+	if err := json.Unmarshal([]byte(jsonPart), &patternResponse); err != nil {
 		t.Errorf("Failed to parse JSON response: %v", err)
 	}
 	// Verify basic response structure
 	if patternResponse["id"] == nil || patternResponse["message"] == nil {
-		t.Errorf("Response missing expected fields, got: %s", patternContent)
+		t.Errorf("Response missing expected fields, got: %s", jsonPart)
 	}
 }
 
@@ -261,7 +272,7 @@ func TestOrphanedPhaseDetection(t *testing.T) {
 	}
 
 	content := result.Content[0].(mcp.TextContent).Text
-	
+
 	// Debug output
 	t.Logf("Orphan detection content:\n%s", content)
 

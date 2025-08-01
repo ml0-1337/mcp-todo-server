@@ -48,14 +48,14 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		if newStatus, hasStatus := metadataMap["status"]; hasStatus && newStatus == "completed" && !h.noAutoArchive {
 			// Read todo to get its metadata for archive path
 			todo, readErr := manager.ReadTodo(params.ID)
-			
+
 			// Perform auto-archive
 			archiveErr := manager.ArchiveTodo(params.ID)
 			if archiveErr != nil {
 				// Log the error but don't fail the update
 				fmt.Fprintf(os.Stderr, "Warning: failed to auto-archive todo: %v\n", archiveErr)
 			}
-			
+
 			// Construct archive path
 			var archivePath string
 			if readErr == nil && todo != nil && archiveErr == nil {
@@ -63,7 +63,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 				dayPath := core.GetDailyPath(todo.Started)
 				archivePath = filepath.Join(".claude", "archive", dayPath, params.ID+".md")
 			}
-			
+
 			// Remove from search index if archived successfully
 			if archiveErr == nil && search != nil {
 				deleteErr := search.DeleteTodo(params.ID)
@@ -72,7 +72,7 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 					fmt.Fprintf(os.Stderr, "Warning: failed to remove from search index: %v\n", deleteErr)
 				}
 			}
-			
+
 			// Create response with archive information
 			if archiveErr == nil && archivePath != "" {
 				prompts := ""
@@ -81,19 +81,25 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 				} else {
 					prompts = getCompletionPrompts("")
 				}
-				
+
 				return mcp.NewToolResultText(fmt.Sprintf(
 					"Todo '%s' has been completed and archived to %s.\n\n%s",
 					params.ID, archivePath, prompts)), nil
 			}
 		}
-		
+
 		// Re-index if status changed (for non-completed statuses)
 		if _, hasStatus := metadataMap["status"]; hasStatus && search != nil {
-			todo, _ := manager.ReadTodo(params.ID)
-			if todo != nil {
-				content, _ := manager.ReadTodoContent(params.ID)
-				search.IndexTodo(todo, content)
+			todo, err := manager.ReadTodo(params.ID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read todo for re-indexing %s: %v\n", params.ID, err)
+			} else if todo != nil {
+				content, err := manager.ReadTodoContent(params.ID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to read todo content for re-indexing %s: %v\n", params.ID, err)
+				} else if err := search.IndexTodo(todo, content); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to re-index todo %s: %v\n", params.ID, err)
+				}
 			}
 		}
 
@@ -102,21 +108,23 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		for key, value := range metadataMap {
 			updates = append(updates, fmt.Sprintf("%s: %s", key, value))
 		}
-		
+
 		// Check if status was set to completed (when auto-archive is disabled)
 		if newStatus, hasStatus := metadataMap["status"]; hasStatus && newStatus == "completed" {
 			// Read todo to get type for contextual prompts
-			todo, _ := manager.ReadTodo(params.ID)
+			todo, err := manager.ReadTodo(params.ID)
 			todoType := ""
-			if todo != nil {
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read todo for type %s: %v\n", params.ID, err)
+			} else if todo != nil {
 				todoType = todo.Type
 			}
-			
+
 			return mcp.NewToolResultText(fmt.Sprintf(
 				"Todo '%s' metadata updated: %s\n\n%s",
 				params.ID, strings.Join(updates, ", "), getCompletionPrompts(todoType))), nil
 		}
-		
+
 		return mcp.NewToolResultText(fmt.Sprintf("Todo '%s' metadata updated: %s", params.ID, strings.Join(updates, ", "))), nil
 	}
 
@@ -129,10 +137,16 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 
 		// Re-index after content update
 		if search != nil {
-			todo, _ := manager.ReadTodo(params.ID)
-			if todo != nil {
-				content, _ := manager.ReadTodoContent(params.ID)
-				search.IndexTodo(todo, content)
+			todo, err := manager.ReadTodo(params.ID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to read todo for re-indexing %s: %v\n", params.ID, err)
+			} else if todo != nil {
+				content, err := manager.ReadTodoContent(params.ID)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to read todo content for re-indexing %s: %v\n", params.ID, err)
+				} else if err := search.IndexTodo(todo, content); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to re-index todo %s: %v\n", params.ID, err)
+				}
 			}
 		}
 
@@ -141,22 +155,24 @@ func (h *TodoHandlers) HandleTodoUpdate(ctx context.Context, request mcp.CallToo
 		if opDesc == "" {
 			opDesc = "updated"
 		}
-		
+
 		// Get todo type for contextual prompts
 		todoType := ""
-		todo, _ := manager.ReadTodo(params.ID)
-		if todo != nil {
+		todo, err := manager.ReadTodo(params.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to read todo for type %s: %v\n", params.ID, err)
+		} else if todo != nil {
 			todoType = todo.Type
 		}
-		
+
 		// Build response with contextual prompts
 		baseMessage := fmt.Sprintf("Todo '%s' %s section %s", params.ID, params.Section, opDesc)
 		prompts := getUpdatePrompts(params.Section, params.Operation, todoType)
-		
+
 		if prompts != "" {
 			return mcp.NewToolResultText(baseMessage + "\n\n" + prompts), nil
 		}
-		
+
 		return mcp.NewToolResultText(baseMessage), nil
 	}
 
@@ -172,28 +188,28 @@ func getCompletionPrompts(todoType string) string {
 			"- Were there unexpected challenges that future features should consider?\n" +
 			"- Are there follow-up improvements or related features to pursue?\n\n" +
 			"What's the most valuable next action based on this completion?"
-	
+
 	case "bug":
 		return "Bug fix completed. To prevent similar issues:\n\n" +
 			"- What was the root cause of this bug?\n" +
 			"- Could this issue have been caught earlier in the development process?\n" +
 			"- Are there related areas of the codebase that might have similar vulnerabilities?\n\n" +
 			"What preventive measure would have the highest impact?"
-	
+
 	case "research":
 		return "Research completed. To maximize the value of your findings:\n\n" +
 			"- What are the key insights or conclusions?\n" +
 			"- Which findings should influence upcoming decisions?\n" +
 			"- Are there areas that warrant deeper investigation?\n\n" +
 			"What action should be taken based on these research findings?"
-	
+
 	case "refactor":
 		return "Refactoring completed. To ensure code quality improvements:\n\n" +
 			"- What specific improvements were achieved?\n" +
 			"- Did this reveal additional technical debt to address?\n" +
 			"- How can we measure the impact of these changes?\n\n" +
 			"What's the next priority for code quality improvement?"
-	
+
 	default:
 		return "Task completed successfully. To capitalize on your progress:\n\n" +
 			"- What key learnings emerged from this work?\n" +

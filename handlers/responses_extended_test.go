@@ -153,9 +153,9 @@ func TestFormatTodosFull(t *testing.T) {
 
 func TestFormatTodoSectionsResponse(t *testing.T) {
 	tests := []struct {
-		name        string
-		todo        *core.Todo
-		wantContain []string
+		name           string
+		todo           *core.Todo
+		wantContain    []string
 		wantNotContain []string
 	}{
 		{
@@ -270,10 +270,10 @@ func TestFormatTodoSectionsResponse(t *testing.T) {
 						Schema:   "custom",
 						Required: true,
 						Metadata: map[string]interface{}{
-							"version":     2,
-							"enabled":     true,
-							"config":      map[string]interface{}{"key": "value"},
-							"tags":        []string{"a", "b"},
+							"version": 2,
+							"enabled": true,
+							"config":  map[string]interface{}{"key": "value"},
+							"tags":    []string{"a", "b"},
 						},
 					},
 				},
@@ -323,18 +323,18 @@ func TestFormatTodoSectionsResponse_Ordering(t *testing.T) {
 		ID: "ordered-todo",
 		Sections: map[string]*core.SectionDefinition{
 			"third": {
-				Title: "Third Section",
-				Order: 3,
+				Title:  "Third Section",
+				Order:  3,
 				Schema: "research",
 			},
 			"first": {
-				Title: "First Section",
-				Order: 1,
+				Title:  "First Section",
+				Order:  1,
 				Schema: "research",
 			},
 			"second": {
-				Title: "Second Section",
-				Order: 2,
+				Title:  "Second Section",
+				Order:  2,
 				Schema: "research",
 			},
 		},
@@ -354,7 +354,7 @@ func TestFormatTodoSectionsResponse_Ordering(t *testing.T) {
 	}
 
 	if firstPos > secondPos || secondPos > thirdPos {
-		t.Errorf("Sections not in correct order. Positions: first=%d, second=%d, third=%d\nContent:\n%s", 
+		t.Errorf("Sections not in correct order. Positions: first=%d, second=%d, third=%d\nContent:\n%s",
 			firstPos, secondPos, thirdPos, content)
 	}
 }
@@ -372,12 +372,12 @@ func getResultContent(result interface{}) string {
 			}
 		}
 	}
-	
+
 	// Alternative approach: convert to JSON and extract
 	jsonBytes, _ := json.Marshal(result)
 	var data map[string]interface{}
 	json.Unmarshal(jsonBytes, &data)
-	
+
 	if contents, ok := data["content"].([]interface{}); ok && len(contents) > 0 {
 		if firstContent, ok := contents[0].(map[string]interface{}); ok {
 			if text, ok := firstContent["text"].(string); ok {
@@ -385,6 +385,6 @@ func getResultContent(result interface{}) string {
 			}
 		}
 	}
-	
+
 	return string(jsonBytes)
 }

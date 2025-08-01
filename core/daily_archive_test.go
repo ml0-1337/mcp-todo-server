@@ -1,7 +1,6 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,13 +12,20 @@ import (
 func TestDailyArchiveStructure(t *testing.T) {
 	t.Run("Archive creates YYYY/MM/DD directory structure", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "daily-archive-test-*")
+		tempDir, err := os.MkdirTemp("", "daily-archive-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
 		defer os.RemoveAll(tempDir)
 
-		// Create todo manager
+		// Create todo directory structure
+		todoDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todoDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create todo directory: %v", err)
+		}
+
+		// Create todo manager with the base path
 		manager := NewTodoManager(tempDir)
 
 		// Create a test todo with a specific date
@@ -35,24 +41,24 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Verify original file no longer exists
-		originalPath := GetTodoPath(tempDir, todo.ID)
+		originalPath := filepath.Join(todoDir, todo.ID+".md")
 		if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 			t.Error("Original todo file should have been moved")
 		}
 
 		// Verify file exists in daily archive structure
-		now := time.Now()
-		year := now.Format("2006")
-		month := now.Format("01")
-		day := now.Format("02")
-		expectedArchivePath := filepath.Join(tempDir, "..", "archive", year, month, day, todo.ID+".md")
+		// Archive path uses the todo's started date
+		year := todo.Started.Format("2006")
+		month := todo.Started.Format("01")
+		day := todo.Started.Format("02")
+		expectedArchivePath := filepath.Join(tempDir, ".claude", "archive", year, month, day, todo.ID+".md")
 
 		if _, err := os.Stat(expectedArchivePath); os.IsNotExist(err) {
 			t.Errorf("Todo file should exist in archive at %s", expectedArchivePath)
 		}
 
 		// Verify completed timestamp was set
-		content, err := ioutil.ReadFile(expectedArchivePath)
+		content, err := os.ReadFile(expectedArchivePath)
 		if err != nil {
 			t.Fatalf("Failed to read archived file: %v", err)
 		}
@@ -65,11 +71,18 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive handles cross-month boundaries correctly", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "cross-month-test-*")
+		tempDir, err := os.MkdirTemp("", "cross-month-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
 		defer os.RemoveAll(tempDir)
+
+		// Create todo directory structure
+		todoDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todoDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create todo directory: %v", err)
+		}
 
 		// Create todo manager
 		manager := NewTodoManager(tempDir)
@@ -95,8 +108,8 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Verify files are in correct directories
-		archive1Path := filepath.Join(tempDir, "..", "archive", "2025", "01", "31", todo1.ID+".md")
-		archive2Path := filepath.Join(tempDir, "..", "archive", "2025", "02", "01", todo2.ID+".md")
+		archive1Path := filepath.Join(tempDir, ".claude", "archive", "2025", "01", "31", todo1.ID+".md")
+		archive2Path := filepath.Join(tempDir, ".claude", "archive", "2025", "02", "01", todo2.ID+".md")
 
 		if _, err := os.Stat(archive1Path); os.IsNotExist(err) {
 			t.Errorf("Todo1 should be archived at %s", archive1Path)
@@ -109,11 +122,18 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive handles cross-year boundaries correctly", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "cross-year-test-*")
+		tempDir, err := os.MkdirTemp("", "cross-year-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
 		defer os.RemoveAll(tempDir)
+
+		// Create todo directory structure
+		todoDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todoDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create todo directory: %v", err)
+		}
 
 		// Create todo manager
 		manager := NewTodoManager(tempDir)
@@ -139,8 +159,8 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Verify files are in correct directories
-		archive1Path := filepath.Join(tempDir, "..", "archive", "2024", "12", "31", todo1.ID+".md")
-		archive2Path := filepath.Join(tempDir, "..", "archive", "2025", "01", "01", todo2.ID+".md")
+		archive1Path := filepath.Join(tempDir, ".claude", "archive", "2024", "12", "31", todo1.ID+".md")
+		archive2Path := filepath.Join(tempDir, ".claude", "archive", "2025", "01", "01", todo2.ID+".md")
 
 		if _, err := os.Stat(archive1Path); os.IsNotExist(err) {
 			t.Errorf("Todo1 should be archived at %s", archive1Path)
@@ -153,17 +173,24 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive creates parent directories if missing", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "parent-dirs-test-*")
+		tempDir, err := os.MkdirTemp("", "parent-dirs-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
 		defer os.RemoveAll(tempDir)
 
+		// Create todo directory structure
+		todoDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todoDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create todo directory: %v", err)
+		}
+
 		// Create todo manager
 		manager := NewTodoManager(tempDir)
 
 		// Ensure archive directory doesn't exist
-		archiveBase := filepath.Join(tempDir, "..", "archive")
+		archiveBase := filepath.Join(tempDir, ".claude", "archive")
 		os.RemoveAll(archiveBase)
 
 		// Create and archive a todo
@@ -178,10 +205,10 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Verify all parent directories were created
-		now := time.Now()
-		year := now.Format("2006")
-		month := now.Format("01")
-		day := now.Format("02")
+		// Archive uses the todo's started date
+		year := todo.Started.Format("2006")
+		month := todo.Started.Format("01")
+		day := todo.Started.Format("02")
 
 		yearDir := filepath.Join(archiveBase, year)
 		monthDir := filepath.Join(yearDir, month)
@@ -196,11 +223,18 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive preserves file content and metadata", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "preserve-test-*")
+		tempDir, err := os.MkdirTemp("", "preserve-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
 		defer os.RemoveAll(tempDir)
+
+		// Create todo directory structure
+		todoDir := filepath.Join(tempDir, ".claude", "todos")
+		err = os.MkdirAll(todoDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create todo directory: %v", err)
+		}
 
 		// Create todo manager
 		manager := NewTodoManager(tempDir)
@@ -218,9 +252,12 @@ func TestDailyArchiveStructure(t *testing.T) {
 			t.Fatalf("Failed to update todo: %v", err)
 		}
 
-		// Read original content
-		originalPath := GetTodoPath(tempDir, todo.ID)
-		_, err = ioutil.ReadFile(originalPath)
+		// Read original content using ResolveTodoPath to handle date-based structure
+		originalPath, err := ResolveTodoPath(tempDir, todo.ID)
+		if err != nil {
+			t.Fatalf("Failed to resolve todo path: %v", err)
+		}
+		_, err = os.ReadFile(originalPath)
 		if err != nil {
 			t.Fatalf("Failed to read original file: %v", err)
 		}
@@ -232,9 +269,9 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Read archived content
-		now := time.Now()
-		archivePath := filepath.Join(tempDir, "..", "archive", now.Format("2006"), now.Format("01"), now.Format("02"), todo.ID+".md")
-		archivedContent, err := ioutil.ReadFile(archivePath)
+		// Archive uses the todo's started date
+		archivePath := filepath.Join(tempDir, ".claude", "archive", todo.Started.Format("2006"), todo.Started.Format("01"), todo.Started.Format("02"), todo.ID+".md")
+		archivedContent, err := os.ReadFile(archivePath)
 		if err != nil {
 			t.Fatalf("Failed to read archived file: %v", err)
 		}

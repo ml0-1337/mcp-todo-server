@@ -1,3 +1,4 @@
+// Package validation provides validation functions for todo operations.
 package validation
 
 // Priority constants
@@ -41,7 +42,7 @@ func IsValidPriority(p string) bool {
 
 // IsValidTodoType validates todo type values
 func IsValidTodoType(t string) bool {
-	return t == TypeFeature || t == TypeBug || t == TypeRefactor || 
+	return t == TypeFeature || t == TypeBug || t == TypeRefactor ||
 		t == TypeResearch || t == TypePRD || t == TypeMultiPhase || t == TypePhase || t == TypeSubtask
 }
 

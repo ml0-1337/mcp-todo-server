@@ -1,9 +1,9 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -68,7 +68,6 @@ func TestArchiveTodoToQuarterlyFolder(t *testing.T) {
 	})
 }
 
-
 // Test 17: todo_archive should update completed timestamp
 func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	// Setup test environment
@@ -99,7 +98,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	// Read archived todo from daily structure
 	archivePath := GetArchivePath(tempDir, todo, "")
 
-	content, err := ioutil.ReadFile(archivePath)
+	content, err := os.ReadFile(archivePath)
 	if err != nil {
 		t.Fatalf("Failed to read archived todo: %v", err)
 	}
@@ -151,7 +150,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 // Test 18: Archive operation should be atomic (no data loss)
 func TestArchiveOperationIsAtomic(t *testing.T) {
 	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "archive-atomic-test-*")
+	tempDir, err := os.MkdirTemp("", "archive-atomic-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -201,7 +200,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		}
 
 		// Original should not exist
-		originalPath := GetTodoPath(tempDir, todo.ID)
+		originalPath, _ := ResolveTodoPath(tempDir, todo.ID)
 		if _, err := os.Stat(originalPath); !os.IsNotExist(err) {
 			t.Error("Original todo should not exist after successful archive")
 		}
@@ -209,6 +208,10 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 
 	// Test scenario 3: Verify atomicity with write failure
 	t.Run("Verify atomicity on write failure", func(t *testing.T) {
+		// Skip on Windows - permission handling is different
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping write failure test on Windows")
+		}
 		// Create a test todo
 		todo, err := manager.CreateTodo("Test write failure", "low", "refactor")
 		if err != nil {
@@ -228,12 +231,25 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 		err = manager.ArchiveTodo(todo.ID)
 		if err == nil {
 			t.Error("Archive should fail when write fails")
+		} else {
+			t.Logf("Archive failed as expected with error: %v", err)
 		}
 
 		// Original should still exist and be unchanged
-		originalPath := GetTodoPath(tempDir, todo.ID)
-		if _, err := os.Stat(originalPath); os.IsNotExist(err) {
-			t.Error("Original todo should still exist after failed archive")
+		// Use ResolveTodoPath to find the actual location
+		originalPath, resolveErr := ResolveTodoPath(tempDir, todo.ID)
+		if resolveErr != nil {
+			t.Errorf("Failed to resolve todo path: %v", resolveErr)
+		} else {
+			if _, err := os.Stat(originalPath); os.IsNotExist(err) {
+				t.Error("Original todo should still exist after failed archive")
+
+				// Check if file was moved to archive
+				archivePath := filepath.Join(archiveDir, todo.ID+".md")
+				if _, err := os.Stat(archivePath); err == nil {
+					t.Error("Todo was archived despite write failure!")
+				}
+			}
 		}
 
 		// Verify todo can still be read and is unchanged
@@ -250,7 +266,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 // Test 19: Bulk operations should handle errors per-item
 func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "bulk-archive-test-*")
+	tempDir, err := os.MkdirTemp("", "bulk-archive-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -266,7 +282,19 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	todo4, _ := manager.CreateTodo("Todo 4 - Valid", "high", "feature")
 
 	// Delete todo3's file to simulate missing todo
-	os.Remove(GetTodoPath(tempDir, todo3.ID))
+	// Use ResolveTodoPath to find actual location
+	todo3Path, _ := ResolveTodoPath(tempDir, todo3.ID)
+	err = os.Remove(todo3Path)
+	if err != nil {
+		t.Logf("Warning: Failed to delete todo3 file: %v", err)
+	} else {
+		t.Logf("Deleted todo3 file at: %s", todo3Path)
+	}
+
+	// Verify it's really gone
+	if _, err := os.Stat(todo3Path); !os.IsNotExist(err) {
+		t.Error("Todo3 file still exists after deletion")
+	}
 
 	// Create list of IDs including a non-existent one
 	todoIDs := []string{
@@ -307,6 +335,7 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 				t.Errorf("Todo %s should have succeeded, but got error: %v", result.ID, result.Error)
 			} else {
 				successCount++
+				t.Logf("Todo %s succeeded as expected", result.ID)
 			}
 		} else {
 			if result.Success {
@@ -315,6 +344,8 @@ func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 				failureCount++
 				if result.Error == nil {
 					t.Errorf("Failed result for %s should have error", result.ID)
+				} else {
+					t.Logf("Todo %s failed as expected with error: %v", result.ID, result.Error)
 				}
 			}
 		}
@@ -365,23 +396,23 @@ func TestArchiveCreatesDirectoryWithinClaudeStructure(t *testing.T) {
 	// Check where archive was created - it should be within .claude structure
 	now := time.Now()
 	dailyPath := GetDailyPath(now)
-	
+
 	// Current behavior: archive is created one level up from basePath
 	currentArchivePath := filepath.Join(filepath.Dir(tempDir), "archive", dailyPath, todo.ID+".md")
-	
+
 	// Desired behavior: archive should be within .claude directory
 	desiredArchivePath := filepath.Join(tempDir, ".claude", "archive", dailyPath, todo.ID+".md")
-	
+
 	// Check that archive should be in .claude structure (this will fail initially)
 	if _, err := os.Stat(desiredArchivePath); os.IsNotExist(err) {
 		t.Errorf("Archive should be within .claude structure at: %s", desiredArchivePath)
 	}
-	
+
 	// Check that archive should NOT be in parent directory
 	if _, err := os.Stat(currentArchivePath); !os.IsNotExist(err) {
 		t.Errorf("Archive should NOT be in parent directory: %s", currentArchivePath)
 	}
-	
+
 	// Log paths for clarity
 	t.Logf("Base path: %s", tempDir)
 	t.Logf("Current archive path: %s", currentArchivePath)

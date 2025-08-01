@@ -1,3 +1,4 @@
+// Package application provides the application service layer for todo operations.
 package application
 
 import (
@@ -5,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 	"github.com/user/mcp-todo-server/internal/domain/repository"
 )
@@ -32,17 +33,17 @@ func (s *TodoService) CreateTodo(ctx context.Context, task, priority, todoType s
 	if err != nil {
 		return nil, fmt.Errorf("failed to create todo: %w", err)
 	}
-	
+
 	// Generate unique ID
 	s.mu.Lock()
 	todo.ID = s.generateUniqueID(task)
 	s.mu.Unlock()
-	
+
 	// Save via repository
 	if err := s.repo.Save(ctx, todo); err != nil {
 		return nil, fmt.Errorf("failed to save todo: %w", err)
 	}
-	
+
 	return todo, nil
 }
 
@@ -63,7 +64,7 @@ func (s *TodoService) ListTodos(ctx context.Context, status, priority string, da
 		Priority: priority,
 		Days:     days,
 	}
-	
+
 	return s.repo.List(ctx, filters)
 }
 
@@ -73,12 +74,12 @@ func (s *TodoService) UpdateTodoStatus(ctx context.Context, id string, status st
 	if err != nil {
 		return err
 	}
-	
+
 	todo.Status = status
 	if status == "completed" {
 		todo.Complete()
 	}
-	
+
 	return s.repo.Save(ctx, todo)
 }
 
@@ -88,15 +89,15 @@ func (s *TodoService) ArchiveTodo(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if !todo.IsCompleted() {
 		return fmt.Errorf("cannot archive incomplete todo")
 	}
-	
+
 	// Determine archive path based on started date
 	now := todo.Started
 	archivePath := fmt.Sprintf("%d/%02d/%02d", now.Year(), now.Month(), now.Day())
-	
+
 	return s.repo.Archive(ctx, id, archivePath)
 }
 
@@ -104,7 +105,7 @@ func (s *TodoService) ArchiveTodo(ctx context.Context, id string) error {
 func (s *TodoService) generateUniqueID(task string) string {
 	// Clean and convert to kebab-case
 	baseID := generateBaseID(task)
-	
+
 	// Ensure uniqueness
 	finalID := baseID
 	if count, exists := s.idCounts[baseID]; exists {
@@ -113,7 +114,7 @@ func (s *TodoService) generateUniqueID(task string) string {
 	} else {
 		s.idCounts[baseID] = 1
 	}
-	
+
 	return finalID
 }
 
@@ -121,10 +122,10 @@ func (s *TodoService) generateUniqueID(task string) string {
 func generateBaseID(task string) string {
 	// Remove null bytes and other invalid characters
 	cleaned := strings.ReplaceAll(task, "\x00", "")
-	
+
 	// Convert to lowercase
 	lower := strings.ToLower(cleaned)
-	
+
 	// Replace spaces and special characters with hyphens
 	replacer := strings.NewReplacer(
 		" ", "-",
@@ -162,26 +163,26 @@ func generateBaseID(task string) string {
 		"\r", "-",
 		"\t", "-",
 	)
-	
+
 	id := replacer.Replace(lower)
-	
+
 	// Replace multiple hyphens with single hyphen
 	for strings.Contains(id, "--") {
 		id = strings.ReplaceAll(id, "--", "-")
 	}
-	
+
 	// Trim hyphens from start and end
 	id = strings.Trim(id, "-")
-	
+
 	// Limit length
 	if len(id) > 100 {
 		id = id[:100]
 	}
-	
+
 	// Ensure we have something
 	if id == "" {
 		id = "todo"
 	}
-	
+
 	return id
 }

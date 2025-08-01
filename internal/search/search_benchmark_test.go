@@ -7,19 +7,19 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-	
+
 	"github.com/user/mcp-todo-server/internal/domain"
 )
 
 // BenchmarkSearchEngine tests search performance with various dataset sizes
 func BenchmarkSearchEngine(b *testing.B) {
 	sizes := []int{100, 1000, 10000}
-	
+
 	for _, size := range sizes {
 		b.Run(fmt.Sprintf("Size-%d", size), func(b *testing.B) {
 			// Setup
 			tempDir := b.TempDir()
-			
+
 			// Create search engine
 			indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 			searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
@@ -27,24 +27,24 @@ func BenchmarkSearchEngine(b *testing.B) {
 				b.Fatalf("Failed to create search engine: %v", err)
 			}
 			defer searchEngine.Close()
-			
+
 			// Create todo manager
 			manager := NewTestTodoManager(tempDir)
-			
+
 			// Populate with test data
 			b.Logf("Creating %d todos for benchmark...", size)
 			start := time.Now()
-			
+
 			for i := 0; i < size; i++ {
 				task := fmt.Sprintf("Task %d: %s feature implementation with priority handling", i, generateSearchTerms(i))
 				priority := []string{"high", "medium", "low"}[i%3]
 				todoType := []string{"feature", "bug", "refactor", "test", "docs"}[i%5]
-				
+
 				todo, err := manager.CreateTodo(task, priority, todoType)
 				if err != nil {
 					b.Fatalf("Failed to create todo %d: %v", i, err)
 				}
-				
+
 				// Index with rich content
 				content := fmt.Sprintf(`
 # Task: %s
@@ -66,15 +66,15 @@ Tags: %s
 `, task, i, generateTechnicalTerm(i), generateBusinessTerm(i), generateRandomTerm(i),
 					generateFeatureName(i), generateModuleName(i), generateComponentName(i),
 					i, generateTags(i))
-				
+
 				if err := searchEngine.Index(todo, content); err != nil {
 					b.Fatalf("Failed to index todo %d: %v", i, err)
 				}
 			}
-			
+
 			indexTime := time.Since(start)
 			b.Logf("Indexed %d todos in %v (%.2f todos/sec)", size, indexTime, float64(size)/indexTime.Seconds())
-			
+
 			// Benchmark search operations
 			queries := []string{
 				"implementation",
@@ -88,25 +88,25 @@ Tags: %s
 				"edge case",
 				"business logic",
 			}
-			
+
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				query := queries[i%len(queries)]
-				
+
 				results, err := searchEngine.Search(query, nil, 20)
 				if err != nil {
 					b.Fatalf("Search failed for query '%s': %v", query, err)
 				}
-				
+
 				// Verify we got results
 				if len(results) == 0 && size > 100 {
 					b.Errorf("No results for query '%s' with %d todos", query, size)
 				}
 			}
-			
+
 			b.StopTimer()
-			
+
 			// Report additional metrics
 			b.ReportMetric(float64(size), "todos")
 			b.ReportMetric(indexTime.Seconds(), "index_time_sec")
@@ -118,7 +118,7 @@ Tags: %s
 func BenchmarkSearchComplexQueries(b *testing.B) {
 	// Setup
 	tempDir := b.TempDir()
-	
+
 	// Create search engine and manager
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 	searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
@@ -126,27 +126,27 @@ func BenchmarkSearchComplexQueries(b *testing.B) {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}
 	defer searchEngine.Close()
-	
+
 	manager := NewTestTodoManager(tempDir)
-	
+
 	// Create diverse dataset
 	todoCount := 5000
 	for i := 0; i < todoCount; i++ {
 		task := fmt.Sprintf("Task %d: %s", i, generateComplexDescription(i))
 		priority := []string{"high", "medium", "low"}[i%3]
 		todoType := []string{"feature", "bug", "refactor", "test", "docs"}[i%5]
-		
+
 		todo, err := manager.CreateTodo(task, priority, todoType)
 		if err != nil {
 			b.Fatalf("Failed to create todo: %v", err)
 		}
-		
+
 		content := generateComplexContent(i)
 		if err := searchEngine.Index(todo, content); err != nil {
 			b.Fatalf("Failed to index todo: %v", err)
 		}
 	}
-	
+
 	// Define complex queries
 	complexQueries := []struct {
 		name  string
@@ -161,18 +161,18 @@ func BenchmarkSearchComplexQueries(b *testing.B) {
 		{"MixedQuery", `type:feature AND "user interface" AND (responsive OR mobile)`},
 		{"DateRange", "started:[2025-01-01 TO 2025-12-31]"},
 	}
-	
+
 	// Run benchmarks for each query type
 	for _, tc := range complexQueries {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				results, err := searchEngine.Search(tc.query, nil, 50)
 				if err != nil {
 					b.Fatalf("Search failed for query '%s': %v", tc.query, err)
 				}
-				
+
 				// Use results to prevent optimization
 				_ = len(results)
 			}
@@ -184,7 +184,7 @@ func BenchmarkSearchComplexQueries(b *testing.B) {
 func BenchmarkSearchConcurrent(b *testing.B) {
 	// Setup
 	tempDir := b.TempDir()
-	
+
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 	searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
@@ -192,9 +192,9 @@ func BenchmarkSearchConcurrent(b *testing.B) {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}
 	defer searchEngine.Close()
-	
+
 	manager := NewTestTodoManager(tempDir)
-	
+
 	// Create dataset
 	todoCount := 5000
 	for i := 0; i < todoCount; i++ {
@@ -203,12 +203,12 @@ func BenchmarkSearchConcurrent(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Failed to create todo: %v", err)
 		}
-		
+
 		if err := searchEngine.Index(todo, task); err != nil {
 			b.Fatalf("Failed to index todo: %v", err)
 		}
 	}
-	
+
 	queries := []string{
 		"concurrent",
 		"test",
@@ -216,15 +216,15 @@ func BenchmarkSearchConcurrent(b *testing.B) {
 		"implementation",
 		"feature",
 	}
-	
+
 	// Benchmark with different concurrency levels
 	concurrencyLevels := []int{1, 5, 10, 20}
-	
+
 	for _, concurrency := range concurrencyLevels {
 		b.Run(fmt.Sprintf("Concurrent-%d", concurrency), func(b *testing.B) {
 			b.SetParallelism(concurrency)
 			b.ResetTimer()
-			
+
 			b.RunParallel(func(pb *testing.PB) {
 				i := 0
 				for pb.Next() {
@@ -245,7 +245,7 @@ func BenchmarkSearchConcurrent(b *testing.B) {
 func BenchmarkIndexingPerformance(b *testing.B) {
 	// Setup
 	tempDir := b.TempDir()
-	
+
 	// Create search engine
 	indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
 	searchEngine, err := NewEngine(indexPath, filepath.Join(tempDir, ".claude", "todos"))
@@ -253,9 +253,9 @@ func BenchmarkIndexingPerformance(b *testing.B) {
 		b.Fatalf("Failed to create search engine: %v", err)
 	}
 	defer searchEngine.Close()
-	
+
 	manager := NewTestTodoManager(tempDir)
-	
+
 	// Pre-create todos
 	todos := make([]*domain.Todo, b.N)
 	for i := 0; i < b.N; i++ {
@@ -269,19 +269,19 @@ func BenchmarkIndexingPerformance(b *testing.B) {
 		}
 		todos[i] = todo
 	}
-	
+
 	// Benchmark indexing
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		content := fmt.Sprintf("Content for todo %d with searchable text", i)
 		if err := searchEngine.Index(todos[i], content); err != nil {
 			b.Fatalf("Failed to index todo: %v", err)
 		}
 	}
-	
+
 	b.StopTimer()
-	
+
 	// Report indexing rate
 	b.ReportMetric(float64(b.N)/b.Elapsed().Seconds(), "todos/sec")
 }
@@ -289,23 +289,23 @@ func BenchmarkIndexingPerformance(b *testing.B) {
 // BenchmarkInitialBulkIndexing tests the performance of indexing existing todos on startup
 func BenchmarkInitialBulkIndexing(b *testing.B) {
 	todoCounts := []int{10, 50, 65, 100, 200}
-	
+
 	for _, count := range todoCounts {
 		b.Run(fmt.Sprintf("TodoCount-%d", count), func(b *testing.B) {
 			// Create temp directory structure
 			tempDir := b.TempDir()
 			todosDir := filepath.Join(tempDir, ".claude", "todos")
 			indexPath := filepath.Join(tempDir, ".claude", "index", "todos.bleve")
-			
+
 			// Pre-create todo files on disk
 			b.Logf("Creating %d todo files...", count)
 			setupStart := time.Now()
-			
+
 			err := os.MkdirAll(todosDir, 0755)
 			if err != nil {
 				b.Fatalf("Failed to create todos directory: %v", err)
 			}
-			
+
 			for i := 0; i < count; i++ {
 				todoID := fmt.Sprintf("todo-%05d", i)
 				content := fmt.Sprintf(`---
@@ -344,52 +344,52 @@ It contains various keywords like %s, %s, and %s.
 					generateModuleName(i),
 					generateComponentName(i),
 				)
-				
+
 				todoPath := filepath.Join(todosDir, todoID+".md")
 				err := ioutil.WriteFile(todoPath, []byte(content), 0644)
 				if err != nil {
 					b.Fatalf("Failed to write todo file: %v", err)
 				}
 			}
-			
+
 			setupTime := time.Since(setupStart)
 			b.Logf("Created %d todo files in %v", count, setupTime)
-			
+
 			// Benchmark the initial indexing
 			b.ResetTimer()
-			
+
 			for n := 0; n < b.N; n++ {
 				// Remove any existing index
 				os.RemoveAll(indexPath)
-				
+
 				// Create new engine (which triggers indexing)
 				start := time.Now()
 				engine, err := NewEngine(indexPath, todosDir)
 				if err != nil {
 					b.Fatalf("Failed to create search engine: %v", err)
 				}
-				
+
 				indexTime := time.Since(start)
-				
+
 				// Verify indexing completed
 				docCount, err := engine.GetIndexedCount()
 				if err != nil {
 					b.Fatalf("Failed to get indexed count: %v", err)
 				}
-				
+
 				if docCount != uint64(count) {
 					b.Errorf("Expected %d indexed documents, got %d", count, docCount)
 				}
-				
+
 				engine.Close()
-				
+
 				// Report per-iteration metrics
 				if n == 0 {
-					b.Logf("Initial indexing of %d todos took %v (%.2f todos/sec)", 
+					b.Logf("Initial indexing of %d todos took %v (%.2f todos/sec)",
 						count, indexTime, float64(count)/indexTime.Seconds())
 				}
 			}
-			
+
 			// Report overall metrics
 			b.ReportMetric(float64(count), "todos")
 			b.ReportMetric(float64(count)/b.Elapsed().Seconds()*float64(b.N), "todos/sec")
@@ -529,7 +529,7 @@ Tags: %s
 Priority: %s
 Assigned: Team %d
 Sprint: %d
-`, 
+`,
 		i,
 		generateFeatureName(i),
 		generateTechnicalTerm(i),
