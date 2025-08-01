@@ -1,14 +1,14 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 )
 
-// extractSection extracts content from a specific section in the markdown
-func extractSection(content, sectionHeader string) string {
+// extractFindings extracts content from the "Findings & Research" section in the markdown
+func extractFindings(content string) string {
+	sectionHeader := "Findings & Research"
 	lines := strings.Split(content, "\n")
 	sectionStart := -1
 	sectionEnd := len(lines)
@@ -87,7 +87,7 @@ func TestAppendToSection_NormalContent(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "Initial content\n\nAppended content"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%s\n\nBut got:\n%s", expectedContent, findings)
@@ -134,7 +134,7 @@ func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 
 	// Debug: show the raw content
 	t.Logf("Raw content:\n%s", content)
@@ -183,7 +183,7 @@ func TestAppendToSection_EmptySection(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "First content"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%s\n\nBut got:\n%s", expectedContent, findings)
@@ -228,7 +228,7 @@ func TestAppendToSection_TrailingEmptyLines(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "Some content\n\nAppended after trailing"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%q\n\nBut got:\n%q", expectedContent, findings)
@@ -273,7 +273,7 @@ func TestAppendToSection_MixedEmptyLines(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 	expectedContent := "First paragraph\n\n\nSecond paragraph\n\nThird paragraph\n\nFourth paragraph"
 	if findings != expectedContent {
 		t.Errorf("Expected findings to be:\n%q\n\nBut got:\n%q", expectedContent, findings)
@@ -320,7 +320,7 @@ func TestAppendToSection_MultipleAppends(t *testing.T) {
 	}
 
 	// Extract findings section
-	findings := extractSection(content, "Findings & Research")
+	findings := extractFindings(content)
 
 	// Check that all content appears in the correct order
 	expectedOrder := []string{"First content", "Second append", "Third append", "Fourth append"}

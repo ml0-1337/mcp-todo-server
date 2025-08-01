@@ -1,7 +1,6 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -99,7 +98,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 	// Read archived todo from daily structure
 	archivePath := GetArchivePath(tempDir, todo, "")
 
-	content, err := ioutil.ReadFile(archivePath)
+	content, err := os.ReadFile(archivePath)
 	if err != nil {
 		t.Fatalf("Failed to read archived todo: %v", err)
 	}
@@ -151,7 +150,7 @@ func TestArchiveUpdatesCompletedTimestamp(t *testing.T) {
 // Test 18: Archive operation should be atomic (no data loss)
 func TestArchiveOperationIsAtomic(t *testing.T) {
 	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "archive-atomic-test-*")
+	tempDir, err := os.MkdirTemp("", "archive-atomic-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -267,7 +266,7 @@ func TestArchiveOperationIsAtomic(t *testing.T) {
 // Test 19: Bulk operations should handle errors per-item
 func TestBulkArchiveHandlesErrorsPerItem(t *testing.T) {
 	// Create temp directory for test
-	tempDir, err := ioutil.TempDir("", "bulk-archive-test-*")
+	tempDir, err := os.MkdirTemp("", "bulk-archive-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}

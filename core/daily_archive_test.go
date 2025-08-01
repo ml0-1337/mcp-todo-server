@@ -1,7 +1,6 @@
 package core
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +12,7 @@ import (
 func TestDailyArchiveStructure(t *testing.T) {
 	t.Run("Archive creates YYYY/MM/DD directory structure", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "daily-archive-test-*")
+		tempDir, err := os.MkdirTemp("", "daily-archive-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -59,7 +58,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		}
 
 		// Verify completed timestamp was set
-		content, err := ioutil.ReadFile(expectedArchivePath)
+		content, err := os.ReadFile(expectedArchivePath)
 		if err != nil {
 			t.Fatalf("Failed to read archived file: %v", err)
 		}
@@ -72,7 +71,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive handles cross-month boundaries correctly", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "cross-month-test-*")
+		tempDir, err := os.MkdirTemp("", "cross-month-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -123,7 +122,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive handles cross-year boundaries correctly", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "cross-year-test-*")
+		tempDir, err := os.MkdirTemp("", "cross-year-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -174,7 +173,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive creates parent directories if missing", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "parent-dirs-test-*")
+		tempDir, err := os.MkdirTemp("", "parent-dirs-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -224,7 +223,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 
 	t.Run("Archive preserves file content and metadata", func(t *testing.T) {
 		// Create temp directory for test
-		tempDir, err := ioutil.TempDir("", "preserve-test-*")
+		tempDir, err := os.MkdirTemp("", "preserve-test-*")
 		if err != nil {
 			t.Fatalf("Failed to create temp directory: %v", err)
 		}
@@ -258,7 +257,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to resolve todo path: %v", err)
 		}
-		_, err = ioutil.ReadFile(originalPath)
+		_, err = os.ReadFile(originalPath)
 		if err != nil {
 			t.Fatalf("Failed to read original file: %v", err)
 		}
@@ -272,7 +271,7 @@ func TestDailyArchiveStructure(t *testing.T) {
 		// Read archived content
 		// Archive uses the todo's started date
 		archivePath := filepath.Join(tempDir, ".claude", "archive", todo.Started.Format("2006"), todo.Started.Format("01"), todo.Started.Format("02"), todo.ID+".md")
-		archivedContent, err := ioutil.ReadFile(archivePath)
+		archivedContent, err := os.ReadFile(archivePath)
 		if err != nil {
 			t.Fatalf("Failed to read archived file: %v", err)
 		}
