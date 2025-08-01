@@ -53,7 +53,7 @@ func extractFindings(content string) string {
 // TestAppendToSection_NormalContent tests appending to a section with normal content
 func TestAppendToSection_NormalContent(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestAppendToSection_NormalContent(t *testing.T) {
 // TestAppendToSection_LeadingEmptyLines tests the bug case where content starts with empty lines
 func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestAppendToSection_LeadingEmptyLines(t *testing.T) {
 // TestAppendToSection_EmptySection tests appending to an empty section
 func TestAppendToSection_EmptySection(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestAppendToSection_EmptySection(t *testing.T) {
 // TestAppendToSection_TrailingEmptyLines tests appending when content has trailing empty lines
 func TestAppendToSection_TrailingEmptyLines(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestAppendToSection_TrailingEmptyLines(t *testing.T) {
 // TestAppendToSection_MixedEmptyLines tests appending when content has empty lines throughout
 func TestAppendToSection_MixedEmptyLines(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestAppendToSection_MixedEmptyLines(t *testing.T) {
 // TestAppendToSection_MultipleAppends tests multiple consecutive appends
 func TestAppendToSection_MultipleAppends(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestAppendToSection_MultipleAppends(t *testing.T) {
 // TestAppendToSection_BugRegressionWithLeadingEmpty ensures the append bug with leading empty lines stays fixed
 func TestAppendToSection_BugRegressionWithLeadingEmpty(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-regression-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-regression-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -385,7 +385,7 @@ func TestAppendToSection_BugRegressionWithLeadingEmpty(t *testing.T) {
 // TestAppendToSection_RawFileVerification directly verifies the file content
 func TestAppendToSection_RawFileVerification(t *testing.T) {
 	// Create temp directory
-	tempDir, err := ioutil.TempDir("", "todo-append-test-*")
+	tempDir, err := os.MkdirTemp("", "todo-append-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -414,7 +414,7 @@ func TestAppendToSection_RawFileVerification(t *testing.T) {
 
 	// Read the raw file
 	todoPath, _ := ResolveTodoPath(tempDir, todo.ID)
-	rawContent, err := ioutil.ReadFile(todoPath)
+	rawContent, err := os.ReadFile(todoPath)
 	if err != nil {
 		t.Fatalf("Failed to read raw file: %v", err)
 	}
